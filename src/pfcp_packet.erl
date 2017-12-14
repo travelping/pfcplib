@@ -158,14 +158,14 @@ decode_v1(Data, IEs) ->
 decode_v1_grouped(Bin) ->
     decode_v1(Bin, #{}).
 
-encode_v1_element(_K, V, Acc) when is_list(V) ->
+encode_v1_element(_K, V, Acc)
+  when is_list(V); is_map(V) ->
     encode_v1(V, Acc);
 encode_v1_element(_K, V, Acc) ->
     encode_v1_element(V, Acc).
 
 encode_tlv(Type, Bin, Acc)
   when is_integer(Type) ->
-    ct:pal("encode_tlv(~p, ~p, ~p)", [Type, Bin, Acc]),
     Size = byte_size(Bin),
     <<Acc/binary, 0:1, Type:15, Size:16, Bin/binary>>;
 encode_tlv({Type, EnterpriseId}, Bin, Acc)

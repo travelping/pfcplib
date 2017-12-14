@@ -55,9 +55,10 @@
 
 %%--------------------------------------------------------------------
 enc_dec_prop(Config) ->
-    numtests(10000,
+    numtests(1000,
 	     ?FORALL(Msg, msg_gen(),
 		     begin
+			 ct:pal("Msg: ~p", [Msg]),
 			 Enc = pfcp_packet:encode(Msg),
 			 ?equal(Enc, pfcp_packet:encode(pfcp_packet:decode(Enc)))
 		     end)).
@@ -102,7 +103,7 @@ msg_gen() ->
       type = msg_type(),
       seid = integer(0,16#ffffffff),
       seq_no = integer(0,16#ffffff),
-      ie = [ie()]
+      ie = ie()
      }.
 
 msg_type() ->
@@ -132,179 +133,202 @@ msg_type() ->
 	   session_report_response
 	  ]).
 
+grouped_ie() ->
+    [gen_create_pdr(),
+     gen_pdi(),
+     gen_create_far(),
+     gen_forwarding_parameters(),
+     gen_duplicating_parameters(),
+     gen_create_urr(),
+     gen_create_qer(),
+     gen_created_pdr(),
+     gen_update_pdr(),
+     gen_update_far(),
+     gen_update_forwarding_parameters(),
+     gen_update_bar_response(),
+     gen_update_urr(),
+     gen_update_qer(),
+     gen_remove_pdr(),
+     gen_remove_far(),
+     gen_remove_urr(),
+     gen_remove_qer(),
+     gen_load_control_information(),
+     gen_overload_control_information(),
+     gen_application_id_pfds(),
+     gen_pfd_context(),
+     gen_application_detection_information(),
+     gen_query_urr(),
+     gen_usage_report_smr(),
+     gen_usage_report_sdr(),
+     gen_usage_report_srr(),
+     gen_downlink_data_report(),
+     gen_create_bar(),
+     gen_update_bar_request(),
+     gen_remove_bar(),
+     gen_error_indication_report(),
+     gen_user_plane_path_failure_report(),
+     gen_update_duplicating_parameters()
+    ].
+
+simple_ie() ->
+    [
+     gen_cause(),
+     gen_source_interface(),
+     gen_f_teid(),
+     gen_network_instance(),
+     gen_sdf_filter(),
+     gen_application_id(),
+     gen_gate_status(),
+     gen_mbr(),
+     gen_gbr(),
+     gen_qer_correlation_id(),
+     gen_precedence(),
+     gen_transport_level_marking(),
+     gen_volume_threshold(),
+     gen_time_threshold(),
+     gen_monitoring_time(),
+     gen_subsequent_volume_threshold(),
+     gen_subsequent_time_threshold(),
+     gen_inactivity_detection_time(),
+     gen_reporting_triggers(),
+     gen_redirect_information(),
+     gen_report_type(),
+     gen_offending_ie(),
+     gen_forwarding_policy(),
+     gen_destination_interface(),
+     gen_up_function_features(),
+     gen_apply_action(),
+     gen_downlink_data_service_information(),
+     gen_downlink_data_notification_delay(),
+     gen_dl_buffering_duration(),
+     gen_dl_buffering_suggested_packet_count(),
+     gen_sxsmreq_flags(),
+     gen_sxsrrsp_flags(),
+     gen_sequence_number(),
+     gen_metric(),
+     gen_timer(),
+     gen_pdr_id(),
+     gen_f_seid(),
+     gen_node_id(),
+     gen_pfd_contents(),
+     gen_measurement_method(),
+     gen_usage_report_trigger(),
+     gen_measurement_period(),
+     gen_fq_csid(),
+     gen_volume_measurement(),
+     gen_duration_measurement(),
+     gen_time_of_first_packet(),
+     gen_time_of_last_packet(),
+     gen_quota_holding_time(),
+     gen_dropped_dl_traffic_threshold(),
+     gen_volume_quota(),
+     gen_time_quota(),
+     gen_start_time(),
+     gen_end_time(),
+     gen_urr_id(),
+     gen_linked_urr_id(),
+     gen_outer_header_creation(),
+     gen_bar_id(),
+     gen_cp_function_features(),
+     gen_usage_information(),
+     gen_application_instance_id(),
+     gen_flow_information(),
+     gen_ue_ip_address(),
+     gen_packet_rate(),
+     gen_outer_header_removal(),
+     gen_recovery_time_stamp(),
+     gen_dl_flow_level_marking(),
+     gen_header_enrichment(),
+     gen_measurement_information(),
+     gen_node_report_type(),
+     gen_remote_gtp_u_peer(),
+     gen_ur_seqn(),
+     gen_activate_predefined_rules(),
+     gen_deactivate_predefined_rules(),
+     gen_far_id(),
+     gen_qer_id(),
+     gen_oci_flags(),
+     gen_sx_association_release_request(),
+     gen_graceful_release_period(),
+     gen_pdn_type(),
+     gen_failed_rule_id(),
+     gen_time_quota_mechanism(),
+     gen_user_plane_ip_resource_information()
+    ].
+
 ie() ->
-    oneof([
-	   gen_create_pdr(),
-	   gen_pdi(),
-	   gen_create_far(),
-	   gen_forwarding_parameters(),
-	   gen_duplicating_parameters(),
-	   gen_create_urr(),
-	   gen_create_qer(),
-	   gen_created_pdr(),
-	   gen_update_pdr(),
-	   gen_update_far(),
-	   gen_update_forwarding_parameters(),
-	   gen_update_bar_response(),
-	   gen_update_urr(),
-	   gen_update_qer(),
-	   gen_remove_pdr(),
-	   gen_remove_far(),
-	   gen_remove_urr(),
-	   gen_remove_qer(),
-	   gen_cause(),
-	   gen_source_interface(),
-	   gen_f_teid(),
-	   gen_network_instance(),
-	   gen_sdf_filter(),
-	   gen_application_id(),
-	   gen_gate_status(),
-	   gen_mbr(),
-	   gen_gbr(),
-	   gen_qer_correlation_id(),
-	   gen_precedence(),
-	   gen_transport_level_marking(),
-	   gen_volume_threshold(),
-	   gen_time_threshold(),
-	   gen_monitoring_time(),
-	   gen_subsequent_volume_threshold(),
-	   gen_subsequent_time_threshold(),
-	   gen_inactivity_detection_time(),
-	   gen_reporting_triggers(),
-	   gen_redirect_information(),
-	   gen_report_type(),
-	   gen_offending_ie(),
-	   gen_forwarding_policy(),
-	   gen_destination_interface(),
-	   gen_up_function_features(),
-	   gen_apply_action(),
-	   gen_downlink_data_service_information(),
-	   gen_downlink_data_notification_delay(),
-	   gen_dl_buffering_duration(),
-	   gen_dl_buffering_suggested_packet_count(),
-	   gen_sxsmreq_flags(),
-	   gen_sxsrrsp_flags(),
-	   gen_load_control_information(),
-	   gen_sequence_number(),
-	   gen_metric(),
-	   gen_overload_control_information(),
-	   gen_timer(),
-	   gen_pdr_id(),
-	   gen_f_seid(),
-	   gen_application_id_pfds(),
-	   gen_pfd_context(),
-	   gen_node_id(),
-	   gen_pfd_contents(),
-	   gen_measurement_method(),
-	   gen_usage_report_trigger(),
-	   gen_measurement_period(),
-	   gen_fq_csid(),
-	   gen_volume_measurement(),
-	   gen_duration_measurement(),
-	   gen_application_detection_information(),
-	   gen_time_of_first_packet(),
-	   gen_time_of_last_packet(),
-	   gen_quota_holding_time(),
-	   gen_dropped_dl_traffic_threshold(),
-	   gen_volume_quota(),
-	   gen_time_quota(),
-	   gen_start_time(),
-	   gen_end_time(),
-	   gen_query_urr(),
-	   gen_usage_report_smr(),
-	   gen_usage_report_sdr(),
-	   gen_usage_report_srr(),
-	   gen_urr_id(),
-	   gen_linked_urr_id(),
-	   gen_downlink_data_report(),
-	   gen_outer_header_creation(),
-	   gen_create_bar(),
-	   gen_update_bar_request(),
-	   gen_remove_bar(),
-	   gen_bar_id(),
-	   gen_cp_function_features(),
-	   gen_usage_information(),
-	   gen_application_instance_id(),
-	   gen_flow_information(),
-	   gen_ue_ip_address(),
-	   gen_packet_rate(),
-	   gen_outer_header_removal(),
-	   gen_recovery_time_stamp(),
-	   gen_dl_flow_level_marking(),
-	   gen_header_enrichment(),
-	   gen_error_indication_report(),
-	   gen_measurement_information(),
-	   gen_node_report_type(),
-	   gen_user_plane_path_failure_report(),
-	   gen_remote_gtp_u_peer(),
-	   gen_ur_seqn(),
-	   gen_update_duplicating_parameters(),
-	   gen_activate_predefined_rules(),
-	   gen_deactivate_predefined_rules(),
-	   gen_far_id(),
-	   gen_qer_id(),
-	   gen_oci_flags(),
-	   gen_sx_association_release_request(),
-	   gen_graceful_release_period(),
-	   gen_pdn_type(),
-	   gen_failed_rule_id(),
-	   gen_time_quota_mechanism(),
-	   gen_user_plane_ip_resource_information()
-	  ]).
+    ie_map(
+      ?LET(I, integer(1,10), vector(I, oneof(simple_ie() ++ grouped_ie())))).
+
+list2map(List) ->
+    ct:pal("List: ~p", [List]),
+    M = lists:foldl(fun(X, Acc) ->
+			Key = element(1, X),
+			Acc#{Key => X}
+		end, #{}, List),
+    ct:pal("Map: ~p", [M]),
+    M.
+
+ie_map(IEs) ->
+    ?LET(L, IEs, list2map(L)).
+
+ie_group() ->
+    ie_map(
+      ?LET(I, integer(1,10), vector(I, oneof(simple_ie())))).
 
 gen_create_pdr() ->
-    #create_pdr{group = []}.
+    #create_pdr{group = ie_group()}.
 
 gen_pdi() ->
-    #pdi{group = []}.
+    #pdi{group = ie_group()}.
 
 gen_create_far() ->
-    #create_far{group = []}.
+    #create_far{group = ie_group()}.
 
 gen_forwarding_parameters() ->
-    #forwarding_parameters{group = []}.
+    #forwarding_parameters{group = ie_group()}.
 
 gen_duplicating_parameters() ->
-    #duplicating_parameters{group = []}.
+    #duplicating_parameters{group = ie_group()}.
 
 gen_create_urr() ->
-    #create_urr{group = []}.
+    #create_urr{group = ie_group()}.
 
 gen_create_qer() ->
-    #create_qer{group = []}.
+    #create_qer{group = ie_group()}.
 
 gen_created_pdr() ->
-    #created_pdr{group = []}.
+    #created_pdr{group = ie_group()}.
 
 gen_update_pdr() ->
-    #update_pdr{group = []}.
+    #update_pdr{group = ie_group()}.
 
 gen_update_far() ->
-    #update_far{group = []}.
+    #update_far{group = ie_group()}.
 
 gen_update_forwarding_parameters() ->
-    #update_forwarding_parameters{group = []}.
+    #update_forwarding_parameters{group = ie_group()}.
 
 gen_update_bar_response() ->
-    #update_bar_response{group = []}.
+    #update_bar_response{group = ie_group()}.
 
 gen_update_urr() ->
-    #update_urr{group = []}.
+    #update_urr{group = ie_group()}.
 
 gen_update_qer() ->
-    #update_qer{group = []}.
+    #update_qer{group = ie_group()}.
 
 gen_remove_pdr() ->
-    #remove_pdr{group = []}.
+    #remove_pdr{group = ie_group()}.
 
 gen_remove_far() ->
-    #remove_far{group = []}.
+    #remove_far{group = ie_group()}.
 
 gen_remove_urr() ->
-    #remove_urr{group = []}.
+    #remove_urr{group = ie_group()}.
 
 gen_remove_qer() ->
-    #remove_qer{group = []}.
+    #remove_qer{group = ie_group()}.
 
 gen_cause() ->
     #cause{}.
@@ -403,7 +427,7 @@ gen_sxsrrsp_flags() ->
     #sxsrrsp_flags{}.
 
 gen_load_control_information() ->
-    #load_control_information{group = []}.
+    #load_control_information{group = ie_group()}.
 
 gen_sequence_number() ->
     #sequence_number{}.
@@ -412,7 +436,7 @@ gen_metric() ->
     #metric{}.
 
 gen_overload_control_information() ->
-    #overload_control_information{group = []}.
+    #overload_control_information{group = ie_group()}.
 
 gen_timer() ->
     #timer{}.
@@ -428,10 +452,10 @@ gen_f_seid() ->
       }.
 
 gen_application_id_pfds() ->
-    #application_id_pfds{group = []}.
+    #application_id_pfds{group = ie_group()}.
 
 gen_pfd_context() ->
-    #pfd_context{group = []}.
+    #pfd_context{group = ie_group()}.
 
 gen_node_id() ->
     #node_id{id = oneof([ip4_address(), ip6_address(), dns_name()])}.
@@ -458,7 +482,7 @@ gen_duration_measurement() ->
     #duration_measurement{}.
 
 gen_application_detection_information() ->
-    #application_detection_information{group = []}.
+    #application_detection_information{group = ie_group()}.
 
 gen_time_of_first_packet() ->
     #time_of_first_packet{}.
@@ -485,16 +509,16 @@ gen_end_time() ->
     #end_time{}.
 
 gen_query_urr() ->
-    #query_urr{group = []}.
+    #query_urr{group = ie_group()}.
 
 gen_usage_report_smr() ->
-    #usage_report_smr{group = []}.
+    #usage_report_smr{group = ie_group()}.
 
 gen_usage_report_sdr() ->
-    #usage_report_sdr{group = []}.
+    #usage_report_sdr{group = ie_group()}.
 
 gen_usage_report_srr() ->
-    #usage_report_srr{group = []}.
+    #usage_report_srr{group = ie_group()}.
 
 gen_urr_id() ->
     #urr_id{}.
@@ -503,7 +527,7 @@ gen_linked_urr_id() ->
     #linked_urr_id{}.
 
 gen_downlink_data_report() ->
-    #downlink_data_report{group = []}.
+    #downlink_data_report{group = ie_group()}.
 
 gen_outer_header_creation() ->
     oneof(
@@ -518,13 +542,13 @@ gen_outer_header_creation() ->
       ]).
 
 gen_create_bar() ->
-    #create_bar{group = []}.
+    #create_bar{group = ie_group()}.
 
 gen_update_bar_request() ->
-    #update_bar_request{group = []}.
+    #update_bar_request{group = ie_group()}.
 
 gen_remove_bar() ->
-    #remove_bar{group = []}.
+    #remove_bar{group = ie_group()}.
 
 gen_bar_id() ->
     #bar_id{}.
@@ -560,7 +584,7 @@ gen_header_enrichment() ->
     #header_enrichment{}.
 
 gen_error_indication_report() ->
-    #error_indication_report{group = []}.
+    #error_indication_report{group = ie_group()}.
 
 gen_measurement_information() ->
     #measurement_information{}.
@@ -569,7 +593,7 @@ gen_node_report_type() ->
     #node_report_type{}.
 
 gen_user_plane_path_failure_report() ->
-    #user_plane_path_failure_report{group = []}.
+    #user_plane_path_failure_report{group = ie_group()}.
 
 gen_remote_gtp_u_peer() ->
     #remote_gtp_u_peer{}.
@@ -578,7 +602,7 @@ gen_ur_seqn() ->
     #ur_seqn{}.
 
 gen_update_duplicating_parameters() ->
-    #update_duplicating_parameters{group = []}.
+    #update_duplicating_parameters{group = ie_group()}.
 
 gen_activate_predefined_rules() ->
     #activate_predefined_rules{}.
