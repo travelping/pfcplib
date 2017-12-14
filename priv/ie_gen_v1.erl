@@ -700,7 +700,7 @@ main(_) ->
     MTypes = string:join(FwdFuns ++ RevFuns ++ ErrorFun, ";\n") ++ ".\n",
 
     Records = string:join(lists:foldl(fun write_record/2, [], ies()), "\n"),
-    HrlRecs = io_lib:format("%% This file is auto-generated. DO NOT EDIT~n~n~s", [Records]),
+    HrlRecs = io_lib:format("%% -include(\"pfcp_packet_v1_gen.hrl\").~n~n~s", [Records]),
     Enums = write_enums(ies()),
 
     CatchAnyDecoder = "decode_v1_element(Value, Tag) ->\n    {Tag, Value}",
@@ -712,7 +712,13 @@ main(_) ->
     EncFuns = string:join([write_encoder("encode_tlv", X) || X <- ies()]
 			  ++ [CatchAnyEncoder] , ";\n\n"),
 
-    ErlDecls = io_lib:format("%% This file is auto-generated. DO NOT EDIT~n~n~s~n~s~n~s~n~s.~n~n~s.~n",
+    ErlDecls = io_lib:format("%% -include(\"pfcp_packet_v1_gen.hrl\").~n~n~s~n~s~n~s~n~s.~n~n~s.~n",
 			     [MsgDescription, MTypes, Enums, Funs, EncFuns]),
-    file:write_file("include/pfcp_packet_v1_gen.hrl", HrlRecs),
-    file:write_file("src/pfcp_packet_v1_gen.hrl", ErlDecls).
+
+    {ok, HrlF0} = file:read_file("include/pfcp_packet.hrl"),
+    [HrlHead, _] = binary:split(HrlF0, [<<"%% -include(\"pfcp_packet_v1_gen.hrl\").">>],[]),
+    file:write_file("include/pfcp_packet.hrl", [HrlHead, HrlRecs]),
+
+    {ok, ErlF0} = file:read_file("src/pfcp_packet.erl"),
+    [ErlHead, _] = binary:split(ErlF0, [<<"%% -include(\"pfcp_packet_v1_gen.hrl\").">>],[]),
+    file:write_file("src/pfcp_packet.erl", [ErlHead, ErlDecls]).
