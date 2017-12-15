@@ -211,7 +211,7 @@
 }).
 
 -record(application_id, {
-	  indentifier = <<>>
+	  id = <<>>
 }).
 
 -record(gate_status, {
@@ -230,7 +230,7 @@
 }).
 
 -record(qer_correlation_id, {
-	  indentifier = 0
+	  id = 0
 }).
 
 -record(precedence, {
@@ -406,18 +406,15 @@
 }).
 
 -record(time_of_first_packet, {
-	  seconds = 0,
-	  fraction = 0
+	  time = 0
 }).
 
 -record(time_of_last_packet, {
-	  seconds = 0,
-	  fraction = 0
+	  time = 0
 }).
 
 -record(quota_holding_time, {
-	  seconds = 0,
-	  fraction = 0
+	  time = 0
 }).
 
 -record(time_quota, {
@@ -425,13 +422,11 @@
 }).
 
 -record(start_time, {
-	  seconds = 0,
-	  fraction = 0
+	  time = 0
 }).
 
 -record(end_time, {
-	  seconds = 0,
-	  fraction = 0
+	  time = 0
 }).
 
 -record(query_urr, {
@@ -504,8 +499,7 @@
 }).
 
 -record(recovery_time_stamp, {
-	  seconds = 0,
-	  fraction = 0
+	  time = 0
 }).
 
 -record(header_enrichment, {
@@ -569,7 +563,7 @@
 }).
 
 -record(pdn_type, {
-	  type = 'IPv4'
+	  pdn_type = 'IPv4'
 }).
 
 -record(time_quota_mechanism, {

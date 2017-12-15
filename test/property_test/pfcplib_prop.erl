@@ -67,6 +67,9 @@ enc_dec_prop(Config) ->
 %%% Internal functions
 %%%===================================================================
 
+flag() ->
+    oneof([0,1]).
+
 dns_label() ->
     ?LET(I, integer(1,63),
 	 vector(I,
@@ -85,6 +88,9 @@ dns_name() ->
 uint16() ->
     integer(0,16#ffff).
 
+uint24() ->
+    integer(0,16#ffffff).
+
 uint32() ->
     integer(0,16#ffffffff).
 
@@ -101,7 +107,7 @@ msg_gen() ->
     #pfcp{
       version = v1,
       type = msg_type(),
-      seid = integer(0,16#ffffffff),
+      seid = frequency([ {1,undefined}, {10, integer(0,16#ffffffff)}]),
       seq_no = integer(0,16#ffffff),
       ie = ie()
      }.
@@ -253,21 +259,24 @@ simple_ie() ->
      gen_pdn_type(),
      gen_failed_rule_id(),
      gen_time_quota_mechanism(),
-     gen_user_plane_ip_resource_information()
+     gen_user_plane_ip_resource_information(),
+     gen_enterprise_priv()
     ].
 
 ie() ->
     ie_map(
       ?LET(I, integer(1,10), vector(I, oneof(simple_ie() ++ grouped_ie())))).
 
+put_ie(IE, IEs) ->
+    Key = element(1, IE),
+    UpdateFun = fun(V) when is_list(V) -> V ++ [IE];
+		   (undefined)         -> IE;
+		   (V)                 -> [V, IE]
+		end,
+    maps:update_with(Key, UpdateFun, IE, IEs).
+
 list2map(List) ->
-    ct:pal("List: ~p", [List]),
-    M = lists:foldl(fun(X, Acc) ->
-			Key = element(1, X),
-			Acc#{Key => X}
-		end, #{}, List),
-    ct:pal("Map: ~p", [M]),
-    M.
+    lists:foldl(fun put_ie/2, #{}, List).
 
 ie_map(IEs) ->
     ?LET(L, IEs, list2map(L)).
@@ -331,118 +340,263 @@ gen_remove_qer() ->
     #remove_qer{group = ie_group()}.
 
 gen_cause() ->
-    #cause{}.
+    #cause{
+       cause = oneof(
+		 ['Reserved',
+		  'Request accepted',
+		  'Request rejected',
+		  'Session context not found',
+		  'Mandatory IE missing',
+		  'Conditional IE missing',
+		  'Invalid length',
+		  'Mandatory IE incorrect',
+		  'Invalid Forwarding Policy',
+		  'Invalid F-TEID allocation option',
+		  'No established Sx Association',
+		  'Rule creation/modification Failure',
+		  'PFCP entity in congestion',
+		  'No resources available',
+		  'Service not supported',
+		  'System failure'])
+      }.
 
 gen_source_interface() ->
-    #source_interface{}.
+    #source_interface{
+       interface = oneof(['Access',
+			  'Core',
+			  'SGi-LAN',
+			  'CP-function'])
+      }.
 
 gen_f_teid() ->
-    #f_teid{}.
+    #f_teid{
+       teid = uint32(),
+       ipv6 = oneof([undefined, ip6_address()]),
+       ipv4 = oneof([undefined, ip4_address()]),
+       choose_id = byte()
+}.
 
 gen_network_instance() ->
     #network_instance{instance = dns_name()}.
 
 gen_sdf_filter() ->
-    #sdf_filter{}.
+    #sdf_filter{
+       flow_description = oneof([undefined, binary()]),
+       tos_traffic_class = oneof([undefined, uint16()]),
+       security_parameter_index = oneof([undefined, uint32()]),
+       flow_label = oneof([undefined, uint24()])
+      }.
 
 gen_application_id() ->
-    #application_id{}.
+    #application_id{
+       id = binary()
+      }.
 
 gen_gate_status() ->
-    #gate_status{}.
+    #gate_status{
+       ul = oneof(['OPEN', 'CLOSED']),
+       dl = oneof(['OPEN', 'CLOSED'])
+      }.
 
 gen_mbr() ->
-    #mbr{}.
+    #mbr{
+       ul = uint32(),
+       dl = uint32()
+      }.
 
 gen_gbr() ->
-    #gbr{}.
+    #gbr{
+       ul = uint32(),
+       dl = uint32()
+      }.
 
 gen_qer_correlation_id() ->
-    #qer_correlation_id{}.
+    #qer_correlation_id{
+       id = uint32()
+      }.
 
 gen_precedence() ->
-    #precedence{}.
+    #precedence{
+       precedence = uint32()
+      }.
 
 gen_transport_level_marking() ->
-    #transport_level_marking{}.
+    #transport_level_marking{
+      tos = uint16()
+      }.
 
 gen_volume_threshold() ->
-    #volume_threshold{}.
+    #volume_threshold{
+       total = uint64(),
+       uplink = uint64(),
+       downlink = uint64()
+      }.
 
 gen_time_threshold() ->
-    #time_threshold{}.
+    #time_threshold{
+       threshold = uint32()
+      }.
 
 gen_monitoring_time() ->
-    #monitoring_time{}.
+    #monitoring_time{
+       time = uint32()
+      }.
 
 gen_subsequent_volume_threshold() ->
-    #subsequent_volume_threshold{}.
+    #subsequent_volume_threshold{
+       total = uint64(),
+       uplink = uint64(),
+       downlink = uint64()
+      }.
 
 gen_subsequent_time_threshold() ->
-    #subsequent_time_threshold{}.
+    #subsequent_time_threshold{
+       threshold = uint32()
+      }.
 
 gen_inactivity_detection_time() ->
-    #inactivity_detection_time{}.
+    #inactivity_detection_time{
+       time = uint32()
+      }.
 
 gen_reporting_triggers() ->
-    #reporting_triggers{}.
+    #reporting_triggers{
+       linked_usage_reporting = flag(),
+       dropped_dl_traffic_threshold = flag(),
+       stop_of_traffic = flag(),
+       start_of_traffic = flag(),
+       quota_holding_time = flag(),
+       time_threshold = flag(),
+       volume_threshold = flag(),
+       periodic_reporting = flag(),
+       envelope_closure = flag(),
+       time_quota = flag(),
+       volume_quota = flag()
+      }.
 
 gen_redirect_information() ->
-    #redirect_information{}.
+    #redirect_information{
+       type = oneof(['IPv4',
+		     'IPv6',
+		     'URL',
+		     'SIP URI']),
+       address = binary()
+      }.
 
 gen_report_type() ->
-    #report_type{}.
+    #report_type{
+       erir = flag(),
+       usar = flag(),
+       dldr = flag()
+      }.
 
 gen_offending_ie() ->
-    #offending_ie{}.
+    #offending_ie{
+      type = uint16()
+      }.
 
 gen_forwarding_policy() ->
-    #forwarding_policy{}.
+    #forwarding_policy{
+       policy_identifier = ?LET(I, integer(0,255), binary(I))
+      }.
 
 gen_destination_interface() ->
-    #destination_interface{}.
+    #destination_interface{
+       interface = oneof(['Access',
+			  'Core',
+			  'SGi-LAN',
+			  'CP-function'])
+      }.
 
 gen_up_function_features() ->
-    #up_function_features{}.
+    #up_function_features{
+       treu = flag(),
+       heeu = flag(),
+       pfdm = flag(),
+       ftup = flag(),
+       trst = flag(),
+       dlbd = flag(),
+       ddnd = flag(),
+       bucp = flag(),
+       empu = flag()
+      }.
 
 gen_apply_action() ->
-    #apply_action{}.
+    #apply_action{
+       dupl = flag(),
+       nocp = flag(),
+       buff = flag(),
+       forw = flag(),
+       drop = flag()
+      }.
 
 gen_downlink_data_service_information() ->
-    #downlink_data_service_information{}.
+    #downlink_data_service_information{
+       value = byte()
+      }.
 
 gen_downlink_data_notification_delay() ->
-    #downlink_data_notification_delay{}.
+    #downlink_data_notification_delay{
+       delay = byte()
+      }.
 
 gen_dl_buffering_duration() ->
-    #dl_buffering_duration{}.
+    #dl_buffering_duration{
+       dl_buffer_unit = oneof(['2 seconds',
+			       '1 minute',
+			       '10 minutes',
+			       '1 hour',
+			       '10 hours',
+			       'infinite']),
+       dl_buffer_value = integer(0,16#1f)
+      }.
 
 gen_dl_buffering_suggested_packet_count() ->
-    #dl_buffering_suggested_packet_count{}.
+    #dl_buffering_suggested_packet_count{
+       count = uint32()
+      }.
 
 gen_sxsmreq_flags() ->
-    #sxsmreq_flags{}.
+    #sxsmreq_flags{
+       qaurr = flag(),
+       sndem = flag(),
+       drobu = flag()
+      }.
 
 gen_sxsrrsp_flags() ->
-    #sxsrrsp_flags{}.
+    #sxsrrsp_flags{
+       drobu = flag()
+      }.
 
 gen_load_control_information() ->
     #load_control_information{group = ie_group()}.
 
 gen_sequence_number() ->
-    #sequence_number{}.
+    #sequence_number{
+      number = uint32()
+      }.
 
 gen_metric() ->
-    #metric{}.
+    #metric{
+      metric = byte()
+      }.
 
 gen_overload_control_information() ->
     #overload_control_information{group = ie_group()}.
 
 gen_timer() ->
-    #timer{}.
+    #timer{
+       timer_unit = oneof(['2 seconds',
+			   '1 minute',
+			   '10 minutes',
+			   '1 hour',
+			   '10 hours',
+			   'infinite']),
+       timer_value = integer(0,16#1f)
+      }.
 
 gen_pdr_id() ->
-    #pdr_id{}.
+    #pdr_id{id = id_range(pdr)}.
 
 gen_f_seid() ->
     #f_seid{
@@ -461,52 +615,110 @@ gen_node_id() ->
     #node_id{id = oneof([ip4_address(), ip6_address(), dns_name()])}.
 
 gen_pfd_contents() ->
-    #pfd_contents{}.
+    #pfd_contents{
+	  flow = binary(),
+	  url = binary(),
+	  domain = binary(),
+	  custom = binary()
+      }.
 
 gen_measurement_method() ->
-    #measurement_method{}.
+    #measurement_method{
+	  event = flag(),
+	  volum = flag(),
+	  durat = flag()
+}.
 
 gen_usage_report_trigger() ->
-    #usage_report_trigger{}.
+    #usage_report_trigger{
+	  immer = flag(),
+	  droth = flag(),
+	  stopt = flag(),
+	  start = flag(),
+	  quhti = flag(),
+	  timth = flag(),
+	  volth = flag(),
+	  perio = flag(),
+	  envcl = flag(),
+	  monit = flag(),
+	  termr = flag(),
+	  liusa = flag(),
+	  timqu = flag(),
+	  volqu = flag()
+}.
 
 gen_measurement_period() ->
-    #measurement_period{}.
+    #measurement_period{
+       period = uint32()
+      }.
 
 gen_fq_csid() ->
-    #fq_csid{}.
+    #fq_csid{
+       address =
+	   oneof(
+	     [ip4_address(),
+	      ip6_address(),
+	      {integer(0,99), integer(0,999), integer(0,16#fff)}
+	     ]),
+       csid = ?LET(I, integer(0,15), vector(I, uint16()))
+      }.
 
 gen_volume_measurement() ->
-    #volume_measurement{}.
+    #volume_measurement{
+       total = uint64(),
+       uplink = uint64(),
+       downlink = uint64()
+      }.
 
 gen_duration_measurement() ->
-    #duration_measurement{}.
+    #duration_measurement{
+       duration = uint32()
+      }.
 
 gen_application_detection_information() ->
     #application_detection_information{group = ie_group()}.
 
 gen_time_of_first_packet() ->
-    #time_of_first_packet{}.
+    #time_of_first_packet{
+      time = uint32()
+      }.
 
 gen_time_of_last_packet() ->
-    #time_of_last_packet{}.
+    #time_of_last_packet{
+      time = uint32()
+      }.
 
 gen_quota_holding_time() ->
-    #quota_holding_time{}.
+    #quota_holding_time{
+      time = uint32()
+      }.
 
 gen_dropped_dl_traffic_threshold() ->
-    #dropped_dl_traffic_threshold{}.
+    #dropped_dl_traffic_threshold{
+      value = uint64()
+      }.
 
 gen_volume_quota() ->
-    #volume_quota{}.
+    #volume_quota{
+       total = uint64(),
+       uplink = uint64(),
+       downlink = uint64()
+      }.
 
 gen_time_quota() ->
-    #time_quota{}.
+    #time_quota{
+       quota = uint32()
+      }.
 
 gen_start_time() ->
-    #start_time{}.
+    #start_time{
+      time = uint32()
+      }.
 
 gen_end_time() ->
-    #end_time{}.
+    #end_time{
+      time = uint32()
+      }.
 
 gen_query_urr() ->
     #query_urr{group = ie_group()}.
@@ -521,10 +733,10 @@ gen_usage_report_srr() ->
     #usage_report_srr{group = ie_group()}.
 
 gen_urr_id() ->
-    #urr_id{}.
+    #urr_id{id = id_range(urr)}.
 
 gen_linked_urr_id() ->
-    #linked_urr_id{}.
+    #linked_urr_id{id = id_range(urr)}.
 
 gen_downlink_data_report() ->
     #downlink_data_report{group = ie_group()}.
@@ -551,82 +763,154 @@ gen_remove_bar() ->
     #remove_bar{group = ie_group()}.
 
 gen_bar_id() ->
-    #bar_id{}.
+    #bar_id{id = id_range(bar)}.
 
 gen_cp_function_features() ->
-    #cp_function_features{}.
+    #cp_function_features{
+       ovrl = flag(),
+       load = flag()
+      }.
 
 gen_usage_information() ->
-    #usage_information{}.
+    #usage_information{
+       ube = flag(),
+       uae = flag(),
+       aft = flag(),
+       bef = flag()
+      }.
 
 gen_application_instance_id() ->
-    #application_instance_id{}.
+    #application_instance_id{
+      id = binary()
+      }.
 
 gen_flow_information() ->
-    #flow_information{}.
+    #flow_information{
+       direction =
+	   oneof(
+	     ['Unspecified',
+	      'Downlink',
+	      'Uplink',
+	      'Bidirectional']),
+       flow = binary()
+      }.
 
 gen_ue_ip_address() ->
-    #ue_ip_address{}.
+    #ue_ip_address{
+       type = oneof([undefined, src, dst]),
+       ipv4 = oneof([undefined, ip4_address()]),
+       ipv6 = oneof([undefined, ip6_address()])
+      }.
 
 gen_packet_rate() ->
-    #packet_rate{}.
+    Unit = oneof([undefined, 'minute','6 minutes', 'hour', 'day', 'week']),
+    #packet_rate{
+       ul_time_unit = Unit,
+       ul_max_packet_rate = uint16(),
+       dl_time_unit = Unit,
+       dl_max_packet_rate = uint16()
+      }.
 
 gen_outer_header_removal() ->
-    #outer_header_removal{}.
+    #outer_header_removal{
+       header =
+	   oneof(
+	     ['GTP-U/UDP/IPv4',
+	      'GTP-U/UDP/IPv6',
+	      'UDP/IPv4',
+	      'UDP/IPv6'])
+      }.
 
 gen_recovery_time_stamp() ->
-    #recovery_time_stamp{}.
+    #recovery_time_stamp{
+       time = uint32()
+      }.
 
 gen_dl_flow_level_marking() ->
-    #dl_flow_level_marking{}.
+    #dl_flow_level_marking{
+       traffic_class = oneof([undefined, binary(2)]),
+       service_class_indicator = oneof([undefined, binary(2)])
+      }.
 
 gen_header_enrichment() ->
-    #header_enrichment{}.
+    #header_enrichment{
+       header_type = 'HTTP',
+       name = binary(),
+       value = binary()
+      }.
 
 gen_error_indication_report() ->
     #error_indication_report{group = ie_group()}.
 
 gen_measurement_information() ->
-    #measurement_information{}.
+    #measurement_information{
+       inam = flag(),
+       mbqe = flag()
+      }.
 
 gen_node_report_type() ->
-    #node_report_type{}.
+    #node_report_type{
+       upfr = flag()
+}.
 
 gen_user_plane_path_failure_report() ->
     #user_plane_path_failure_report{group = ie_group()}.
 
 gen_remote_gtp_u_peer() ->
-    #remote_gtp_u_peer{}.
+    #remote_gtp_u_peer{
+       ipv4 = oneof([undefined, ip4_address()]),
+       ipv6 = oneof([undefined, ip6_address()])
+      }.
 
 gen_ur_seqn() ->
-    #ur_seqn{}.
+    #ur_seqn{
+       number = uint32()
+      }.
 
 gen_update_duplicating_parameters() ->
     #update_duplicating_parameters{group = ie_group()}.
 
 gen_activate_predefined_rules() ->
-    #activate_predefined_rules{}.
+    #activate_predefined_rules{
+      name = binary()
+      }.
 
 gen_deactivate_predefined_rules() ->
-    #deactivate_predefined_rules{}.
+    #deactivate_predefined_rules{
+      name = binary()
+      }.
 
 gen_far_id() ->
-    #far_id{}.
+    #far_id{id = id_range(far)}.
 
 gen_qer_id() ->
-    #qer_id{}.
+    #qer_id{id = id_range(qer)}.
 
 gen_oci_flags() ->
-    #oci_flags{}.
+    #oci_flags{
+       aoci = flag()
+      }.
 
 gen_sx_association_release_request() ->
-    #sx_association_release_request{}.
+    #sx_association_release_request{
+       sarr = flag()
+      }.
 
 gen_graceful_release_period() ->
-    #graceful_release_period{}.
+    #graceful_release_period{
+       release_timer_unit = oneof(['2 seconds',
+				   '1 minute',
+				   '10 minutes',
+				   '1 hour',
+				   '10 hours',
+				   'infinite']),
+       release_timer_value = integer(0,16#1f)
+      }.
 
 gen_pdn_type() ->
-    #pdn_type{}.
+    #pdn_type{
+       pdn_type = oneof(['IPv4', 'IPv6', 'IPv4v6', 'Non-IP'])
+      }.
 
 id_range(bar) -> integer(0, 16#ff);
 id_range(_)   -> integer(0, 16#ffffffff).
@@ -640,7 +924,18 @@ gen_failed_rule_id() ->
 	).
 
 gen_time_quota_mechanism() ->
-    #time_quota_mechanism{}.
+    #time_quota_mechanism{
+       base_time_interval_type = oneof(['CTP', 'DTP']),
+       interval = uint32()
+      }.
 
 gen_user_plane_ip_resource_information() ->
-    #user_plane_ip_resource_information{}.
+    #user_plane_ip_resource_information{
+	  teid_range = oneof([undefined, {byte(), integer(1,7)}]),
+	  ipv4 = oneof([undefined, ip4_address()]),
+	  ipv6 = oneof([undefined, ip6_address()]),
+	  network_instance = oneof([undefined, dns_name()])
+      }.
+
+gen_enterprise_priv() ->
+    {{18681, 1}, binary()}.

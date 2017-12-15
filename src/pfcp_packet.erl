@@ -39,7 +39,7 @@ decode_ies(#pfcp{ie = IEs} = Msg, #{ies := map})
 decode_ies(#pfcp{ie = IEs} = Msg, #{ies := Format} = Opts)
   when not is_binary(IEs) orelse (Format /= map andalso Format /= binary) ->
     error(badargs, [Msg, Opts]);
-decode_ies(#pfcp{version = v1, type = Type, ie = IEs} = Msg, #{ies := map}) ->
+decode_ies(#pfcp{version = v1, ie = IEs} = Msg, #{ies := map}) ->
     Msg#pfcp{ie = decode_v1(IEs, #{})};
 decode_ies(Msg, _) ->
     Msg.
@@ -67,44 +67,15 @@ decode_v1_msg(<<SeqNo:24/integer, _Spare1:8, IEs/binary>>, _MP, 0, Type) ->
 %%% Internal functions
 %%%===================================================================
 
-%% pad_length(Width, Length) ->
-%%     (Width - Length rem Width) rem Width.
-
-%% %%
-%% %% pad binary to specific length
-%% %%   -> http://www.erlang.org/pipermail/erlang-questions/2008-December/040709.html
-%% %%
-%% pad_to(Width, Binary) ->
-%%     case pad_length(Width, size(Binary)) of
-%% 	0 -> Binary;
-%% 	N -> <<Binary/binary, 0:(N*8)>>
-%%     end.
-
 put_ie(IE, IEs) ->
     Key = element(1, IE),
-    UpdateFun = fun(V) when is_list(V) -> [IE | V];
-		   (undefined)         -> IE;
-		   (V)                 -> [IE, V]
+    UpdateFun = fun(V) when is_list(V) -> V ++ [IE];
+		   (V)                 -> [V, IE]
 		end,
     maps:update_with(Key, UpdateFun, IE, IEs).
 
 bool2int(false) -> 0;
 bool2int(true)  -> 1.
-
-%% ip2bin({A,B,C,D}) ->
-%%     <<A,B,C,D>>;
-%% ip2bin({A,B,C,D,E,F,G,H}) ->
-%%     <<A:16,B:16,C:16,D:16,E:16,F:16,G:16,H:16>>;
-%% ip2bin(undefined) ->
-%%     undefined.
-
-%% bin2ip(<<A,B,C,D>>) ->
-%%     {A,B,C,D};
-%% bin2ip(<<A:16,B:16,C:16,D:16,E:16,F:16,G:16,H:16>>) ->
-%%     {A,B,C,D,E,F,G,H}.
-
-%% encode_flag(Flag, Flags) ->
-%%     bool2int(proplists:get_bool(Flag, Flags)).
 
 is_set(Value) -> bool2int(Value =/= undefined).
 
@@ -114,9 +85,10 @@ maybe_bin(<<Bin/binary>>, 1, Len, Pos, IE) ->
     <<V:Len/bytes, Rest/binary>> = Bin,
     {setelement(Pos, IE, V), Rest}.
 
-maybe_bin(Bin, Len, IE) when is_binary(Bin) ->
+maybe_bin(Bin, Len, IE)
+  when is_binary(Bin) andalso byte_size(Bin) =:= Len ->
     <<IE/binary, Bin:Len/bytes>>;
-maybe_bin(_, _, IE) ->
+maybe_bin(undefined, _, IE) ->
     IE.
 
 maybe_len_bin(<<Bin/binary>>, 0, _, _, IE) ->
@@ -148,7 +120,9 @@ decode_v1(<<0:1, Type:15/integer, Length:16/integer, Data:Length/bytes, Next/bin
     IE = decode_v1_element(Data, Type),
     decode_v1(Next, put_ie(IE, IEs));
 decode_v1(<<1:1, Type:15/integer, Length:16/integer, EnterpriseId:16/integer,
-	    Data:Length/bytes, Next/binary>>, IEs) ->
+	    Rest0/binary>>, IEs) ->
+    DLen = Length - 2,
+    <<Data:DLen/binary, Next/binary>> = Rest0,
     IE = decode_v1_element(Data, {EnterpriseId, Type}),
     decode_v1(Next, put_ie(IE, IEs));
 decode_v1(Data, IEs) ->
@@ -158,9 +132,6 @@ decode_v1(Data, IEs) ->
 decode_v1_grouped(Bin) ->
     decode_v1(Bin, #{}).
 
-encode_v1_element(_K, V, Acc)
-  when is_list(V); is_map(V) ->
-    encode_v1(V, Acc);
 encode_v1_element(_K, V, Acc) ->
     encode_v1_element(V, Acc).
 
@@ -168,8 +139,9 @@ encode_tlv(Type, Bin, Acc)
   when is_integer(Type) ->
     Size = byte_size(Bin),
     <<Acc/binary, 0:1, Type:15, Size:16, Bin/binary>>;
-encode_tlv({Type, EnterpriseId}, Bin, Acc)
-  when is_integer(Type), is_integer(EnterpriseId) ->
+encode_tlv({EnterpriseId, Type}, Bin, Acc)
+  when is_integer(EnterpriseId),
+       is_integer(Type) ->
     Size = byte_size(Bin) + 2,
     <<Acc/binary, 1:1, Type:15, Size:16, EnterpriseId:16, Bin/binary>>.
 
@@ -213,13 +185,7 @@ encode_f_teid(#f_teid{teid = TEID, ipv6 = IPv6, ipv4 = IPv4, choose_id = ChId}) 
 
 decode_sdf_filter(<<_Spare0:4, FL:1, SPI:1, TTC:1, FD:1, _Spare1:8, Rest0/binary>>, _Type) ->
     IE0 = #sdf_filter{},
-    {IE1, Rest1} =
-	case {Rest0, FD} of
-	    {<<FlowLen:2/integer, Flow:FlowLen/bytes, R1/binary>>, 1} ->
-		{IE0#sdf_filter{flow_description = Flow}, R1};
-	    _ ->
-		{IE0, Rest0}
-	end,
+    {IE1, Rest1} = maybe_len_bin(Rest0, FD, 16, #sdf_filter.flow_description, IE0),
     {IE2, Rest2} = maybe_unsigned_integer(Rest1, TTC, 16, #sdf_filter.tos_traffic_class, IE1),
     {IE3, Rest3} = maybe_unsigned_integer(Rest2, SPI, 32,
 					  #sdf_filter.security_parameter_index, IE2),
@@ -232,11 +198,7 @@ encode_sdf_filter(#sdf_filter{
 		     flow_label = FL}) ->
     IE0 = <<0:4,
 	    (is_set(FL)):1, (is_set(SPI)):1, (is_set(TTC)):1, (is_set(FD)):1, 0:8>>,
-    IE1 = if is_binary(FD) ->
-		  <<IE0/binary, (byte_size(FD)):2/integer, FD/binary>>;
-	     true ->
-		  IE0
-	  end,
+    IE1 = maybe_len_bin(FD, 16, IE0),
     IE2 = maybe_unsigned_integer(TTC, 16, IE1),
     IE3 = maybe_unsigned_integer(SPI, 32, IE2),
     maybe_unsigned_integer(FL, 24, IE3).
@@ -383,8 +345,8 @@ decode_ue_ip_address(<<_:5, Type:1, IPv4:1, IPv6:1, Rest0/binary>>, _Type) ->
     IE0 = if Type =:= 0 -> #ue_ip_address{type = src};
 	     true ->       #ue_ip_address{type = dst}
 	  end,
-    {IE1, Rest1} = maybe_bin(Rest0, IPv4, 4, #f_teid.ipv4, IE0),
-    {IE2, _Rest2} = maybe_bin(Rest1, IPv6, 16, #f_teid.ipv6, IE1),
+    {IE1, Rest1} = maybe_bin(Rest0, IPv4, 4, #ue_ip_address.ipv4, IE0),
+    {IE2, _Rest2} = maybe_bin(Rest1, IPv6, 16, #ue_ip_address.ipv6, IE1),
     IE2.
 
 encode_ue_ip_address(#ue_ip_address{type = Type, ipv4 = IPv4, ipv6 = IPv6}) ->
@@ -413,7 +375,7 @@ decode_packet_rate(<<_:6, DL:1, UL:1, Rest0/binary>>, _Type) ->
     IE0 = #packet_rate{},
     {IE1, Rest1} =
 	case {Rest0, UL} of
-	    {<<_:5, UlUnit:3/integer, UlRate:16/integer, R1>>, 1} ->
+	    {<<_:5, UlUnit:3/integer, UlRate:16/integer, R1/binary>>, 1} ->
 		{IE0#packet_rate{
 		  ul_time_unit = enum_v1_packet_rate_unit(UlUnit),
 		  ul_max_packet_rate = UlRate}, R1};
@@ -421,7 +383,7 @@ decode_packet_rate(<<_:6, DL:1, UL:1, Rest0/binary>>, _Type) ->
 		{IE0, Rest0}
 	end,
     case {Rest1, DL} of
-	{<<_:5, DlUnit:3/integer, DlRate:16/integer>>, 1} ->
+	{<<_:5, DlUnit:3/integer, DlRate:16/integer, _/binary>>, 1} ->
 	    IE1#packet_rate{
 	      dl_time_unit = enum_v1_packet_rate_unit(DlUnit),
 	      dl_max_packet_rate = DlRate};
@@ -432,7 +394,7 @@ decode_packet_rate(<<_:6, DL:1, UL:1, Rest0/binary>>, _Type) ->
 encode_packet_rate(#packet_rate{
 		      ul_time_unit = UlUnit, ul_max_packet_rate = UlRate,
 		      dl_time_unit = DlUnit, dl_max_packet_rate = DlRate}) ->
-    IE0 = <<0:6, (is_set(UlUnit)):1, (is_set(DlUnit)):1>>,
+    IE0 = <<0:6, (is_set(DlUnit)):1, (is_set(UlUnit)):1>>,
     IE1 = if UlUnit =/= undefined ->
 		  <<IE0/binary, 0:5, (enum_v1_packet_rate_unit(UlUnit)):3, UlRate:16>>;
 	     true ->
@@ -494,8 +456,9 @@ decode_user_plane_ip_resource_information(<<_:2, ASSONI:1, TEIDRI:3, IPv6:1, IPv
 					    Rest0/binary>>, _Type) ->
     IE0 = #user_plane_ip_resource_information{},
     {IE1, Rest1} =
-	case {Rest0, TEIDRI} of
-	    {<<Base:8, R1/binary>>, 1} ->
+	case Rest0 of
+	    <<Base:8, R1/binary>>
+	      when TEIDRI /= 0 ->
 		{IE0#user_plane_ip_resource_information{teid_range = {Base, TEIDRI}}, R1};
 	    _ ->
 		{IE0, Rest0}
@@ -614,15 +577,15 @@ enum_v1_base_time_interval_type(0) -> 'CTP';
 enum_v1_base_time_interval_type(1) -> 'DTP';
 enum_v1_base_time_interval_type(X) when is_integer(X) -> X.
 
-enum_v1_type('IPv4') -> 0;
-enum_v1_type('IPv6') -> 1;
-enum_v1_type('URL') -> 2;
-enum_v1_type('SIP URI') -> 3;
-enum_v1_type(0) -> 'IPv4';
-enum_v1_type(1) -> 'IPv6';
-enum_v1_type(2) -> 'URL';
-enum_v1_type(3) -> 'SIP URI';
-enum_v1_type(X) when is_integer(X) -> X.
+enum_v1_pdn_type('IPv4') -> 1;
+enum_v1_pdn_type('IPv6') -> 2;
+enum_v1_pdn_type('IPv4v6') -> 3;
+enum_v1_pdn_type('Non-IP') -> 4;
+enum_v1_pdn_type(1) -> 'IPv4';
+enum_v1_pdn_type(2) -> 'IPv6';
+enum_v1_pdn_type(3) -> 'IPv4v6';
+enum_v1_pdn_type(4) -> 'Non-IP';
+enum_v1_pdn_type(X) when is_integer(X) -> X.
 
 enum_v1_release_timer_unit('2 seconds') -> 0;
 enum_v1_release_timer_unit('1 minute') -> 1;
@@ -699,6 +662,16 @@ enum_v1_interface(1) -> 'Core';
 enum_v1_interface(2) -> 'SGi-LAN';
 enum_v1_interface(3) -> 'CP-function';
 enum_v1_interface(X) when is_integer(X) -> X.
+
+enum_v1_type('IPv4') -> 0;
+enum_v1_type('IPv6') -> 1;
+enum_v1_type('URL') -> 2;
+enum_v1_type('SIP URI') -> 3;
+enum_v1_type(0) -> 'IPv4';
+enum_v1_type(1) -> 'IPv6';
+enum_v1_type(2) -> 'URL';
+enum_v1_type(3) -> 'SIP URI';
+enum_v1_type(X) when is_integer(X) -> X.
 
 enum_v1_dl('OPEN') -> 0;
 enum_v1_dl('CLOSED') -> 1;
@@ -841,8 +814,8 @@ decode_v1_element(<<Data/binary>>, 23) ->
     decode_sdf_filter(Data, sdf_filter);
 
 %% decode application_id
-decode_v1_element(<<M_indentifier/binary>>, 24) ->
-    #application_id{indentifier = M_indentifier};
+decode_v1_element(<<M_id/binary>>, 24) ->
+    #application_id{id = M_id};
 
 %% decode gate_status
 decode_v1_element(<<_:4,
@@ -867,9 +840,9 @@ decode_v1_element(<<M_ul:32/integer,
 	 dl = M_dl};
 
 %% decode qer_correlation_id
-decode_v1_element(<<M_indentifier:32/integer,
+decode_v1_element(<<M_id:32/integer,
 		    _/binary>>, 28) ->
-    #qer_correlation_id{indentifier = M_indentifier};
+    #qer_correlation_id{id = M_id};
 
 %% decode precedence
 decode_v1_element(<<M_precedence:32/integer,
@@ -1153,25 +1126,19 @@ decode_v1_element(<<M_group/binary>>, 68) ->
     #application_detection_information{group = decode_v1_grouped(M_group)};
 
 %% decode time_of_first_packet
-decode_v1_element(<<M_seconds:32/integer,
-		    M_fraction:32/integer,
+decode_v1_element(<<M_time:32/integer,
 		    _/binary>>, 69) ->
-    #time_of_first_packet{seconds = M_seconds,
-			  fraction = M_fraction};
+    #time_of_first_packet{time = M_time};
 
 %% decode time_of_last_packet
-decode_v1_element(<<M_seconds:32/integer,
-		    M_fraction:32/integer,
+decode_v1_element(<<M_time:32/integer,
 		    _/binary>>, 70) ->
-    #time_of_last_packet{seconds = M_seconds,
-			 fraction = M_fraction};
+    #time_of_last_packet{time = M_time};
 
 %% decode quota_holding_time
-decode_v1_element(<<M_seconds:32/integer,
-		    M_fraction:32/integer,
+decode_v1_element(<<M_time:32/integer,
 		    _/binary>>, 71) ->
-    #quota_holding_time{seconds = M_seconds,
-			fraction = M_fraction};
+    #quota_holding_time{time = M_time};
 
 %% decode dropped_dl_traffic_threshold
 decode_v1_element(<<Data/binary>>, 72) ->
@@ -1187,18 +1154,14 @@ decode_v1_element(<<M_quota:32/integer,
     #time_quota{quota = M_quota};
 
 %% decode start_time
-decode_v1_element(<<M_seconds:32/integer,
-		    M_fraction:32/integer,
+decode_v1_element(<<M_time:32/integer,
 		    _/binary>>, 75) ->
-    #start_time{seconds = M_seconds,
-		fraction = M_fraction};
+    #start_time{time = M_time};
 
 %% decode end_time
-decode_v1_element(<<M_seconds:32/integer,
-		    M_fraction:32/integer,
+decode_v1_element(<<M_time:32/integer,
 		    _/binary>>, 76) ->
-    #end_time{seconds = M_seconds,
-	      fraction = M_fraction};
+    #end_time{time = M_time};
 
 %% decode query_urr
 decode_v1_element(<<M_group/binary>>, 77) ->
@@ -1297,11 +1260,9 @@ decode_v1_element(<<M_header:8/integer,
     #outer_header_removal{header = enum_v1_header(M_header)};
 
 %% decode recovery_time_stamp
-decode_v1_element(<<M_seconds:32/integer,
-		    M_fraction:32/integer,
+decode_v1_element(<<M_time:32/integer,
 		    _/binary>>, 96) ->
-    #recovery_time_stamp{seconds = M_seconds,
-			 fraction = M_fraction};
+    #recovery_time_stamp{time = M_time};
 
 %% decode dl_flow_level_marking
 decode_v1_element(<<Data/binary>>, 97) ->
@@ -1390,9 +1351,9 @@ decode_v1_element(<<M_release_timer_unit:3/integer,
 
 %% decode pdn_type
 decode_v1_element(<<_:5,
-		    M_type:3/integer,
+		    M_pdn_type:3/integer,
 		    _/binary>>, 113) ->
-    #pdn_type{type = enum_v1_type(M_type)};
+    #pdn_type{pdn_type = enum_v1_pdn_type(M_pdn_type)};
 
 %% decode failed_rule_id
 decode_v1_element(<<Data/binary>>, 114) ->
@@ -1505,8 +1466,8 @@ encode_v1_element(#sdf_filter{} = IE, Acc) ->
     encode_tlv(23, encode_sdf_filter(IE), Acc);
 
 encode_v1_element(#application_id{
-		       indentifier = M_indentifier}, Acc) ->
-    encode_tlv(24, <<M_indentifier/binary>>, Acc);
+		       id = M_id}, Acc) ->
+    encode_tlv(24, <<M_id/binary>>, Acc);
 
 encode_v1_element(#gate_status{
 		       ul = M_ul,
@@ -1528,8 +1489,8 @@ encode_v1_element(#gbr{
 		     M_dl:32>>, Acc);
 
 encode_v1_element(#qer_correlation_id{
-		       indentifier = M_indentifier}, Acc) ->
-    encode_tlv(28, <<M_indentifier:32>>, Acc);
+		       id = M_id}, Acc) ->
+    encode_tlv(28, <<M_id:32>>, Acc);
 
 encode_v1_element(#precedence{
 		       precedence = M_precedence}, Acc) ->
@@ -1782,22 +1743,16 @@ encode_v1_element(#application_detection_information{
     encode_tlv(68, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
 encode_v1_element(#time_of_first_packet{
-		       seconds = M_seconds,
-		       fraction = M_fraction}, Acc) ->
-    encode_tlv(69, <<M_seconds:32,
-		     M_fraction:32>>, Acc);
+		       time = M_time}, Acc) ->
+    encode_tlv(69, <<M_time:32>>, Acc);
 
 encode_v1_element(#time_of_last_packet{
-		       seconds = M_seconds,
-		       fraction = M_fraction}, Acc) ->
-    encode_tlv(70, <<M_seconds:32,
-		     M_fraction:32>>, Acc);
+		       time = M_time}, Acc) ->
+    encode_tlv(70, <<M_time:32>>, Acc);
 
 encode_v1_element(#quota_holding_time{
-		       seconds = M_seconds,
-		       fraction = M_fraction}, Acc) ->
-    encode_tlv(71, <<M_seconds:32,
-		     M_fraction:32>>, Acc);
+		       time = M_time}, Acc) ->
+    encode_tlv(71, <<M_time:32>>, Acc);
 
 encode_v1_element(#dropped_dl_traffic_threshold{} = IE, Acc) ->
     encode_tlv(72, encode_dropped_dl_traffic_threshold(IE), Acc);
@@ -1810,16 +1765,12 @@ encode_v1_element(#time_quota{
     encode_tlv(74, <<M_quota:32>>, Acc);
 
 encode_v1_element(#start_time{
-		       seconds = M_seconds,
-		       fraction = M_fraction}, Acc) ->
-    encode_tlv(75, <<M_seconds:32,
-		     M_fraction:32>>, Acc);
+		       time = M_time}, Acc) ->
+    encode_tlv(75, <<M_time:32>>, Acc);
 
 encode_v1_element(#end_time{
-		       seconds = M_seconds,
-		       fraction = M_fraction}, Acc) ->
-    encode_tlv(76, <<M_seconds:32,
-		     M_fraction:32>>, Acc);
+		       time = M_time}, Acc) ->
+    encode_tlv(76, <<M_time:32>>, Acc);
 
 encode_v1_element(#query_urr{
 		       group = M_group}, Acc) ->
@@ -1908,10 +1859,8 @@ encode_v1_element(#outer_header_removal{
     encode_tlv(95, <<(enum_v1_header(M_header)):8/integer>>, Acc);
 
 encode_v1_element(#recovery_time_stamp{
-		       seconds = M_seconds,
-		       fraction = M_fraction}, Acc) ->
-    encode_tlv(96, <<M_seconds:32,
-		     M_fraction:32>>, Acc);
+		       time = M_time}, Acc) ->
+    encode_tlv(96, <<M_time:32>>, Acc);
 
 encode_v1_element(#dl_flow_level_marking{} = IE, Acc) ->
     encode_tlv(97, encode_dl_flow_level_marking(IE), Acc);
@@ -1989,9 +1938,9 @@ encode_v1_element(#graceful_release_period{
 		      M_release_timer_value:5>>, Acc);
 
 encode_v1_element(#pdn_type{
-		       type = M_type}, Acc) ->
+		       pdn_type = M_pdn_type}, Acc) ->
     encode_tlv(113, <<0:5,
-		      (enum_v1_type(M_type)):3/integer>>, Acc);
+		      (enum_v1_pdn_type(M_pdn_type)):3/integer>>, Acc);
 
 encode_v1_element(#failed_rule_id{} = IE, Acc) ->
     encode_tlv(114, encode_failed_rule_id(IE), Acc);
@@ -2005,6 +1954,9 @@ encode_v1_element(#time_quota_mechanism{
 
 encode_v1_element(#user_plane_ip_resource_information{} = IE, Acc) ->
     encode_tlv(116, encode_user_plane_ip_resource_information(IE), Acc);
+
+encode_v1_element(IEs, Acc) when is_list(IEs) ->
+    encode_v1(IEs, Acc);
 
 encode_v1_element({Tag, Value}, Acc) when is_binary(Value) ->
     encode_tlv(Tag, Value, Acc).
