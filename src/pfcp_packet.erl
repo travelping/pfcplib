@@ -791,9 +791,9 @@ decode_v1_element(<<M_group/binary>>, 17) ->
 decode_v1_element(<<M_group/binary>>, 18) ->
     #remove_qer{group = decode_v1_grouped(M_group)};
 
-%% decode cause
+%% decode pfcp_cause
 decode_v1_element(<<M_cause:8/integer>>, 19) ->
-    #cause{cause = enum_v1_cause(M_cause)};
+    #pfcp_cause{cause = enum_v1_cause(M_cause)};
 
 %% decode source_interface
 decode_v1_element(<<_:4,
@@ -1446,7 +1446,7 @@ encode_v1_element(#remove_qer{
 		       group = M_group}, Acc) ->
     encode_tlv(18, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
-encode_v1_element(#cause{
+encode_v1_element(#pfcp_cause{
 		       cause = M_cause}, Acc) ->
     encode_tlv(19, <<(enum_v1_cause(M_cause)):8/integer>>, Acc);
 

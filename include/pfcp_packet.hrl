@@ -198,7 +198,7 @@
 	  group
 }).
 
--record(cause, {
+-record(pfcp_cause, {
 	  cause = 'Reserved'
 }).
 

@@ -178,7 +178,7 @@ grouped_ie() ->
 
 simple_ie() ->
     [
-     gen_cause(),
+     gen_pfcp_cause(),
      gen_source_interface(),
      gen_f_teid(),
      gen_network_instance(),
@@ -339,8 +339,8 @@ gen_remove_urr() ->
 gen_remove_qer() ->
     #remove_qer{group = ie_group()}.
 
-gen_cause() ->
-    #cause{
+gen_pfcp_cause() ->
+    #pfcp_cause{
        cause = oneof(
 		 ['Reserved',
 		  'Request accepted',

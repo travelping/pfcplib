@@ -42,7 +42,7 @@ ies() ->
       [{"Group", 0, {type, v1_grouped}}]},
      {18, "Remove QER",
       [{"Group", 0, {type, v1_grouped}}]},
-     {19, "Cause",
+     {19, "PFCP Cause",
       [{"Cause", 8, {enum, [{0 , "Reserved"},
 			    {1,  "Request accepted"},
 			    {64, "Request rejected"},
