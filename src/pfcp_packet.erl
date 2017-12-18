@@ -8,7 +8,7 @@
 
 -export([encode/1, encode_ies/1,
 	 decode/1, decode/2, decode_ies/1, decode_ies/2,
-	 msg_description_v1/1]).
+	 msg_description_v1/1, to_map/1]).
 
 -compile([{parse_transform, cut}, bin_opt_info]).
 -compile({inline,[decode_v1_grouped/1]}).
@@ -50,6 +50,9 @@ encode(#pfcp{version = v1, type = Type, seid = SEID, seq_no = SeqNo, ie = IEs}) 
 encode_ies(#pfcp{version = v1, ie = IEs} = Msg) ->
     Msg#pfcp{ie = encode_v1(IEs, <<>>)}.
 
+to_map(#pfcp{ie = IEs} = Req) when is_list(IEs); is_map(IEs) ->
+    Req#pfcp{ie = ies_to_map(IEs)}.
+
 %%====================================================================
 %% Helpers
 %%====================================================================
@@ -73,6 +76,50 @@ put_ie(IE, IEs) ->
 		   (V)                 -> [V, IE]
 		end,
     maps:update_with(Key, UpdateFun, IE, IEs).
+
+to_map({Type, Group}, M)
+  when Type =:= create_pdr orelse
+       Type =:= pdi orelse
+       Type =:= create_far orelse
+       Type =:= forwarding_parameters orelse
+       Type =:= duplicating_parameters orelse
+       Type =:= create_urr orelse
+       Type =:= create_qer orelse
+       Type =:= created_pdr orelse
+       Type =:= update_pdr orelse
+       Type =:= update_far orelse
+       Type =:= update_forwarding_parameters orelse
+       Type =:= update_bar_response orelse
+       Type =:= update_urr orelse
+       Type =:= update_qer orelse
+       Type =:= remove_pdr orelse
+       Type =:= remove_far orelse
+       Type =:= remove_urr orelse
+       Type =:= remove_qer orelse
+       Type =:= load_control_information orelse
+       Type =:= overload_control_information orelse
+       Type =:= application_id_pfds orelse
+       Type =:= pfd_context orelse
+       Type =:= application_detection_information orelse
+       Type =:= query_urr orelse
+       Type =:= usage_report_smr orelse
+       Type =:= usage_report_sdr orelse
+       Type =:= usage_report_srr orelse
+       Type =:= downlink_data_report orelse
+       Type =:= create_bar orelse
+       Type =:= update_bar_request orelse
+       Type =:= remove_bar orelse
+       Type =:= error_indication_report orelse
+       Type =:= user_plane_path_failure_report orelse
+       Type =:= update_duplicating_parameters ->
+    put_ie({Type, ies_to_map(Group)}, M);
+to_map(IE, M) ->
+    put_ie(IE, M).
+
+ies_to_map(IEs) when is_list(IEs) ->
+    lists:foldl(fun to_map/2, #{}, IEs);
+ies_to_map(IEs) ->
+    IEs.
 
 bool2int(false) -> 0;
 bool2int(true)  -> 1.
