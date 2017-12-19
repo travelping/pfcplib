@@ -122,6 +122,12 @@
 	  network_instance
 	 }).
 
+-record(tp_packet_measurement, {
+	  total		:: 0..16#ffffffffffffffff,
+	  uplink	:: 0..16#ffffffffffffffff,
+	  downlink	:: 0..16#ffffffffffffffff
+	 }).
+
 %% The following code is auto-generated. DO NOT EDIT
 
 %% -include("pfcp_packet_v1_gen.hrl").

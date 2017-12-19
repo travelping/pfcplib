@@ -1418,6 +1418,10 @@ decode_v1_element(<<_:6,
 decode_v1_element(<<Data/binary>>, 116) ->
     decode_user_plane_ip_resource_information(Data, user_plane_ip_resource_information);
 
+%% decode tp_packet_measurement
+decode_v1_element(<<Data/binary>>, {18681,1}) ->
+    decode_volume_threshold(Data, tp_packet_measurement);
+
 decode_v1_element(Value, Tag) ->
     {Tag, Value}.
 
@@ -2001,6 +2005,9 @@ encode_v1_element(#time_quota_mechanism{
 
 encode_v1_element(#user_plane_ip_resource_information{} = IE, Acc) ->
     encode_tlv(116, encode_user_plane_ip_resource_information(IE), Acc);
+
+encode_v1_element(#tp_packet_measurement{} = IE, Acc) ->
+    encode_tlv({18681,1}, encode_volume_threshold(IE), Acc);
 
 encode_v1_element(IEs, Acc) when is_list(IEs) ->
     encode_v1(IEs, Acc);

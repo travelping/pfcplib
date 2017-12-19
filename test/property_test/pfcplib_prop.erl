@@ -260,6 +260,7 @@ simple_ie() ->
      gen_failed_rule_id(),
      gen_time_quota_mechanism(),
      gen_user_plane_ip_resource_information(),
+     gen_tp_packet_measurement(),
      gen_enterprise_priv()
     ].
 
@@ -937,5 +938,12 @@ gen_user_plane_ip_resource_information() ->
 	  network_instance = oneof([undefined, dns_name()])
       }.
 
+gen_tp_packet_measurement() ->
+    #tp_packet_measurement{
+       total = uint64(),
+       uplink = uint64(),
+       downlink = uint64()
+      }.
+
 gen_enterprise_priv() ->
-    {{18681, 1}, binary()}.
+    {{18681, 500}, binary()}.

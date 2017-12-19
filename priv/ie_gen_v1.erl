@@ -401,7 +401,9 @@ ies() ->
 					       {1 , "DTP"}]}},
        {"Interval", 32, integer},
        {'_', 0}]},
-     {116, "User Plane IP Resource Information", user_plane_ip_resource_information}].
+     {116, "User Plane IP Resource Information", user_plane_ip_resource_information},
+     {{18681, 1}, "TP Packet Measurement", volume_threshold}
+    ].
 
 msgs() ->
     [{1, "Heartbeat Request"},
