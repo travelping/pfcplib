@@ -1,5 +1,7 @@
 sudo: false
 
+dist: xenial
+
 language: erlang
 
 otp_release:
@@ -8,12 +10,10 @@ otp_release:
 
 install: "true"
 
-before_install:
-  - wget https://s3.amazonaws.com/rebar3/rebar3
-  - chmod u+x ./rebar3
-
 script:
-  - env
-  - ./rebar3 plugins list
-  - ./rebar3 compile
-  - ./rebar3 do xref, ct, coveralls send
+  - rebar3 compile
+  - rebar3 do xref, ct, coveralls send
+
+notifications:
+  slack:
+    secure: "RJh5ffyTXVJDpxHlqU0Yi0Vdo2pI6VQ/MfeTGaE9rQyCdmaej6ZvirD9Uq25ZfW1a1Liskm6+rlO5ubgbw4+5Xm7HJKGQCmM9SCDi5dWGXzrrFqi07l2LrcKS59s41WAO/dXr8Gf04YUb/Y+I2LgmJuZFllIJ0prZlOe88wgZUw64HwxOk98h6LswFj0lQMSx2ra3XGhwbvAp6HOpNs/etVaBAwKUI/5lTr6BC/h/HDxK1Y8nUXcJ9gHz/gu5DoipFPZZJX4yUdSraPaVFWZYKNp/purjdGhbI9+tKDxbAAZemO2s8CIUxDJUGZjiJeBa0rsiG59Dss91HrJ8AjrJk94fmeaCrvzc0XxTSM7tanscQuhGzLEUnMb3WhORogWppM9pQmPnZupOgR0HSiP5ilCZaZflrnaC8ps8UhK1VHm7Igqax952y2OGu56H/f/mhHpeGDbNns8oNdw0CX3zekSdIiKeHuxDMfpJjVLpwooKdeMBZCi6LPVnfZRx9R1HJrcaC/MwvK4wIEbEMkZUFs5XO+RAE+5edaZb8fhzTb77miz1x8pkZmbzVAsY36YHitMimpMcOVxwkBtux1314cz8GRC1dmn020GyzEJKtOazIeLSCxbRMhcEHFP1o0LpSo16o6ToLtzhmtlHuOPpjKUU27s+qFTwQ/MTyzqZ+w="
