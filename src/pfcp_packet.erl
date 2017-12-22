@@ -873,15 +873,15 @@ decode_v1_element(<<_:4,
 		 dl = enum_v1_dl(M_dl)};
 
 %% decode mbr
-decode_v1_element(<<M_ul:32/integer,
-		    M_dl:32/integer,
+decode_v1_element(<<M_ul:40/integer,
+		    M_dl:40/integer,
 		    _/binary>>, 26) ->
     #mbr{ul = M_ul,
 	 dl = M_dl};
 
 %% decode gbr
-decode_v1_element(<<M_ul:32/integer,
-		    M_dl:32/integer,
+decode_v1_element(<<M_ul:40/integer,
+		    M_dl:40/integer,
 		    _/binary>>, 27) ->
     #gbr{ul = M_ul,
 	 dl = M_dl};
@@ -1530,14 +1530,14 @@ encode_v1_element(#gate_status{
 encode_v1_element(#mbr{
 		       ul = M_ul,
 		       dl = M_dl}, Acc) ->
-    encode_tlv(26, <<M_ul:32,
-		     M_dl:32>>, Acc);
+    encode_tlv(26, <<M_ul:40,
+		     M_dl:40>>, Acc);
 
 encode_v1_element(#gbr{
 		       ul = M_ul,
 		       dl = M_dl}, Acc) ->
-    encode_tlv(27, <<M_ul:32,
-		     M_dl:32>>, Acc);
+    encode_tlv(27, <<M_ul:40,
+		     M_dl:40>>, Acc);
 
 encode_v1_element(#qer_correlation_id{
 		       id = M_id}, Acc) ->
