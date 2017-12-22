@@ -990,6 +990,7 @@ gen_pdn_type() ->
       }.
 
 id_range(bar) -> integer(0, 16#ff);
+id_range(pdr) -> integer(0, 16#ffff);
 id_range(_)   -> integer(0, 16#ffffffff).
 
 gen_failed_rule_id() ->

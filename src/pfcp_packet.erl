@@ -498,7 +498,7 @@ encode_remote_peer(#remote_gtp_u_peer{ipv4 = IPv4, ipv6 = IPv6}) ->
     IE1 = maybe_bin(IPv4, 4, IE0),
     maybe_bin(IPv6, 16, IE1).
 
-decode_failed_rule_id(<<_:4, 0:4, Id:32/integer, _/binary>>, _Type) ->
+decode_failed_rule_id(<<_:4, 0:4, Id:16/integer, _/binary>>, _Type) ->
     #failed_rule_id{type = pdr, id = Id};
 decode_failed_rule_id(<<_:4, 1:4, Id:32/integer, _/binary>>, _Type) ->
     #failed_rule_id{type = far, id = Id};
@@ -510,7 +510,7 @@ decode_failed_rule_id(<<_:4, 4:4, Id:8/integer, _/binary>>, _Type) ->
     #failed_rule_id{type = bar, id = Id}.
 
 encode_failed_rule_id(#failed_rule_id{type = pdr, id = Id}) ->
-    <<0:4, 0:4, Id:32>>;
+    <<0:4, 0:4, Id:16>>;
 encode_failed_rule_id(#failed_rule_id{type = far, id = Id}) ->
     <<0:4, 1:4, Id:32>>;
 encode_failed_rule_id(#failed_rule_id{type = qer, id = Id}) ->
