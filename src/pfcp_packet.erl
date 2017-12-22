@@ -1339,8 +1339,8 @@ decode_v1_element(<<Data/binary>>, 97) ->
 %% decode header_enrichment
 decode_v1_element(<<_:4,
 		    M_header_type:4/integer,
-		    M_name_len:16/integer, M_name:M_name_len/bytes,
-		    M_value_len:16/integer, M_value:M_value_len/bytes,
+		    M_name_len:8/integer, M_name:M_name_len/bytes,
+		    M_value_len:8/integer, M_value:M_value_len/bytes,
 		    _/binary>>, 98) ->
     #header_enrichment{header_type = enum_v1_header_type(M_header_type),
 		       name = M_name,
@@ -1943,8 +1943,8 @@ encode_v1_element(#header_enrichment{
 		       value = M_value}, Acc) ->
     encode_tlv(98, <<0:4,
 		     (enum_v1_header_type(M_header_type)):4/integer,
-		     (byte_size(M_name)):16/integer, M_name/binary,
-		     (byte_size(M_value)):16/integer, M_value/binary>>, Acc);
+		     (byte_size(M_name)):8/integer, M_name/binary,
+		     (byte_size(M_value)):8/integer, M_value/binary>>, Acc);
 
 encode_v1_element(#error_indication_report{
 		       group = M_group}, Acc) ->
