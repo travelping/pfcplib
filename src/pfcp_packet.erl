@@ -342,17 +342,18 @@ encode_fq_csid(#fq_csid{address = Address, csid = CSID}) ->
 	      {MCC, MNC, Id} ->
 		  <<2:4, Count:4, (MCC * 1000 + MNC):20, Id:12>>
 	  end,
+    ct:pal("CSID: ~p, ~p", [CSID,  << <<X:16>> || X <- CSID >>]),
     <<IE0/binary, << <<X:16>> || X <- CSID >>/binary>>.
 
 decode_dropped_dl_traffic_threshold(<<_:7, DLPA:1, Rest0/binary>>, _Type) ->
     IE0 = #dropped_dl_traffic_threshold{},
-    {IE1, _Rest1} = maybe_unsigned_integer(Rest0, DLPA, 8,
+    {IE1, _Rest1} = maybe_unsigned_integer(Rest0, DLPA, 64,
 					   #dropped_dl_traffic_threshold.value, IE0),
     IE1.
 
 encode_dropped_dl_traffic_threshold(#dropped_dl_traffic_threshold{value = Value}) ->
     IE0 = <<0:7, (is_set(Value)):1>>,
-    maybe_unsigned_integer(Value, 8, IE0).
+    maybe_unsigned_integer(Value, 64, IE0).
 
 decode_outer_header_creation(
   <<0:8/integer, TEID:32/integer, IPv4:4/bytes, _/binary>>, _Type) ->
