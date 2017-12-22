@@ -64,6 +64,70 @@ enc_dec_prop(Config) ->
 		     end)).
 
 %%%===================================================================
+%%% Generate PCAP with random (but valid PFCP packets)
+%%%===================================================================
+
+-define(PCAPNG_VERSION_MAJOR, 1).
+-define(PCAPNG_VERSION_MINOR, 0).
+-define(LINKTYPE_ETHERNET, 1).
+-define(LINKTYPE_RAW, 101).
+
+make_udp(NwSrc, NwDst, TpSrc, TpDst, PayLoad) ->
+    Id = 0,
+    Proto = gen_socket:protocol(udp),
+
+    UDPLength = 8 + size(PayLoad),
+    UDPCSum = flower_tools:ip_csum(<<NwSrc:4/bytes-unit:8, NwDst:4/bytes-unit:8,
+				     0:8, Proto:8, UDPLength:16,
+				     TpSrc:16, TpDst:16, UDPLength:16, 0:16,
+				     PayLoad/binary>>),
+    UDP = <<TpSrc:16, TpDst:16, UDPLength:16, UDPCSum:16, PayLoad/binary>>,
+
+    TotLen = 20 + size(UDP),
+    HdrCSum = flower_tools:ip_csum(<<4:4, 5:4, 0:8, TotLen:16,
+				     Id:16, 0:16, 64:8, Proto:8,
+				     0:16/integer, NwSrc:4/bytes-unit:8, NwDst:4/bytes-unit:8>>),
+    IP = <<4:4, 5:4, 0:8, TotLen:16,
+	   Id:16, 0:16, 64:8, Proto:8,
+	   HdrCSum:16/integer, NwSrc:4/bytes-unit:8, NwDst:4/bytes-unit:8>>,
+    list_to_binary([IP, UDP]).
+
+format_pcapng(Data) ->
+    TStamp = os:system_time(micro_seconds),
+    Len = size(Data),
+    pcapng:encode({epb, 0, TStamp, Len, [], Data}).
+
+pcapng_shb() ->
+    pcapng:encode({shb, {?PCAPNG_VERSION_MAJOR, ?PCAPNG_VERSION_MINOR},
+		   [{os, <<"CAROS">>}, {userappl, <<"CAPWAP">>}]}).
+
+pcapng_ifd(Name) ->
+    pcapng:encode({ifd, ?LINKTYPE_RAW, 65535,
+		   [{name,    Name},
+		    {tsresol, <<6>>},
+		    {os,      <<"CAROS">>}]}).
+
+pcap_msg(Msg, Io) ->
+    Data = pfcp_packet:encode(Msg),
+    Packet = make_udp(<<127,0,0,1>>, <<127,0,0,2>>, 8805, 8805, Data),
+    Dump = format_pcapng(Packet),
+    ok = file:write(Io, Dump).
+
+gen_pcap(0, _Io) ->
+    ok;
+gen_pcap(Cnt, Io) ->
+    {ok, Msg} = proper_gen:pick(msg_gen()),
+    pcap_msg(Msg, Io),
+    gen_pcap(Cnt - 1, Io).
+
+gen_pcap(Cnt) ->
+    {ok, Io} = file:open("pfcp.pcap", [write, raw]),
+    Header = << (pcapng_shb())/binary, (pcapng_ifd(<<"PFCP">>))/binary >>,
+    file:write(Io, Header),
+    gen_pcap(Cnt, Io),
+    file:close(Io).
+
+%%%===================================================================
 %%% Internal functions
 %%%===================================================================
 

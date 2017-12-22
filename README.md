@@ -13,6 +13,20 @@ Using rebar:
 
     # rebar3 compile
 
+Build a PCAP file with random PFCP Messages
+-------------------------------------------
+
+This procedure will generate a a file called pfcp.pcap that is filled
+with randomly generated PFCP packets. The overall structure of the
+information elements in the PFCP will match the specification, however
+the structure of grouped IEs, and requirements for mandatory IEs will
+not be meet.
+
+    # rebar3 as pcap do compile, shell
+    > c("test/property_test/pfcplib_prop.erl").
+    > pfcplib_prop:gen_pcap(2000).
+    > q().
+
 <!-- Badges -->
 [travis]: https://travis-ci.org/travelping/pfcplib
 [travis badge]: https://img.shields.io/travis/travelping/pfcplib/master.svg?style=flat-square
