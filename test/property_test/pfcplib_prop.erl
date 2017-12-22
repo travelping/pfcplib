@@ -664,11 +664,23 @@ gen_pdr_id() ->
     #pdr_id{id = id_range(pdr)}.
 
 gen_f_seid() ->
-    #f_seid{
-       seid = uint64(),
-       ipv4 = oneof([undefined, ip4_address()]),
-       ipv6 = oneof([undefined, ip6_address()])
-      }.
+    oneof([
+	   #f_seid{
+	      seid = uint64(),
+	      ipv4 = ip4_address(),
+	      ipv6 = undefined
+	     },
+	   #f_seid{
+	      seid = uint64(),
+	      ipv4 = undefined,
+	      ipv6 = ip6_address()
+	     },
+	   #f_seid{
+	      seid = uint64(),
+	      ipv4 = ip4_address(),
+	      ipv6 = ip6_address()
+	     }]).
+
 
 gen_application_id_pfds() ->
     #application_id_pfds{group = ie_group()}.
