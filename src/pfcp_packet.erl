@@ -126,6 +126,16 @@ bool2int(true)  -> 1.
 
 is_set(Value) -> bool2int(Value =/= undefined).
 
+is_set(Atom, True) when Atom =:= True ->
+    1;
+is_set(_, _) ->
+    0.
+
+maybe_atom(1, True) ->
+    True;
+maybe_atom(0, _True) ->
+    undefined.
+
 maybe_bin(<<Bin/binary>>, 0, _, _, IE) ->
     {IE, Bin};
 maybe_bin(<<Bin/binary>>, 1, Len, Pos, IE) ->
@@ -214,21 +224,31 @@ decode_dns_label(Name) ->
 encode_dns_label(Name) ->
     << <<(size(Label)):8, Label/binary>> || Label <- Name >>.
 
-decode_f_teid(<<_:4, ChId:1, TEID:1, IPv6:1, IPv4:1, Rest0/binary>>, _Type) ->
-    IE0 = #f_teid{},
-    {IE1, Rest1} = maybe_unsigned_integer(Rest0, TEID, 32, #f_teid.teid, IE0),
-    {IE2, Rest2} = maybe_bin(Rest1, IPv4, 4, #f_teid.ipv4, IE1),
-    {IE3, Rest3} = maybe_bin(Rest2, IPv6, 16, #f_teid.ipv6, IE2),
-    {IE4, _Rest4} = maybe_unsigned_integer(Rest3, ChId, 8, #f_teid.choose_id, IE3),
-    IE4.
+decode_f_teid(<<_:4, ChId:1, Ch:1, IPv6:1, IPv4:1, Rest0/binary>>, _Type)
+  when Ch =:= 1 ->
+    IE0 = #f_teid{
+	     teid = choose,
+	     ipv4 = maybe_atom(IPv4, choose),
+	     ipv6 = maybe_atom(IPv6, choose)
+	    },
+    {IE1, _Rest1} = maybe_unsigned_integer(Rest0, ChId, 8, #f_teid.choose_id, IE0),
+    IE1;
+decode_f_teid(<<_:4, ChId:1, Ch:1, IPv6:1, IPv4:1, TEID:32, Rest0/binary>>, _Type)
+  when Ch =:= 0 andalso ChId =:= 0 ->
+    IE0 = #f_teid{teid = TEID},
+    {IE1, Rest1} = maybe_bin(Rest0, IPv4, 4, #f_teid.ipv4, IE0),
+    {IE2, _Rest2} = maybe_bin(Rest1, IPv6, 16, #f_teid.ipv6, IE1),
+    IE2.
 
-encode_f_teid(#f_teid{teid = TEID, ipv6 = IPv6, ipv4 = IPv4, choose_id = ChId}) ->
+encode_f_teid(#f_teid{teid = choose, ipv6 = IPv6, ipv4 = IPv4, choose_id = ChId}) ->
     IE0 = <<0:4,
-	    (is_set(ChId)):1, (is_set(TEID)):1, (is_set(IPv6)):1, (is_set(IPv4)):1>>,
-    IE1 = maybe_unsigned_integer(TEID, 32, IE0),
-    IE2 = maybe_bin(IPv4, 4, IE1),
-    IE3 = maybe_bin(IPv6, 16, IE2),
-    maybe_unsigned_integer(ChId, 8, IE3).
+	    (is_set(ChId)):1, 1:1, (is_set(IPv6, choose)):1, (is_set(IPv4, choose)):1>>,
+    maybe_unsigned_integer(ChId, 8, IE0);
+encode_f_teid(#f_teid{teid = TEID, ipv6 = IPv6, ipv4 = IPv4})
+  when is_integer(TEID) ->
+    IE0 = <<0:4, 0:1, 0:1, (is_set(IPv6)):1, (is_set(IPv4)):1, TEID:32>>,
+    IE1 = maybe_bin(IPv4, 4, IE0),
+    maybe_bin(IPv6, 16, IE1).
 
 decode_sdf_filter(<<_Spare0:4, FL:1, SPI:1, TTC:1, FD:1, _Spare1:8, Rest0/binary>>, _Type) ->
     IE0 = #sdf_filter{},

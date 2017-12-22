@@ -13,10 +13,10 @@
 	 }).
 
 -record(f_teid, {
-	  teid       :: 0..16#ffffffff,
-	  ipv6       :: inet:ip6_address(),
-	  ipv4       :: inet:ip4_address(),
-	  choose_id  :: 0..16#ff
+	  teid       :: 'choose' | 0..16#ffffffff,
+	  ipv6       :: 'undefined' | 'choose' | inet:ip6_address(),
+	  ipv4       :: 'undefined' | 'choose' | inet:ip4_address(),
+	  choose_id  :: 'undefined' | 0..16#ff
 	 }).
 
 -record(sdf_filter, {
