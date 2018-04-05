@@ -19,6 +19,9 @@
 
 -include("pfcp_packet.hrl").
 
+-define(IS_IPv4(X), (is_binary(X) andalso size(X) == 4)).
+-define(IS_IPv6(X), (is_binary(X) andalso size(X) == 16)).
+
 %%====================================================================
 %% API
 %%====================================================================
@@ -375,39 +378,44 @@ encode_dropped_dl_traffic_threshold(#dropped_dl_traffic_threshold{value = Value}
     IE0 = <<0:7, (is_set(Value)):1>>,
     maybe_unsigned_integer(Value, 64, IE0).
 
-decode_outer_header_creation(
-  <<0:8/integer, TEID:32/integer, IPv4:4/bytes, _/binary>>, _Type) ->
-    #outer_header_creation{
-       type = 'GTP-U/UDP/IPv4', teid = TEID, address = IPv4};
-decode_outer_header_creation(
-  <<1:8/integer, TEID:32/integer, IPv6:16/bytes, _/binary>>, _Type) ->
-    #outer_header_creation{
-       type = 'GTP-U/UDP/IPv6', teid = TEID, address = IPv6};
-decode_outer_header_creation(
-  <<2:8/integer, IPv4:4/bytes, Port:16/integer, _/binary>>, _Type) ->
-    #outer_header_creation{
-       type = 'UDP/IPv4', address = IPv4, port = Port};
-decode_outer_header_creation(
-  <<3:8/integer, IPv6:16/bytes, Port:16/integer, _/binary>>, _Type) ->
-    #outer_header_creation{
-       type = 'UDP/IPv6', address = IPv6, port = Port}.
+decode_outer_header_creation(<<_:4, 0:2, IP:2, _:8, TEID:32/integer, Rest/binary>>, _Type)
+  when IP /= 0 ->
+    case {IP, Rest} of
+	{1, <<IPv4:4/bytes, _/binary>>} ->
+	    #outer_header_creation{type = 'GTP-U', teid = TEID, ipv4 = IPv4};
+	{2, <<IPv6:16/bytes, _/binary>>} ->
+	    #outer_header_creation{type = 'GTP-U', teid = TEID, ipv6 = IPv6};
+	{3, <<IPv4:4/bytes, IPv6:16/bytes, _/binary>>} ->
+	    #outer_header_creation{type = 'GTP-U', teid = TEID, ipv4 = IPv4, ipv6 = IPv6}
+    end;
+decode_outer_header_creation(<<_:4, IP:2, 0:2, _:8, Rest/binary>>, _Type)
+  when IP /= 0 ->
+    case {IP, Rest} of
+	{1, <<IPv4:4/bytes, Port:16/integer, _/binary>>} ->
+	    #outer_header_creation{type = 'UDP', ipv4 = IPv4, port = Port};
+	{2, <<IPv6:16/bytes, Port:16/integer, _/binary>>} ->
+	    #outer_header_creation{type = 'UDP', ipv6 = IPv6, port = Port}
+    end.
 
-encode_outer_header_creation(
-  #outer_header_creation{
-     type = 'GTP-U/UDP/IPv4', teid = TEID, address = IPv4}) ->
-    <<0:8/integer, TEID:32/integer, IPv4:4/bytes>>;
-encode_outer_header_creation(
-    #outer_header_creation{
-       type = 'GTP-U/UDP/IPv6', teid = TEID, address = IPv6}) ->
-    <<1:8/integer, TEID:32/integer, IPv6:16/bytes>>;
-encode_outer_header_creation(
-  #outer_header_creation{
-     type = 'UDP/IPv4', address = IPv4, port = Port}) ->
-    <<2:8/integer, IPv4:4/bytes, Port:16/integer>>;
-encode_outer_header_creation(
-  #outer_header_creation{
-     type = 'UDP/IPv6', address = IPv6, port = Port}) ->
-    <<3:8/integer, IPv6:16/bytes, Port:16/integer>>.
+encode_outer_header_creation(#outer_header_creation{type = 'GTP-U', teid = TEID,
+						    ipv4 = IPv4, ipv6 = IPv6})
+  when ?IS_IPv4(IPv4) andalso not ?IS_IPv6(IPv6) ->
+    <<1:8, 0:8, TEID:32/integer, IPv4/binary>>;
+encode_outer_header_creation(#outer_header_creation{type = 'GTP-U', teid = TEID,
+						    ipv4 = IPv4, ipv6 = IPv6})
+  when not ?IS_IPv4(IPv4) andalso ?IS_IPv6(IPv6) ->
+    <<2:8, 0:8, TEID:32/integer, IPv6/binary>>;
+encode_outer_header_creation(#outer_header_creation{type = 'GTP-U', teid = TEID,
+						    ipv4 = IPv4, ipv6 = IPv6})
+  when ?IS_IPv4(IPv4) andalso ?IS_IPv6(IPv6) ->
+    <<3:8, 0:8, TEID:32/integer, IPv4/binary, IPv6/binary>>;
+
+encode_outer_header_creation(#outer_header_creation{type = 'UDP', ipv4 = IPv4, port = Port})
+  when ?IS_IPv4(IPv4) ->
+    <<4:8, 0:8, IPv4:4/bytes, Port:16/integer>>;
+encode_outer_header_creation(#outer_header_creation{type = 'UDP', ipv6 = IPv6, port = Port})
+  when ?IS_IPv6(IPv6) ->
+    <<8:8, 0:8, IPv6:16/bytes, Port:16/integer>>.
 
 decode_ue_ip_address(<<_:5, Type:1, IPv4:1, IPv6:1, Rest0/binary>>, _Type) ->
     IE0 = if Type =:= 0 -> #ue_ip_address{type = src};

@@ -83,7 +83,8 @@
 -record(outer_header_creation, {
 	  type,
 	  teid,
-	  address,
+	  ipv4,
+	  ipv6,
 	  port
 	 }).
 

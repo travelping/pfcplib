@@ -821,13 +821,15 @@ gen_downlink_data_report() ->
 gen_outer_header_creation() ->
     oneof(
       [#outer_header_creation{
-	  type = 'GTP-U/UDP/IPv4', teid = uint32(), address = ip4_address()},
+	  type = 'GTP-U', teid = uint32(), ipv4 = ip4_address()},
        #outer_header_creation{
-	  type = 'GTP-U/UDP/IPv6', teid = uint32(), address = ip6_address()},
+	  type = 'GTP-U', teid = uint32(), ipv6 = ip6_address()},
        #outer_header_creation{
-	  type = 'UDP/IPv4', address = ip4_address(), port = uint16()},
+	  type = 'GTP-U', teid = uint32(), ipv4 = ip4_address(), ipv6 = ip6_address()},
        #outer_header_creation{
-	  type = 'UDP/IPv6', address = ip6_address(), port = uint16()}
+	  type = 'UDP', ipv4 = ip4_address(), port = uint16()},
+       #outer_header_creation{
+	  type = 'UDP', ipv6 = ip6_address(), port = uint16()}
       ]).
 
 gen_create_bar() ->
