@@ -221,12 +221,6 @@ encode_v1_msg(Type, SEID, SeqNo, IEs)
 encode_v1_msg(Type, _SEID, SeqNo, IEs) ->
     <<1:3, 0:3, 0:1, 0:1, Type:8, (size(IEs) + 4):16, SeqNo:24, 0:8, IEs/binary>>.
 
-decode_dns_label(Name) ->
-    [ Label || <<Len:8, Label:Len/bytes>> <= Name ].
-
-encode_dns_label(Name) ->
-    << <<(size(Label)):8, Label/binary>> || Label <- Name >>.
-
 decode_f_teid(<<_:4, ChId:1, Ch:1, IPv6:1, IPv4:1, Rest0/binary>>, _Type)
   when Ch =:= 1 ->
     IE0 = #f_teid{
@@ -545,7 +539,7 @@ decode_user_plane_ip_resource_information(<<_:2, ASSONI:1, TEIDRI:3, IPv6:1, IPv
 			     #user_plane_ip_resource_information.ipv6, IE2),
     if ASSONI == 1 ->
 	    IE3#user_plane_ip_resource_information{
-	      network_instance = decode_dns_label(Rest3)};
+	      network_instance = Rest3};
        true ->
 	    IE3
     end.
@@ -564,8 +558,8 @@ encode_user_plane_ip_resource_information(
     IE1 = maybe_unsigned_integer(Base, 8, IE0),
     IE2 = maybe_bin(IPv4, 4, IE1),
     IE3 = maybe_bin(IPv6, 16, IE2),
-    if Instance =/= undefined ->
-	    <<IE3/binary, (encode_dns_label(Instance))/binary>>;
+    if is_binary(Instance) ->
+	    <<IE3/binary, Instance/binary>>;
        true ->
 	    IE3
     end.
@@ -883,7 +877,7 @@ decode_v1_element(<<Data/binary>>, 21) ->
 
 %% decode network_instance
 decode_v1_element(<<M_instance/binary>>, 22) ->
-    #network_instance{instance = decode_dns_label(M_instance)};
+    #network_instance{instance = M_instance};
 
 %% decode sdf_filter
 decode_v1_element(<<Data/binary>>, 23) ->
@@ -1540,7 +1534,7 @@ encode_v1_element(#f_teid{} = IE, Acc) ->
 
 encode_v1_element(#network_instance{
 		       instance = M_instance}, Acc) ->
-    encode_tlv(22, <<(encode_dns_label(M_instance))/binary>>, Acc);
+    encode_tlv(22, <<M_instance/binary>>, Acc);
 
 encode_v1_element(#sdf_filter{} = IE, Acc) ->
     encode_tlv(23, encode_sdf_filter(IE), Acc);

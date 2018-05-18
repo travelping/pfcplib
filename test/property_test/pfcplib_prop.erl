@@ -131,6 +131,10 @@ gen_pcap(Cnt) ->
 %%% Internal functions
 %%%===================================================================
 
+encode_dns_label(Labels) ->
+    ?LET(Name, Labels,
+	 << <<(size(Label)):8, Label/binary>> || Label <- Name >>).
+
 flag() ->
     oneof([0,1]).
 
@@ -442,7 +446,10 @@ gen_f_teid() ->
 }.
 
 gen_network_instance() ->
-    #network_instance{instance = dns_name()}.
+    #network_instance{
+       instance =
+	   oneof([encode_dns_label(dns_name()),
+		  binary()])}.
 
 gen_sdf_filter() ->
     #sdf_filter{

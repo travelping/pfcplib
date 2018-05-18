@@ -68,7 +68,7 @@ ies() ->
        {'_', 0}]},
      {21, "F-TEID", f_teid},
      {22, "Network Instance",
-      [{"Instance", dns_label}]},
+      [{"Instance", 0, binary}]},
      {23, "SDF Filter", sdf_filter},
      {24, "Application ID",
       [{"Id", 0, binary}]},
