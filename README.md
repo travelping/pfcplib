@@ -32,4 +32,4 @@ not be meet.
 [travis badge]: https://img.shields.io/travis/travelping/pfcplib/master.svg?style=flat-square
 [coveralls]: https://coveralls.io/github/travelping/pfcplib
 [coveralls badge]: https://img.shields.io/coveralls/travelping/pfcplib/master.svg?style=flat-square
-[erlang version badge]: https://img.shields.io/badge/erlang-R20.0%20to%2020.1-blue.svg?style=flat-square
+[erlang version badge]: https://img.shields.io/badge/erlang-R20.1%20to%2021.0-blue.svg?style=flat-square

@@ -5,8 +5,10 @@ dist: xenial
 language: erlang
 
 otp_release:
- - 20.0
- - 20.1
+ - 20.1.7
+ - 20.2.4
+ - 20.3.8.3
+ - 21.0.4
 
 install: "true"
 
