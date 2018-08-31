@@ -153,11 +153,17 @@ dns_name() ->
     ?LET(L, dns_name_list(),
 	 [list_to_binary(X) || X <- L]).
 
+uint8() ->
+    integer(0,16#ff).
+
 uint16() ->
     integer(0,16#ffff).
 
 uint24() ->
     integer(0,16#ffffff).
+
+int32() ->
+    integer(-16#7fffffff,16#7fffffff).
 
 uint32() ->
     integer(0,16#ffffffff).
@@ -170,6 +176,19 @@ ip4_address() ->
 
 ip6_address() ->
     binary(16).
+
+binstr_number(Min, Max) ->
+    ?LET(X,
+	 ?LET(I, integer(Min,Max), vector(I, integer($0, $9))), list_to_binary(X)).
+
+imsi() ->
+    binstr_number(7,15).
+
+imei() ->
+    binstr_number(15, 15).
+
+imeisv() ->
+    binstr_number(16, 16).
 
 msg_gen() ->
     #pfcp{
@@ -241,7 +260,14 @@ grouped_ie() ->
      gen_remove_bar(),
      gen_error_indication_report(),
      gen_user_plane_path_failure_report(),
-     gen_update_duplicating_parameters()
+     gen_update_duplicating_parameters(),
+     gen_aggregated_urr_id(),
+     gen_create_traffic_endpoint(),
+     gen_created_traffic_endpoint(),
+     gen_update_traffic_endpoint(),
+     gen_remove_traffic_endpoint(),
+     gen_ethernet_packet_filter(),
+     gen_ethernet_traffic_information()
     ].
 
 simple_ie() ->
@@ -328,6 +354,29 @@ simple_ie() ->
      gen_failed_rule_id(),
      gen_time_quota_mechanism(),
      gen_user_plane_ip_resource_information(),
+     gen_user_plane_inactivity_timer(),
+     gen_aggregated_urrs(),
+     gen_multiplier(),
+     gen_subsequent_volume_quota(),
+     gen_subsequent_time_quota(),
+     gen_rqi(),
+     gen_qfi(),
+     gen_query_urr_reference(),
+     gen_additional_usage_reports_information(),
+     gen_traffic_endpoint_id(),
+     gen_mac_address(),
+     gen_c_tag(),
+     gen_s_tag(),
+     gen_ethertype(),
+     gen_proxying(),
+     gen_ethernet_filter_id(),
+     gen_ethernet_filter_properties(),
+     gen_suggested_buffering_packets_count(),
+     gen_user_id(),
+     gen_ethernet_pdu_session_information(),
+     gen_mac_addresses_detected(),
+     gen_mac_addresses_removed(),
+     gen_ethernet_inactivity_timer(),
      gen_tp_packet_measurement(),
      gen_enterprise_priv()
     ].
@@ -353,6 +402,13 @@ ie_map(IEs) ->
 ie_group() ->
     ie_map(
       ?LET(I, integer(1,10), vector(I, oneof(simple_ie())))).
+
+gen_volume(Type) ->
+    {Type,
+     oneof(['undefined', uint64()]),   %% total
+     oneof(['undefined', uint64()]),   %% uplink
+     oneof(['undefined', uint64()])   %% downlink
+    }.
 
 gen_create_pdr() ->
     #create_pdr{group = ie_group()}.
@@ -498,11 +554,7 @@ gen_transport_level_marking() ->
       }.
 
 gen_volume_threshold() ->
-    #volume_threshold{
-       total = uint64(),
-       uplink = uint64(),
-       downlink = uint64()
-      }.
+    gen_volume(volume_threshold).
 
 gen_time_threshold() ->
     #time_threshold{
@@ -515,11 +567,7 @@ gen_monitoring_time() ->
       }.
 
 gen_subsequent_volume_threshold() ->
-    #subsequent_volume_threshold{
-       total = uint64(),
-       uplink = uint64(),
-       downlink = uint64()
-      }.
+    gen_volume(subsequent_volume_threshold).
 
 gen_subsequent_time_threshold() ->
     #subsequent_time_threshold{
@@ -541,6 +589,7 @@ gen_reporting_triggers() ->
        time_threshold = flag(),
        volume_threshold = flag(),
        periodic_reporting = flag(),
+       mac_addresses_reporting = flag(),
        envelope_closure = flag(),
        time_quota = flag(),
        volume_quota = flag()
@@ -557,6 +606,7 @@ gen_redirect_information() ->
 
 gen_report_type() ->
     #report_type{
+       upir = flag(),
        erir = flag(),
        usar = flag(),
        dldr = flag()
@@ -590,6 +640,9 @@ gen_up_function_features() ->
        dlbd = flag(),
        ddnd = flag(),
        bucp = flag(),
+       quoac = flag(),
+       udbc = flag(),
+       pdiu = flag(),
        empu = flag()
       }.
 
@@ -604,7 +657,7 @@ gen_apply_action() ->
 
 gen_downlink_data_service_information() ->
     #downlink_data_service_information{
-       value = byte()
+       value = oneof(['undefined', uint8()])
       }.
 
 gen_downlink_data_notification_delay() ->
@@ -700,10 +753,10 @@ gen_node_id() ->
 
 gen_pfd_contents() ->
     #pfd_contents{
-	  flow = binary(),
-	  url = binary(),
-	  domain = binary(),
-	  custom = binary()
+	  flow = oneof(['undefined', binary()]),
+	  url = oneof(['undefined', binary()]),
+	  domain = oneof(['undefined', binary()]),
+	  custom = oneof(['undefined', binary()])
       }.
 
 gen_measurement_method() ->
@@ -723,6 +776,7 @@ gen_usage_report_trigger() ->
 	  timth = flag(),
 	  volth = flag(),
 	  perio = flag(),
+	  macar = flag(),
 	  envcl = flag(),
 	  monit = flag(),
 	  termr = flag(),
@@ -748,11 +802,7 @@ gen_fq_csid() ->
       }.
 
 gen_volume_measurement() ->
-    #volume_measurement{
-       total = uint64(),
-       uplink = uint64(),
-       downlink = uint64()
-      }.
+    gen_volume(volume_measurement).
 
 gen_duration_measurement() ->
     #duration_measurement{
@@ -779,15 +829,11 @@ gen_quota_holding_time() ->
 
 gen_dropped_dl_traffic_threshold() ->
     #dropped_dl_traffic_threshold{
-      value = uint64()
+      value = oneof(['undefined', uint64()])
       }.
 
 gen_volume_quota() ->
-    #volume_quota{
-       total = uint64(),
-       uplink = uint64(),
-       downlink = uint64()
-      }.
+    gen_volume(volume_quota).
 
 gen_time_quota() ->
     #time_quota{
@@ -930,6 +976,7 @@ gen_error_indication_report() ->
 
 gen_measurement_information() ->
     #measurement_information{
+       radi = flag(),
        inam = flag(),
        mbqe = flag()
       }.
@@ -1018,18 +1065,159 @@ gen_time_quota_mechanism() ->
 
 gen_user_plane_ip_resource_information() ->
     #user_plane_ip_resource_information{
-	  teid_range = oneof([undefined, {byte(), integer(1,7)}]),
-	  ipv4 = oneof([undefined, ip4_address()]),
-	  ipv6 = oneof([undefined, ip6_address()]),
-	  network_instance = oneof([undefined, dns_name()])
+       teid_range = oneof([undefined, {byte(), integer(1,7)}]),
+       ipv4 = oneof([undefined, ip4_address()]),
+       ipv6 = oneof([undefined, ip6_address()]),
+       network_instance = oneof([undefined, dns_name()])
+      }.
+
+gen_user_plane_inactivity_timer() ->
+    #user_plane_inactivity_timer{
+       timer = uint32()
+      }.
+
+gen_aggregated_urrs() ->
+    #aggregated_urrs{group = ie_group()}.
+
+gen_multiplier() ->
+    #multiplier{
+       digits = uint64(),
+       exponent = int32()
+      }.
+
+gen_aggregated_urr_id() ->
+    #aggregated_urr_id{
+       id = id_range(urr)
+      }.
+
+gen_subsequent_volume_quota() ->
+    gen_volume(subsequent_volume_quota).
+
+gen_subsequent_time_quota() ->
+    #subsequent_time_quota{
+       quota = uint32()
+      }.
+
+gen_rqi() ->
+    #rqi{
+       rqi = flag()
+      }.
+
+gen_qfi() ->
+    #qfi{
+       qfi = uint8()
+      }.
+
+gen_query_urr_reference() ->
+    #query_urr_reference{
+       reference = uint32()
+      }.
+
+gen_additional_usage_reports_information() ->
+    #additional_usage_reports_information{
+       auri = flag(),
+       reports = integer(0, 16#7fff)
+      }.
+
+gen_create_traffic_endpoint() ->
+    #create_traffic_endpoint{group = ie_group()}.
+
+gen_created_traffic_endpoint() ->
+    #created_traffic_endpoint{group = ie_group()}.
+
+gen_update_traffic_endpoint() ->
+    #update_traffic_endpoint{group = ie_group()}.
+
+gen_remove_traffic_endpoint() ->
+    #remove_traffic_endpoint{group = ie_group()}.
+
+gen_traffic_endpoint_id() ->
+    #traffic_endpoint_id{
+       id = uint8()
+      }.
+
+gen_ethernet_packet_filter() ->
+    #ethernet_packet_filter{group = ie_group()}.
+
+gen_mac_address() ->
+    #mac_address{
+       source_mac = oneof(['undefined', binary(6)]),
+       destination_mac = oneof(['undefined', binary(6)]),
+       upper_source_mac = oneof(['undefined', binary(6)]),
+       upper_destination_mac = oneof(['undefined', binary(6)])
+      }.
+
+gen_c_tag() ->
+    #c_tag{
+       pcp = oneof(['undefined', integer(0, 7)]),
+       dei = oneof(['undefined', flag()]),
+       vid = oneof(['undefined', integer(0, 16#fff)])
+      }.
+
+gen_s_tag() ->
+    #s_tag{
+       pcp = oneof(['undefined', integer(0, 7)]),
+       dei = oneof(['undefined', flag()]),
+       vid = oneof(['undefined', integer(0, 16#fff)])
+      }.
+
+gen_ethertype() ->
+    #ethertype{
+       type = uint16()
+      }.
+
+gen_proxying() ->
+    #proxying{
+       ins = flag(),
+       arp = flag()
+      }.
+
+gen_ethernet_filter_id() ->
+    #ethernet_filter_id{
+       id = uint32()
+      }.
+
+gen_ethernet_filter_properties() ->
+    #ethernet_filter_properties{
+       bide = flag()
+      }.
+
+gen_suggested_buffering_packets_count() ->
+    #suggested_buffering_packets_count{
+       count = uint8()
+      }.
+
+gen_user_id() ->
+    #user_id{
+       imsi = oneof(['undefined', imsi()]),
+       imei = oneof(['undefined', imei(), imeisv()])
+      }.
+
+gen_ethernet_pdu_session_information() ->
+    #ethernet_pdu_session_information{
+       ethi = flag()
+      }.
+
+gen_ethernet_traffic_information() ->
+    #ethernet_traffic_information{group = ie_group()}.
+
+gen_mac_addresses_detected() ->
+    #mac_addresses_detected{
+       macs = ?LET(I, integer(0,15), vector(I, binary(6)))
+      }.
+
+gen_mac_addresses_removed() ->
+    #mac_addresses_removed{
+       macs = ?LET(I, integer(0,15), vector(I, binary(6)))
+      }.
+
+gen_ethernet_inactivity_timer() ->
+    #ethernet_inactivity_timer{
+       timer = uint32()
       }.
 
 gen_tp_packet_measurement() ->
-    #tp_packet_measurement{
-       total = uint64(),
-       uplink = uint64(),
-       downlink = uint64()
-      }.
+    gen_volume(tp_packet_measurement).
 
 gen_enterprise_priv() ->
     {{18681, 500}, binary()}.

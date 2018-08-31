@@ -179,6 +179,12 @@ is_set(Atom, True) when Atom =:= True ->
 is_set(_, _) ->
     0.
 
+if_set(Cond, If, _Else)
+  when Cond == true; Cond == 1 ->
+    If;
+if_set(_Cond, _If, Else) ->
+    Else.
+
 maybe_atom(1, True) ->
     True;
 maybe_atom(0, _True) ->
@@ -609,6 +615,48 @@ encode_user_plane_ip_resource_information(
 	    IE3
     end.
 
+decode_mac_address(<<_:4, UDES:1, USOU:1, DEST:1, SOUR:1, Rest0/binary>>, _Type) ->
+    IE0 = #mac_address{},
+    {IE1, Rest1} = maybe_bin(Rest0, SOUR, 6, #mac_address.source_mac, IE0),
+    {IE2, Rest2} = maybe_bin(Rest1, DEST, 6, #mac_address.destination_mac, IE1),
+    {IE3, Rest3} = maybe_bin(Rest2, USOU, 6, #mac_address.upper_source_mac, IE2),
+    {IE4, _}     = maybe_bin(Rest3, UDES, 6, #mac_address.upper_destination_mac, IE3),
+    IE4.
+
+encode_mac_address(#mac_address{source_mac = SOUR, destination_mac = DEST,
+				upper_source_mac = USOU, upper_destination_mac = UDES}) ->
+    IE0 = <<0:4, (is_set(UDES)):1, (is_set(USOU)):1, (is_set(DEST)):1, (is_set(SOUR)):1>>,
+    IE1 = maybe_bin(SOUR, 6, IE0),
+    IE2 = maybe_bin(DEST, 6, IE1),
+    IE3 = maybe_bin(USOU, 6, IE2),
+    maybe_bin(UDES, 6, IE3).
+
+decode_vlan_tag(<<_:5, VID_F:1, DEI_F:1, PCP_F:1,
+		  HiVID:4, DEI:1, PCP:3, VID:8, _/binary>>, Type) ->
+    {Type,
+     if_set(PCP_F, PCP, undefined),
+     if_set(DEI_F, DEI, undefined),
+     if_set(VID_F, (HiVID bsl 8) bor VID, undefined)}.
+
+encode_vlan_tag({_Type, PCP, DEI, VID}) ->
+    <<0:5, (is_set(VID)):1, (is_set(DEI)):1, (is_set(PCP)):1,
+      (if_set(is_set(VID), is_integer(VID) andalso (VID bsr 8), 0)):4,
+      (if_set(is_set(DEI), DEI, 0)):1,
+      (if_set(is_set(PCP), PCP, 0)):3,
+      (if_set(is_set(VID), is_integer(VID) andalso (VID band 16#ff), 0)):8>>.
+
+decode_user_id(<<_:6, IMEI:1, IMSI:1, Rest0/binary>>, _Type) ->
+    IE0 = #user_id{},
+    {IE1, Rest1} = maybe_len_bin(Rest0, IMSI, 8, #user_id.imsi, IE0),
+    {IE2, _}     = maybe_len_bin(Rest1, IMEI, 8, #user_id.imei, IE1),
+    IE2.
+
+encode_user_id(#user_id{imsi = IMSI, imei = IMEI}) ->
+    IE0 = <<0:6,
+	    (is_set(IMEI)):1, (is_set(IMSI)):1>>,
+    IE1 = maybe_len_bin(IMSI, 8, IE0),
+    maybe_len_bin(IMEI, 8, IE1).
+
 %% The following code is auto-generated. DO NOT EDIT
 
 %% -include("pfcp_packet_v1_gen.hrl").
@@ -1006,7 +1054,8 @@ decode_v1_element(<<M_linked_usage_reporting:1/integer,
 		    M_time_threshold:1/integer,
 		    M_volume_threshold:1/integer,
 		    M_periodic_reporting:1/integer,
-		    _:5,
+		    _:4,
+		    M_mac_addresses_reporting:1/integer,
 		    M_envelope_closure:1/integer,
 		    M_time_quota:1/integer,
 		    M_volume_quota:1/integer,
@@ -1019,6 +1068,7 @@ decode_v1_element(<<M_linked_usage_reporting:1/integer,
 			time_threshold = M_time_threshold,
 			volume_threshold = M_volume_threshold,
 			periodic_reporting = M_periodic_reporting,
+			mac_addresses_reporting = M_mac_addresses_reporting,
 			envelope_closure = M_envelope_closure,
 			time_quota = M_time_quota,
 			volume_quota = M_volume_quota};
@@ -1032,12 +1082,14 @@ decode_v1_element(<<_:4,
 			  address = M_address};
 
 %% decode report_type
-decode_v1_element(<<_:5,
+decode_v1_element(<<_:4,
+		    M_upir:1/integer,
 		    M_erir:1/integer,
 		    M_usar:1/integer,
 		    M_dldr:1/integer,
 		    _/binary>>, 39) ->
-    #report_type{erir = M_erir,
+    #report_type{upir = M_upir,
+		 erir = M_erir,
 		 usar = M_usar,
 		 dldr = M_dldr};
 
@@ -1065,7 +1117,10 @@ decode_v1_element(<<M_treu:1/integer,
 		    M_dlbd:1/integer,
 		    M_ddnd:1/integer,
 		    M_bucp:1/integer,
-		    _:7,
+		    _:4,
+		    M_quoac:1/integer,
+		    M_udbc:1/integer,
+		    M_pdiu:1/integer,
 		    M_empu:1/integer,
 		    _/binary>>, 43) ->
     #up_function_features{treu = M_treu,
@@ -1076,6 +1131,9 @@ decode_v1_element(<<M_treu:1/integer,
 			  dlbd = M_dlbd,
 			  ddnd = M_ddnd,
 			  bucp = M_bucp,
+			  quoac = M_quoac,
+			  udbc = M_udbc,
+			  pdiu = M_pdiu,
 			  empu = M_empu};
 
 %% decode apply_action
@@ -1195,7 +1253,8 @@ decode_v1_element(<<M_immer:1/integer,
 		    M_timth:1/integer,
 		    M_volth:1/integer,
 		    M_perio:1/integer,
-		    _:2,
+		    _:1,
+		    M_macar:1/integer,
 		    M_envcl:1/integer,
 		    M_monit:1/integer,
 		    M_termr:1/integer,
@@ -1211,6 +1270,7 @@ decode_v1_element(<<M_immer:1/integer,
 			  timth = M_timth,
 			  volth = M_volth,
 			  perio = M_perio,
+			  macar = M_macar,
 			  envcl = M_envcl,
 			  monit = M_monit,
 			  termr = M_termr,
@@ -1398,11 +1458,13 @@ decode_v1_element(<<M_group/binary>>, 99) ->
     #error_indication_report{group = decode_v1_grouped(M_group)};
 
 %% decode measurement_information
-decode_v1_element(<<_:6,
+decode_v1_element(<<_:5,
+		    M_radi:1/integer,
 		    M_inam:1/integer,
 		    M_mbqe:1/integer,
 		    _/binary>>, 100) ->
-    #measurement_information{inam = M_inam,
+    #measurement_information{radi = M_radi,
+			     inam = M_inam,
 			     mbqe = M_mbqe};
 
 %% decode node_report_type
@@ -1485,6 +1547,154 @@ decode_v1_element(<<_:6,
 %% decode user_plane_ip_resource_information
 decode_v1_element(<<Data/binary>>, 116) ->
     decode_user_plane_ip_resource_information(Data, user_plane_ip_resource_information);
+
+%% decode user_plane_inactivity_timer
+decode_v1_element(<<M_timer:32/integer,
+		    _/binary>>, 117) ->
+    #user_plane_inactivity_timer{timer = M_timer};
+
+%% decode aggregated_urrs
+decode_v1_element(<<M_group/binary>>, 118) ->
+    #aggregated_urrs{group = decode_v1_grouped(M_group)};
+
+%% decode multiplier
+decode_v1_element(<<M_digits:40/integer,
+		    M_exponent:40/integer>>, 119) ->
+    #multiplier{digits = M_digits,
+		exponent = M_exponent};
+
+%% decode aggregated_urr_id
+decode_v1_element(<<M_id:32/integer>>, 120) ->
+    #aggregated_urr_id{id = M_id};
+
+%% decode subsequent_volume_quota
+decode_v1_element(<<Data/binary>>, 121) ->
+    decode_volume_threshold(Data, subsequent_volume_quota);
+
+%% decode subsequent_time_quota
+decode_v1_element(<<M_quota:32/integer,
+		    _/binary>>, 122) ->
+    #subsequent_time_quota{quota = M_quota};
+
+%% decode rqi
+decode_v1_element(<<_:7,
+		    M_rqi:1/integer,
+		    _/binary>>, 123) ->
+    #rqi{rqi = M_rqi};
+
+%% decode qfi
+decode_v1_element(<<M_qfi:8/integer,
+		    _/binary>>, 124) ->
+    #qfi{qfi = M_qfi};
+
+%% decode query_urr_reference
+decode_v1_element(<<M_reference:8/integer,
+		    _/binary>>, 125) ->
+    #query_urr_reference{reference = M_reference};
+
+%% decode additional_usage_reports_information
+decode_v1_element(<<M_auri:1/integer,
+		    M_reports:15/integer,
+		    _/binary>>, 126) ->
+    #additional_usage_reports_information{auri = M_auri,
+					  reports = M_reports};
+
+%% decode create_traffic_endpoint
+decode_v1_element(<<M_group/binary>>, 127) ->
+    #create_traffic_endpoint{group = decode_v1_grouped(M_group)};
+
+%% decode created_traffic_endpoint
+decode_v1_element(<<M_group/binary>>, 128) ->
+    #created_traffic_endpoint{group = decode_v1_grouped(M_group)};
+
+%% decode update_traffic_endpoint
+decode_v1_element(<<M_group/binary>>, 129) ->
+    #update_traffic_endpoint{group = decode_v1_grouped(M_group)};
+
+%% decode remove_traffic_endpoint
+decode_v1_element(<<M_group/binary>>, 130) ->
+    #remove_traffic_endpoint{group = decode_v1_grouped(M_group)};
+
+%% decode traffic_endpoint_id
+decode_v1_element(<<M_id:8/integer,
+		    _/binary>>, 131) ->
+    #traffic_endpoint_id{id = M_id};
+
+%% decode ethernet_packet_filter
+decode_v1_element(<<M_group/binary>>, 132) ->
+    #ethernet_packet_filter{group = decode_v1_grouped(M_group)};
+
+%% decode mac_address
+decode_v1_element(<<Data/binary>>, 133) ->
+    decode_mac_address(Data, mac_address);
+
+%% decode c_tag
+decode_v1_element(<<Data/binary>>, 134) ->
+    decode_vlan_tag(Data, c_tag);
+
+%% decode s_tag
+decode_v1_element(<<Data/binary>>, 135) ->
+    decode_vlan_tag(Data, s_tag);
+
+%% decode ethertype
+decode_v1_element(<<M_type:16/integer,
+		    _/binary>>, 136) ->
+    #ethertype{type = M_type};
+
+%% decode proxying
+decode_v1_element(<<_:6,
+		    M_ins:1/integer,
+		    M_arp:1/integer,
+		    _/binary>>, 137) ->
+    #proxying{ins = M_ins,
+	      arp = M_arp};
+
+%% decode ethernet_filter_id
+decode_v1_element(<<M_id:32/integer,
+		    _/binary>>, 138) ->
+    #ethernet_filter_id{id = M_id};
+
+%% decode ethernet_filter_properties
+decode_v1_element(<<_:7,
+		    M_bide:1/integer,
+		    _/binary>>, 139) ->
+    #ethernet_filter_properties{bide = M_bide};
+
+%% decode suggested_buffering_packets_count
+decode_v1_element(<<M_count:8/integer,
+		    _/binary>>, 140) ->
+    #suggested_buffering_packets_count{count = M_count};
+
+%% decode user_id
+decode_v1_element(<<Data/binary>>, 141) ->
+    decode_user_id(Data, user_id);
+
+%% decode ethernet_pdu_session_information
+decode_v1_element(<<_:7,
+		    M_ethi:1/integer,
+		    _/binary>>, 142) ->
+    #ethernet_pdu_session_information{ethi = M_ethi};
+
+%% decode ethernet_traffic_information
+decode_v1_element(<<M_group/binary>>, 143) ->
+    #ethernet_traffic_information{group = decode_v1_grouped(M_group)};
+
+%% decode mac_addresses_detected
+decode_v1_element(<<M_macs_len:8/integer, M_macs_Rest/binary>>, 144) ->
+    M_macs_size = M_macs_len * 6,
+    <<M_macs:M_macs_size/bytes>> = M_macs_Rest,
+    #mac_addresses_detected{macs = [X || <<X:6/bytes>> <= M_macs]};
+
+%% decode mac_addresses_removed
+decode_v1_element(<<M_macs_len:8/integer, M_macs_Rest/binary>>, 145) ->
+    M_macs_size = M_macs_len * 6,
+    <<M_macs:M_macs_size/bytes>> = M_macs_Rest,
+    #mac_addresses_removed{macs = [X || <<X:6/bytes>> <= M_macs]};
+
+%% decode ethernet_inactivity_timer
+decode_v1_element(<<M_timer:32/integer,
+		    _/binary>>, 146) ->
+    #ethernet_inactivity_timer{timer = M_timer};
 
 %% decode tp_packet_measurement
 decode_v1_element(<<Data/binary>>, {18681,1}) ->
@@ -1650,6 +1860,7 @@ encode_v1_element(#reporting_triggers{
 		       time_threshold = M_time_threshold,
 		       volume_threshold = M_volume_threshold,
 		       periodic_reporting = M_periodic_reporting,
+		       mac_addresses_reporting = M_mac_addresses_reporting,
 		       envelope_closure = M_envelope_closure,
 		       time_quota = M_time_quota,
 		       volume_quota = M_volume_quota}, Acc) ->
@@ -1661,7 +1872,8 @@ encode_v1_element(#reporting_triggers{
 		     M_time_threshold:1,
 		     M_volume_threshold:1,
 		     M_periodic_reporting:1,
-		     0:5,
+		     0:4,
+		     M_mac_addresses_reporting:1,
 		     M_envelope_closure:1,
 		     M_time_quota:1,
 		     M_volume_quota:1>>, Acc);
@@ -1674,10 +1886,12 @@ encode_v1_element(#redirect_information{
 		     (byte_size(M_address)):16/integer, M_address/binary>>, Acc);
 
 encode_v1_element(#report_type{
+		       upir = M_upir,
 		       erir = M_erir,
 		       usar = M_usar,
 		       dldr = M_dldr}, Acc) ->
-    encode_tlv(39, <<0:5,
+    encode_tlv(39, <<0:4,
+		     M_upir:1,
 		     M_erir:1,
 		     M_usar:1,
 		     M_dldr:1>>, Acc);
@@ -1704,6 +1918,9 @@ encode_v1_element(#up_function_features{
 		       dlbd = M_dlbd,
 		       ddnd = M_ddnd,
 		       bucp = M_bucp,
+		       quoac = M_quoac,
+		       udbc = M_udbc,
+		       pdiu = M_pdiu,
 		       empu = M_empu}, Acc) ->
     encode_tlv(43, <<M_treu:1,
 		     M_heeu:1,
@@ -1713,7 +1930,10 @@ encode_v1_element(#up_function_features{
 		     M_dlbd:1,
 		     M_ddnd:1,
 		     M_bucp:1,
-		     0:7,
+		     0:4,
+		     M_quoac:1,
+		     M_udbc:1,
+		     M_pdiu:1,
 		     M_empu:1>>, Acc);
 
 encode_v1_element(#apply_action{
@@ -1821,6 +2041,7 @@ encode_v1_element(#usage_report_trigger{
 		       timth = M_timth,
 		       volth = M_volth,
 		       perio = M_perio,
+		       macar = M_macar,
 		       envcl = M_envcl,
 		       monit = M_monit,
 		       termr = M_termr,
@@ -1835,7 +2056,8 @@ encode_v1_element(#usage_report_trigger{
 		     M_timth:1,
 		     M_volth:1,
 		     M_perio:1,
-		     0:2,
+		     0:1,
+		     M_macar:1,
 		     M_envcl:1,
 		     M_monit:1,
 		     M_termr:1,
@@ -1998,9 +2220,11 @@ encode_v1_element(#error_indication_report{
     encode_tlv(99, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
 encode_v1_element(#measurement_information{
+		       radi = M_radi,
 		       inam = M_inam,
 		       mbqe = M_mbqe}, Acc) ->
-    encode_tlv(100, <<0:6,
+    encode_tlv(100, <<0:5,
+		      M_radi:1,
 		      M_inam:1,
 		      M_mbqe:1>>, Acc);
 
@@ -2073,6 +2297,131 @@ encode_v1_element(#time_quota_mechanism{
 
 encode_v1_element(#user_plane_ip_resource_information{} = IE, Acc) ->
     encode_tlv(116, encode_user_plane_ip_resource_information(IE), Acc);
+
+encode_v1_element(#user_plane_inactivity_timer{
+		       timer = M_timer}, Acc) ->
+    encode_tlv(117, <<M_timer:32>>, Acc);
+
+encode_v1_element(#aggregated_urrs{
+		       group = M_group}, Acc) ->
+    encode_tlv(118, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#multiplier{
+		       digits = M_digits,
+		       exponent = M_exponent}, Acc) ->
+    encode_tlv(119, <<M_digits:40,
+		      M_exponent:40>>, Acc);
+
+encode_v1_element(#aggregated_urr_id{
+		       id = M_id}, Acc) ->
+    encode_tlv(120, <<M_id:32>>, Acc);
+
+encode_v1_element(#subsequent_volume_quota{} = IE, Acc) ->
+    encode_tlv(121, encode_volume_threshold(IE), Acc);
+
+encode_v1_element(#subsequent_time_quota{
+		       quota = M_quota}, Acc) ->
+    encode_tlv(122, <<M_quota:32>>, Acc);
+
+encode_v1_element(#rqi{
+		       rqi = M_rqi}, Acc) ->
+    encode_tlv(123, <<0:7,
+		      M_rqi:1>>, Acc);
+
+encode_v1_element(#qfi{
+		       qfi = M_qfi}, Acc) ->
+    encode_tlv(124, <<M_qfi:8>>, Acc);
+
+encode_v1_element(#query_urr_reference{
+		       reference = M_reference}, Acc) ->
+    encode_tlv(125, <<M_reference:8>>, Acc);
+
+encode_v1_element(#additional_usage_reports_information{
+		       auri = M_auri,
+		       reports = M_reports}, Acc) ->
+    encode_tlv(126, <<M_auri:1,
+		      M_reports:15>>, Acc);
+
+encode_v1_element(#create_traffic_endpoint{
+		       group = M_group}, Acc) ->
+    encode_tlv(127, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#created_traffic_endpoint{
+		       group = M_group}, Acc) ->
+    encode_tlv(128, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#update_traffic_endpoint{
+		       group = M_group}, Acc) ->
+    encode_tlv(129, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#remove_traffic_endpoint{
+		       group = M_group}, Acc) ->
+    encode_tlv(130, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#traffic_endpoint_id{
+		       id = M_id}, Acc) ->
+    encode_tlv(131, <<M_id:8>>, Acc);
+
+encode_v1_element(#ethernet_packet_filter{
+		       group = M_group}, Acc) ->
+    encode_tlv(132, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#mac_address{} = IE, Acc) ->
+    encode_tlv(133, encode_mac_address(IE), Acc);
+
+encode_v1_element(#c_tag{} = IE, Acc) ->
+    encode_tlv(134, encode_vlan_tag(IE), Acc);
+
+encode_v1_element(#s_tag{} = IE, Acc) ->
+    encode_tlv(135, encode_vlan_tag(IE), Acc);
+
+encode_v1_element(#ethertype{
+		       type = M_type}, Acc) ->
+    encode_tlv(136, <<M_type:16>>, Acc);
+
+encode_v1_element(#proxying{
+		       ins = M_ins,
+		       arp = M_arp}, Acc) ->
+    encode_tlv(137, <<0:6,
+		      M_ins:1,
+		      M_arp:1>>, Acc);
+
+encode_v1_element(#ethernet_filter_id{
+		       id = M_id}, Acc) ->
+    encode_tlv(138, <<M_id:32>>, Acc);
+
+encode_v1_element(#ethernet_filter_properties{
+		       bide = M_bide}, Acc) ->
+    encode_tlv(139, <<0:7,
+		      M_bide:1>>, Acc);
+
+encode_v1_element(#suggested_buffering_packets_count{
+		       count = M_count}, Acc) ->
+    encode_tlv(140, <<M_count:8>>, Acc);
+
+encode_v1_element(#user_id{} = IE, Acc) ->
+    encode_tlv(141, encode_user_id(IE), Acc);
+
+encode_v1_element(#ethernet_pdu_session_information{
+		       ethi = M_ethi}, Acc) ->
+    encode_tlv(142, <<0:7,
+		      M_ethi:1>>, Acc);
+
+encode_v1_element(#ethernet_traffic_information{
+		       group = M_group}, Acc) ->
+    encode_tlv(143, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#mac_addresses_detected{
+		       macs = M_macs}, Acc) ->
+    encode_tlv(144, <<(length(M_macs)):8/integer, (<< <<X/binary>> || X <- M_macs>>)/binary>>, Acc);
+
+encode_v1_element(#mac_addresses_removed{
+		       macs = M_macs}, Acc) ->
+    encode_tlv(145, <<(length(M_macs)):8/integer, (<< <<X/binary>> || X <- M_macs>>)/binary>>, Acc);
+
+encode_v1_element(#ethernet_inactivity_timer{
+		       timer = M_timer}, Acc) ->
+    encode_tlv(146, <<M_timer:32>>, Acc);
 
 encode_v1_element(#tp_packet_measurement{} = IE, Acc) ->
     encode_tlv({18681,1}, encode_volume_threshold(IE), Acc);

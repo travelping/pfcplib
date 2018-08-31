@@ -6,8 +6,8 @@
 
 -record(pfcp, {
 	  version	:: 'undefined' | 'v1',
-	  type,
-	  seid		:: 0..16#ffffffffffffffff,
+	  type		:: atom(),
+	  seid		:: 'undefined' | 0..16#ffffffffffffffff,
 	  seq_no	:: 0..16#ffffff,
 	  ie		:: [term()] | map()
 	 }).
@@ -81,10 +81,10 @@
 	 }).
 
 -record(outer_header_creation, {
-	  type,
+	  type		:: 'GTP-U' | 'UDP',
 	  teid,
-	  ipv4,
-	  ipv6,
+	  ipv4		:: 'undefined' | inet:ip4_address(),
+	  ipv6		:: 'undefined' | inet:ip6_address(),
 	  port
 	 }).
 
@@ -121,6 +121,36 @@
 	  ipv4,
 	  ipv6,
 	  network_instance
+	 }).
+
+-record(subsequent_volume_quota, {
+	  total		:: 0..16#ffffffffffffffff,
+	  uplink	:: 0..16#ffffffffffffffff,
+	  downlink	:: 0..16#ffffffffffffffff
+	 }).
+
+-record(mac_address, {
+	  source_mac,
+	  destination_mac,
+	  upper_source_mac,
+	  upper_destination_mac
+	 }).
+
+-record(c_tag, {
+	  pcp		:: 'undefined' | 0..7,
+	  dei		:: 'undefined' | 0..1,
+	  vid		:: 'undefined' | 0..16#fff
+	 }).
+
+-record(s_tag, {
+	  pcp		:: 0..16#fff,
+	  dei		:: 0..1,
+	  vid		:: 0..16#fff
+	 }).
+
+-record(user_id, {
+	  imsi		:: 'undefined' | binary(),
+	  imei		:: 'undefined' | binary()
 	 }).
 
 -record(tp_packet_measurement, {
@@ -273,6 +303,7 @@
 	  time_threshold = 0,
 	  volume_threshold = 0,
 	  periodic_reporting = 0,
+	  mac_addresses_reporting = 0,
 	  envelope_closure = 0,
 	  time_quota = 0,
 	  volume_quota = 0
@@ -284,6 +315,7 @@
 }).
 
 -record(report_type, {
+	  upir = 0,
 	  erir = 0,
 	  usar = 0,
 	  dldr = 0
@@ -310,6 +342,9 @@
 	  dlbd = 0,
 	  ddnd = 0,
 	  bucp = 0,
+	  quoac = 0,
+	  udbc = 0,
+	  pdiu = 0,
 	  empu = 0
 }).
 
@@ -392,6 +427,7 @@
 	  timth = 0,
 	  volth = 0,
 	  perio = 0,
+	  macar = 0,
 	  envcl = 0,
 	  monit = 0,
 	  termr = 0,
@@ -520,6 +556,7 @@
 }).
 
 -record(measurement_information, {
+	  radi = 0,
 	  inam = 0,
 	  mbqe = 0
 }).
@@ -576,4 +613,107 @@
 -record(time_quota_mechanism, {
 	  base_time_interval_type = 'CTP',
 	  interval = 0
+}).
+
+-record(user_plane_inactivity_timer, {
+	  timer = 0
+}).
+
+-record(aggregated_urrs, {
+	  group
+}).
+
+-record(multiplier, {
+	  digits = 0,
+	  exponent = 0
+}).
+
+-record(aggregated_urr_id, {
+	  id = 0
+}).
+
+-record(subsequent_time_quota, {
+	  quota = 0
+}).
+
+-record(rqi, {
+	  rqi = 0
+}).
+
+-record(qfi, {
+	  qfi = 0
+}).
+
+-record(query_urr_reference, {
+	  reference = 0
+}).
+
+-record(additional_usage_reports_information, {
+	  auri = 0,
+	  reports = 0
+}).
+
+-record(create_traffic_endpoint, {
+	  group
+}).
+
+-record(created_traffic_endpoint, {
+	  group
+}).
+
+-record(update_traffic_endpoint, {
+	  group
+}).
+
+-record(remove_traffic_endpoint, {
+	  group
+}).
+
+-record(traffic_endpoint_id, {
+	  id = 0
+}).
+
+-record(ethernet_packet_filter, {
+	  group
+}).
+
+-record(ethertype, {
+	  type = 0
+}).
+
+-record(proxying, {
+	  ins = 0,
+	  arp = 0
+}).
+
+-record(ethernet_filter_id, {
+	  id = 0
+}).
+
+-record(ethernet_filter_properties, {
+	  bide = 0
+}).
+
+-record(suggested_buffering_packets_count, {
+	  count = 0
+}).
+
+-record(ethernet_pdu_session_information, {
+	  ethi = 0
+}).
+
+-record(ethernet_traffic_information, {
+	  group
+}).
+
+-record(mac_addresses_detected, {
+	  macs = []
+}).
+
+-record(mac_addresses_removed, {
+	  macs = []
+}).
+
+-record(ethernet_inactivity_timer, {
+	  timer = 0
 }).
