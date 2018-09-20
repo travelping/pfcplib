@@ -8,7 +8,7 @@
 
 -export([encode/1, encode_ies/1,
 	 decode/1, decode/2, decode_ies/1, decode_ies/2,
-	 msg_description_v1/1, to_map/1]).
+	 msg_description_v1/1, to_map/1, ies_to_map/1]).
 -export([lager_pr/1]).
 
 -compile([{parse_transform, cut}, bin_opt_info]).
