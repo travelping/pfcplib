@@ -9,7 +9,7 @@
 -export([encode/1, encode_ies/1,
 	 decode/1, decode/2, decode_ies/1, decode_ies/2,
 	 msg_description_v1/1, to_map/1, ies_to_map/1]).
--export([lager_pr/1]).
+-export([lager_pr/1, pretty_print/1]).
 
 -compile([{parse_transform, cut}, bin_opt_info]).
 -compile({inline,[decode_v1_grouped/1]}).
@@ -56,6 +56,26 @@ encode_ies(#pfcp{version = v1, ie = IEs} = Msg) ->
 
 to_map(#pfcp{ie = IEs} = Req) when is_list(IEs); is_map(IEs) ->
     Req#pfcp{ie = ies_to_map(IEs)}.
+
+%%%===================================================================
+%%% Record formating
+%%%===================================================================
+
+-define(PRETTY_PRINT(F, R),
+	F(R, N) ->
+	       case record_info(size, R) - 1 of
+		   N -> record_info(fields, R);
+		   _ -> no
+	       end).
+
+pretty_print(Record) ->
+    io_lib_pretty:print(Record, fun pretty_print/2).
+
+pretty_print(pfcp, N) ->
+    N = record_info(size, pfcp) - 1,
+    record_info(fields, pfcp);
+pretty_print(Record, N) ->
+    pretty_print_v1(Record, N).
 
 %%====================================================================
 %% Helpers
@@ -2431,3 +2451,153 @@ encode_v1_element(IEs, Acc) when is_list(IEs) ->
 
 encode_v1_element({Tag, Value}, Acc) when is_binary(Value) ->
     encode_tlv(Tag, Value, Acc).
+
+?PRETTY_PRINT(pretty_print_v1, create_pdr);
+?PRETTY_PRINT(pretty_print_v1, pdi);
+?PRETTY_PRINT(pretty_print_v1, create_far);
+?PRETTY_PRINT(pretty_print_v1, forwarding_parameters);
+?PRETTY_PRINT(pretty_print_v1, duplicating_parameters);
+?PRETTY_PRINT(pretty_print_v1, create_urr);
+?PRETTY_PRINT(pretty_print_v1, create_qer);
+?PRETTY_PRINT(pretty_print_v1, created_pdr);
+?PRETTY_PRINT(pretty_print_v1, update_pdr);
+?PRETTY_PRINT(pretty_print_v1, update_far);
+?PRETTY_PRINT(pretty_print_v1, update_forwarding_parameters);
+?PRETTY_PRINT(pretty_print_v1, update_bar_response);
+?PRETTY_PRINT(pretty_print_v1, update_urr);
+?PRETTY_PRINT(pretty_print_v1, update_qer);
+?PRETTY_PRINT(pretty_print_v1, remove_pdr);
+?PRETTY_PRINT(pretty_print_v1, remove_far);
+?PRETTY_PRINT(pretty_print_v1, remove_urr);
+?PRETTY_PRINT(pretty_print_v1, remove_qer);
+?PRETTY_PRINT(pretty_print_v1, pfcp_cause);
+?PRETTY_PRINT(pretty_print_v1, source_interface);
+?PRETTY_PRINT(pretty_print_v1, f_teid);
+?PRETTY_PRINT(pretty_print_v1, network_instance);
+?PRETTY_PRINT(pretty_print_v1, sdf_filter);
+?PRETTY_PRINT(pretty_print_v1, application_id);
+?PRETTY_PRINT(pretty_print_v1, gate_status);
+?PRETTY_PRINT(pretty_print_v1, mbr);
+?PRETTY_PRINT(pretty_print_v1, gbr);
+?PRETTY_PRINT(pretty_print_v1, qer_correlation_id);
+?PRETTY_PRINT(pretty_print_v1, precedence);
+?PRETTY_PRINT(pretty_print_v1, transport_level_marking);
+?PRETTY_PRINT(pretty_print_v1, volume_threshold);
+?PRETTY_PRINT(pretty_print_v1, time_threshold);
+?PRETTY_PRINT(pretty_print_v1, monitoring_time);
+?PRETTY_PRINT(pretty_print_v1, subsequent_volume_threshold);
+?PRETTY_PRINT(pretty_print_v1, subsequent_time_threshold);
+?PRETTY_PRINT(pretty_print_v1, inactivity_detection_time);
+?PRETTY_PRINT(pretty_print_v1, reporting_triggers);
+?PRETTY_PRINT(pretty_print_v1, redirect_information);
+?PRETTY_PRINT(pretty_print_v1, report_type);
+?PRETTY_PRINT(pretty_print_v1, offending_ie);
+?PRETTY_PRINT(pretty_print_v1, forwarding_policy);
+?PRETTY_PRINT(pretty_print_v1, destination_interface);
+?PRETTY_PRINT(pretty_print_v1, up_function_features);
+?PRETTY_PRINT(pretty_print_v1, apply_action);
+?PRETTY_PRINT(pretty_print_v1, downlink_data_service_information);
+?PRETTY_PRINT(pretty_print_v1, downlink_data_notification_delay);
+?PRETTY_PRINT(pretty_print_v1, dl_buffering_duration);
+?PRETTY_PRINT(pretty_print_v1, dl_buffering_suggested_packet_count);
+?PRETTY_PRINT(pretty_print_v1, sxsmreq_flags);
+?PRETTY_PRINT(pretty_print_v1, sxsrrsp_flags);
+?PRETTY_PRINT(pretty_print_v1, load_control_information);
+?PRETTY_PRINT(pretty_print_v1, sequence_number);
+?PRETTY_PRINT(pretty_print_v1, metric);
+?PRETTY_PRINT(pretty_print_v1, overload_control_information);
+?PRETTY_PRINT(pretty_print_v1, timer);
+?PRETTY_PRINT(pretty_print_v1, pdr_id);
+?PRETTY_PRINT(pretty_print_v1, f_seid);
+?PRETTY_PRINT(pretty_print_v1, application_id_pfds);
+?PRETTY_PRINT(pretty_print_v1, pfd_context);
+?PRETTY_PRINT(pretty_print_v1, node_id);
+?PRETTY_PRINT(pretty_print_v1, pfd_contents);
+?PRETTY_PRINT(pretty_print_v1, measurement_method);
+?PRETTY_PRINT(pretty_print_v1, usage_report_trigger);
+?PRETTY_PRINT(pretty_print_v1, measurement_period);
+?PRETTY_PRINT(pretty_print_v1, fq_csid);
+?PRETTY_PRINT(pretty_print_v1, volume_measurement);
+?PRETTY_PRINT(pretty_print_v1, duration_measurement);
+?PRETTY_PRINT(pretty_print_v1, application_detection_information);
+?PRETTY_PRINT(pretty_print_v1, time_of_first_packet);
+?PRETTY_PRINT(pretty_print_v1, time_of_last_packet);
+?PRETTY_PRINT(pretty_print_v1, quota_holding_time);
+?PRETTY_PRINT(pretty_print_v1, dropped_dl_traffic_threshold);
+?PRETTY_PRINT(pretty_print_v1, volume_quota);
+?PRETTY_PRINT(pretty_print_v1, time_quota);
+?PRETTY_PRINT(pretty_print_v1, start_time);
+?PRETTY_PRINT(pretty_print_v1, end_time);
+?PRETTY_PRINT(pretty_print_v1, query_urr);
+?PRETTY_PRINT(pretty_print_v1, usage_report_smr);
+?PRETTY_PRINT(pretty_print_v1, usage_report_sdr);
+?PRETTY_PRINT(pretty_print_v1, usage_report_srr);
+?PRETTY_PRINT(pretty_print_v1, urr_id);
+?PRETTY_PRINT(pretty_print_v1, linked_urr_id);
+?PRETTY_PRINT(pretty_print_v1, downlink_data_report);
+?PRETTY_PRINT(pretty_print_v1, outer_header_creation);
+?PRETTY_PRINT(pretty_print_v1, create_bar);
+?PRETTY_PRINT(pretty_print_v1, update_bar_request);
+?PRETTY_PRINT(pretty_print_v1, remove_bar);
+?PRETTY_PRINT(pretty_print_v1, bar_id);
+?PRETTY_PRINT(pretty_print_v1, cp_function_features);
+?PRETTY_PRINT(pretty_print_v1, usage_information);
+?PRETTY_PRINT(pretty_print_v1, application_instance_id);
+?PRETTY_PRINT(pretty_print_v1, flow_information);
+?PRETTY_PRINT(pretty_print_v1, ue_ip_address);
+?PRETTY_PRINT(pretty_print_v1, packet_rate);
+?PRETTY_PRINT(pretty_print_v1, outer_header_removal);
+?PRETTY_PRINT(pretty_print_v1, recovery_time_stamp);
+?PRETTY_PRINT(pretty_print_v1, dl_flow_level_marking);
+?PRETTY_PRINT(pretty_print_v1, header_enrichment);
+?PRETTY_PRINT(pretty_print_v1, error_indication_report);
+?PRETTY_PRINT(pretty_print_v1, measurement_information);
+?PRETTY_PRINT(pretty_print_v1, node_report_type);
+?PRETTY_PRINT(pretty_print_v1, user_plane_path_failure_report);
+?PRETTY_PRINT(pretty_print_v1, remote_gtp_u_peer);
+?PRETTY_PRINT(pretty_print_v1, ur_seqn);
+?PRETTY_PRINT(pretty_print_v1, update_duplicating_parameters);
+?PRETTY_PRINT(pretty_print_v1, activate_predefined_rules);
+?PRETTY_PRINT(pretty_print_v1, deactivate_predefined_rules);
+?PRETTY_PRINT(pretty_print_v1, far_id);
+?PRETTY_PRINT(pretty_print_v1, qer_id);
+?PRETTY_PRINT(pretty_print_v1, oci_flags);
+?PRETTY_PRINT(pretty_print_v1, sx_association_release_request);
+?PRETTY_PRINT(pretty_print_v1, graceful_release_period);
+?PRETTY_PRINT(pretty_print_v1, pdn_type);
+?PRETTY_PRINT(pretty_print_v1, failed_rule_id);
+?PRETTY_PRINT(pretty_print_v1, time_quota_mechanism);
+?PRETTY_PRINT(pretty_print_v1, user_plane_ip_resource_information);
+?PRETTY_PRINT(pretty_print_v1, user_plane_inactivity_timer);
+?PRETTY_PRINT(pretty_print_v1, aggregated_urrs);
+?PRETTY_PRINT(pretty_print_v1, multiplier);
+?PRETTY_PRINT(pretty_print_v1, aggregated_urr_id);
+?PRETTY_PRINT(pretty_print_v1, subsequent_volume_quota);
+?PRETTY_PRINT(pretty_print_v1, subsequent_time_quota);
+?PRETTY_PRINT(pretty_print_v1, rqi);
+?PRETTY_PRINT(pretty_print_v1, qfi);
+?PRETTY_PRINT(pretty_print_v1, query_urr_reference);
+?PRETTY_PRINT(pretty_print_v1, additional_usage_reports_information);
+?PRETTY_PRINT(pretty_print_v1, create_traffic_endpoint);
+?PRETTY_PRINT(pretty_print_v1, created_traffic_endpoint);
+?PRETTY_PRINT(pretty_print_v1, update_traffic_endpoint);
+?PRETTY_PRINT(pretty_print_v1, remove_traffic_endpoint);
+?PRETTY_PRINT(pretty_print_v1, traffic_endpoint_id);
+?PRETTY_PRINT(pretty_print_v1, ethernet_packet_filter);
+?PRETTY_PRINT(pretty_print_v1, mac_address);
+?PRETTY_PRINT(pretty_print_v1, c_tag);
+?PRETTY_PRINT(pretty_print_v1, s_tag);
+?PRETTY_PRINT(pretty_print_v1, ethertype);
+?PRETTY_PRINT(pretty_print_v1, proxying);
+?PRETTY_PRINT(pretty_print_v1, ethernet_filter_id);
+?PRETTY_PRINT(pretty_print_v1, ethernet_filter_properties);
+?PRETTY_PRINT(pretty_print_v1, suggested_buffering_packets_count);
+?PRETTY_PRINT(pretty_print_v1, user_id);
+?PRETTY_PRINT(pretty_print_v1, ethernet_pdu_session_information);
+?PRETTY_PRINT(pretty_print_v1, ethernet_traffic_information);
+?PRETTY_PRINT(pretty_print_v1, mac_addresses_detected);
+?PRETTY_PRINT(pretty_print_v1, mac_addresses_removed);
+?PRETTY_PRINT(pretty_print_v1, ethernet_inactivity_timer);
+?PRETTY_PRINT(pretty_print_v1, tp_packet_measurement);
+pretty_print_v1(_, _) ->
+    no.

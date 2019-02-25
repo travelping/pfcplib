@@ -770,6 +770,9 @@ write_encoder(FunName, {Id, Name, Helper})
     io_lib:format("encode_v1_element(#~s{} = IE, Acc) ->~n    ~s(~w, encode_~s(IE), Acc)",
 		  [s2a(Name), FunName, Id, Helper]).
 
+write_pretty_print(_, Def) ->
+    io_lib:format("?PRETTY_PRINT(pretty_print_v1, ~s)", [s2a(element(2, Def))]).
+
 main(_) ->
     MsgDescription = string:join([io_lib:format("msg_description_v1(~s) -> <<\"~s\">>", [s2a(X), X]) || {_, X} <- msgs()]
 				 ++ ["msg_description_v1(X) -> io_lib:format(\"~p\", [X])"], ";\n") ++ ".\n",
@@ -792,8 +795,12 @@ main(_) ->
     EncFuns = string:join([write_encoder("encode_tlv", X) || X <- ies()]
 			  ++ [CatchListEncoder, CatchAnyEncoder] , ";\n\n"),
 
-    ErlDecls = io_lib:format("%% -include(\"pfcp_packet_v1_gen.hrl\").~n~n~s~n~s~n~s~n~s.~n~n~s.~n",
-			     [MsgDescription, MTypes, Enums, Funs, EncFuns]),
+    CatchAnyPretty = "pretty_print_v1(_, _) ->\n    no",
+    RecPrettyDefs = string:join([write_pretty_print("pretty_print_v1", X) || X <- ies()]
+				++ [CatchAnyPretty] , ";\n"),
+
+    ErlDecls = io_lib:format("%% -include(\"pfcp_packet_v1_gen.hrl\").~n~n~s~n~s~n~s~n~s.~n~n~s.~n~n~s.~n",
+			     [MsgDescription, MTypes, Enums, Funs, EncFuns, RecPrettyDefs]),
 
     {ok, HrlF0} = file:read_file("include/pfcp_packet.hrl"),
     [HrlHead, _] = binary:split(HrlF0, [<<"%% -include(\"pfcp_packet_v1_gen.hrl\").">>],[]),
