@@ -2,13 +2,14 @@
 %% License, v. 2.0. If a copy of the MPL was not distributed with this
 %% file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-%% Copyright 2017, Travelping GmbH <info@travelping.com>
+%% Copyright 2017-2019 Travelping GmbH <info@travelping.com>
 
 -module(pfcp_packet).
 
 -export([encode/1, encode_ies/1,
 	 decode/1, decode/2, decode_ies/1, decode_ies/2,
 	 msg_description_v1/1, to_map/1, ies_to_map/1]).
+-export([validate/2]).
 -export([lager_pr/1, pretty_print/1]).
 
 -compile([{parse_transform, cut}, bin_opt_info]).
@@ -76,6 +77,66 @@ pretty_print(pfcp, N) ->
     record_info(fields, pfcp);
 pretty_print(Record, N) ->
     pretty_print_v1(Record, N).
+
+%%%===================================================================
+%%% Validation
+%%%===================================================================
+
+validate(API, #pfcp{type = Type, ie = IEs}) ->
+    V = maps:get(Type, maps:get(API, v1_msg_defs())),
+    validate(API, Type, IEs, V).
+
+validate(API, Type, Key, {P, Grp} = Present, IEs) when is_list(IEs) ->
+    case lists:keytake(Key, 1, IEs) of
+	{value, Value, IEsRest}
+	  when P =:= 'M'; P =:= 'O'; P =:= 'C' ->
+	    validate_grp(API, Type, Value, Grp),
+	    validate(API, Type, Key, {'O', Grp}, IEsRest);
+	{value, Value, _} ->
+	    error(badarg, [API, Type, Present, Key, Value]);
+	false when P =:= 'M' ->
+	    error(badarg, [API, Type, Present, Key]);
+	false ->
+	    IEs
+    end;
+validate(API, Type, Key, {P, Grp} = Present, IEs) when is_map(IEs) ->
+    case maps:take(Key, IEs) of
+	{[], _} when P =:= 'M' ->
+	    error(badarg, [API, Type, Present, Key, []]);
+	{Value, IEsRest}
+	  when P =:= 'M'; P =:= 'O'; P =:= 'C' ->
+	    validate_grp(API, Type, Value, Grp),
+	    IEsRest;
+	{Value, _} when Value =/= [] ->
+	    error(badarg, [API, Type, Present, Key, Value]);
+	error when P =:= 'M' ->
+	    error(badarg, [API, Type, Present, Key]);
+	error ->
+	    IEs
+    end.
+
+validate_grp(API, Type, IEs, V)
+  when is_list(IEs) ->
+    lists:foreach(fun(IE) -> validate_grp(API, Type, IE, V) end, IEs);
+validate_grp(API, Type, IE, Atom)
+  when is_atom(Atom) andalso element(1, IE) =:= Atom ->
+    ok;
+validate_grp(API, Type, {_, Group}, V)
+  when (is_list(Group) orelse is_map(Group)) andalso is_map(V) ->
+    validate(API, Type, Group, V);
+validate_grp(API, Type, IE, V) ->
+    error(badarg, [API, Type, IE, V]).
+
+validate(API, Type, IEs, V) ->
+    Rest = maps:fold(validate(API, Type, _, _, _), IEs, V),
+    if is_map(Rest) ->
+	    RRest = maps:filter(fun(_, Value) -> Value =/= [] end, Rest),
+	    maps:size(RRest) /= 0 andalso error(badarg, [API, Type, RRest]),
+	    ok;
+       is_list(Rest) ->
+	    length(Rest) /= 0 andalso error(badarg, [API, Type, Rest]),
+	    ok
+    end.
 
 %%====================================================================
 %% Helpers
@@ -2601,3 +2662,1732 @@ encode_v1_element({Tag, Value}, Acc) when is_binary(Value) ->
 ?PRETTY_PRINT(pretty_print_v1, tp_packet_measurement);
 pretty_print_v1(_, _) ->
     no.
+
+v1_msg_defs() ->
+    #{'N4' =>
+	  #{association_release_request => #{node_id => {'M',node_id}},
+	    association_release_response =>
+		#{node_id => {'M',node_id},pfcp_cause => {'M',pfcp_cause}},
+	    association_setup_request =>
+		#{cp_function_features => {'C',cp_function_features},
+		  node_id => {'M',node_id},
+		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  up_function_features => {'C',up_function_features},
+		  user_plane_ip_resource_information =>
+		      {'O',user_plane_ip_resource_information}},
+	    association_setup_response =>
+		#{cp_function_features => {'C',cp_function_features},
+		  node_id => {'M',node_id},
+		  pfcp_cause => {'M',pfcp_cause},
+		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  up_function_features => {'C',up_function_features},
+		  user_plane_ip_resource_information =>
+		      {'O',user_plane_ip_resource_information}},
+	    association_update_request =>
+		#{cp_function_features => {'O',cp_function_features},
+		  graceful_release_period => {'O',graceful_release_period},
+		  node_id => {'M',node_id},
+		  pfcp_association_release_request => {'O',pfcp_association_release_request},
+		  up_function_features => {'O',up_function_features},
+		  user_plane_ip_resource_information =>
+		      {'O',user_plane_ip_resource_information}},
+	    association_update_response =>
+		#{cp_function_features => {'O',cp_function_features},
+		  node_id => {'M',node_id},
+		  pfcp_cause => {'M',pfcp_cause},
+		  up_function_features => {'O',up_function_features}},
+	    heartbeat_request => #{recovery_time_stamp => {'M',recovery_time_stamp}},
+	    heartbeat_response => #{recovery_time_stamp => {'M',recovery_time_stamp}},
+	    node_report_request =>
+		#{node_id => {'M',node_id},
+		  node_report_type => {'M',node_report_type},
+		  user_plane_path_failure_report =>
+		      {'C',#{remote_gtp_u_peer => {'M',remote_gtp_u_peer}}}},
+	    node_report_response =>
+		#{node_id => {'M',node_id},
+		  offending_ie => {'C',offending_ie},
+		  pfcp_cause => {'M',pfcp_cause}},
+	    pfd_management_request =>
+		#{'application_id\'s_pfds' =>
+		      {'M',
+			  #{application_id => {'M',application_id},
+			    pfd_context => {'M',#{pfd_contents => {'M',pfd_contents}}}}}},
+	    pfd_management_response =>
+		#{offending_ie => {'M',offending_ie},pfcp_cause => {'M',pfcp_cause}},
+	    session_deletion_request => #{},
+	    session_deletion_response =>
+		#{load_control_information => {'O',load_control_information},
+		  offending_ie => {'C',offending_ie},
+		  overload_control_information => {'O',overload_control_information},
+		  pfcp_cause => {'M',pfcp_cause},
+		  usage_report_sdr =>
+		      {'C',
+			  #{duration_measurement => {'C',duration_measurement},
+			    end_time => {'C',end_time},
+			    ethernet_traffic_information =>
+				{'C',ethernet_traffic_information},
+			    start_time => {'C',start_time},
+			    time_of_first_packet => {'C',time_of_first_packet},
+			    time_of_last_packet => {'C',time_of_last_packet},
+			    ur_seqn => {'M',ur_seqn},
+			    urr_id => {'M',urr_id},
+			    usage_information => {'C',usage_information},
+			    usage_report_trigger => {'M',usage_report_trigger},
+			    volume_measurement => {'C',volume_measurement}}}},
+	    session_establishment_request =>
+		#{create_bar =>
+		      {'O',
+			  #{bar_id => {'M',bar_id},
+			    suggested_buffering_packets_count =>
+				{'C',suggested_buffering_packets_count}}},
+		  create_far =>
+		      {'M',
+			  #{apply_action => {'M',apply_action},
+			    bar_id => {'O',bar_id},
+			    duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    far_id => {'M',far_id},
+			    forwarding_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'O',header_enrichment},
+				      network_instance => {'O',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      proxying => {'C',proxying},
+				      redirect_information => {'C',redirect_information},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}}}},
+		  create_pdr =>
+		      {'M',
+			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			    far_id => {'C',far_id},
+			    outer_header_removal => {'C',outer_header_removal},
+			    pdi =>
+				{'M',
+				    #{application_id => {'O',application_id},
+				      ethernet_packet_filter =>
+					  {'O',
+					      #{c_tag => {'O',c_tag},
+						ethernet_filter_id =>
+						    {'C',ethernet_filter_id},
+						ethernet_filter_properties =>
+						    {'C',ethernet_filter_properties},
+						ethertype => {'O',ethertype},
+						mac_address => {'O',mac_address},
+						s_tag => {'O',s_tag},
+						sdf_filter => {'O',sdf_filter}}},
+				      ethernet_pdu_session_information =>
+					  {'O',ethernet_pdu_session_information},
+				      f_teid => {'O',f_teid},
+				      framed_ipv6_route => {'O',framed_ipv6_route},
+				      framed_route => {'O',framed_route},
+				      framed_routing => {'O',framed_routing},
+				      network_instance => {'O',network_instance},
+				      qfi => {'O',qfi},
+				      sdf_filter => {'O',sdf_filter},
+				      source_interface => {'M',source_interface},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      ue_ip_address => {'O',ue_ip_address}}},
+			    pdr_id => {'M',pdr_id},
+			    precedence => {'M',precedence},
+			    qer_id => {'C',qer_id},
+			    urr_id => {'C',urr_id}}},
+		  create_qer =>
+		      {'C',
+			  #{averaging_window => {'O',averaging_window},
+			    gate_status => {'M',gate_status},
+			    gbr => {'C',gbr},
+			    mbr => {'C',mbr},
+			    paging_policy_indicator => {'C',paging_policy_indicator},
+			    qer_correlation_id => {'C',qer_correlation_id},
+			    qer_id => {'M',qer_id},
+			    qfi => {'C',qfi},
+			    rqi => {'C',rqi}}},
+		  create_traffic_endpoint =>
+		      {'C',
+			  #{ethernet_pdu_session_information =>
+				{'O',ethernet_pdu_session_information},
+			    f_teid => {'O',f_teid},
+			    framed_ipv6_route => {'O',framed_ipv6_route},
+			    framed_route => {'O',framed_route},
+			    framed_routing => {'O',framed_routing},
+			    network_instance => {'O',network_instance},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'O',ue_ip_address}}},
+		  create_urr =>
+		      {'C',
+			  #{additional_monitoring_time =>
+				{'O',
+				    #{event_quota => {'O',event_quota},
+				      event_threshold => {'O',event_threshold},
+				      monitoring_time => {'M',monitoring_time},
+				      subsequent_time_quota => {'O',subsequent_time_quota},
+				      subsequent_time_threshold =>
+					  {'O',subsequent_time_threshold},
+				      subsequent_volume_quota =>
+					  {'O',subsequent_volume_quota},
+				      subsequent_volume_threshold =>
+					  {'O',subsequent_volume_threshold}}},
+			    dropped_dl_traffic_threshold =>
+				{'C',dropped_dl_traffic_threshold},
+			    ethernet_inactivity_timer => {'C',ethernet_inactivity_timer},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id_ => {'C',linked_urr_id_},
+			    measurement_information => {'C',measurement_information},
+			    measurement_method => {'M',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'O',monitoring_time},
+			    quota_holding_time => {'C',quota_holding_time},
+			    reporting_triggers => {'M',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'O',subsequent_time_quota},
+			    subsequent_time_threshold => {'O',subsequent_time_threshold},
+			    subsequent_volume_quota => {'O',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
+		  f_seid => {'M',f_seid},
+		  node_id => {'M',node_id},
+		  pdn_type => {'C',pdn_type},
+		  trace_information => {'O',trace_information},
+		  user_id => {'O',user_id},
+		  user_plane_inactivity_timer => {'O',user_plane_inactivity_timer}},
+	    session_establishment_response =>
+		#{created_pdr => {'C',#{f_teid => {'C',f_teid},pdr_id => {'M',pdr_id}}},
+		  created_traffic_endpoint =>
+		      {'C',
+			  #{f_teid => {'C',f_teid},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id}}},
+		  f_seid => {'C',f_seid},
+		  failed_rule_id => {'C',failed_rule_id},
+		  load_control_information =>
+		      {'O',
+			  #{metric => {'M',metric},sequence_number => {'M',sequence_number}}},
+		  node_id => {'M',node_id},
+		  offending_ie => {'C',offending_ie},
+		  overload_control_information =>
+		      {'O',
+			  #{metric => {'M',metric},
+			    oci_flags => {'C',oci_flags},
+			    sequence_number => {'M',sequence_number},
+			    timer => {'M',timer}}},
+		  pfcp_cause => {'M',pfcp_cause}},
+	    session_modification_request =>
+		#{create_bar =>
+		      {'O',
+			  #{bar_id => {'M',bar_id},
+			    suggested_buffering_packets_count =>
+				{'C',suggested_buffering_packets_count}}},
+		  create_far =>
+		      {'C',
+			  #{apply_action => {'M',apply_action},
+			    bar_id => {'O',bar_id},
+			    duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    far_id => {'M',far_id},
+			    forwarding_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'O',header_enrichment},
+				      network_instance => {'O',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      proxying => {'C',proxying},
+				      redirect_information => {'C',redirect_information},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}}}},
+		  create_pdr =>
+		      {'C',
+			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			    far_id => {'C',far_id},
+			    outer_header_removal => {'C',outer_header_removal},
+			    pdi =>
+				{'M',
+				    #{application_id => {'O',application_id},
+				      ethernet_packet_filter =>
+					  {'O',
+					      #{c_tag => {'O',c_tag},
+						ethernet_filter_id =>
+						    {'C',ethernet_filter_id},
+						ethernet_filter_properties =>
+						    {'C',ethernet_filter_properties},
+						ethertype => {'O',ethertype},
+						mac_address => {'O',mac_address},
+						s_tag => {'O',s_tag},
+						sdf_filter => {'O',sdf_filter}}},
+				      ethernet_pdu_session_information =>
+					  {'O',ethernet_pdu_session_information},
+				      f_teid => {'O',f_teid},
+				      framed_ipv6_route => {'O',framed_ipv6_route},
+				      framed_route => {'O',framed_route},
+				      framed_routing => {'O',framed_routing},
+				      network_instance => {'O',network_instance},
+				      qfi => {'O',qfi},
+				      sdf_filter => {'O',sdf_filter},
+				      source_interface => {'M',source_interface},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      ue_ip_address => {'O',ue_ip_address}}},
+			    pdr_id => {'M',pdr_id},
+			    precedence => {'M',precedence},
+			    qer_id => {'C',qer_id},
+			    urr_id => {'C',urr_id}}},
+		  create_qer =>
+		      {'C',
+			  #{averaging_window => {'O',averaging_window},
+			    gate_status => {'M',gate_status},
+			    gbr => {'C',gbr},
+			    mbr => {'C',mbr},
+			    paging_policy_indicator => {'C',paging_policy_indicator},
+			    qer_correlation_id => {'C',qer_correlation_id},
+			    qer_id => {'M',qer_id},
+			    qfi => {'C',qfi},
+			    rqi => {'C',rqi}}},
+		  create_traffic_endpoint =>
+		      {'C',
+			  #{ethernet_pdu_session_information =>
+				{'O',ethernet_pdu_session_information},
+			    f_teid => {'O',f_teid},
+			    framed_ipv6_route => {'O',framed_ipv6_route},
+			    framed_route => {'O',framed_route},
+			    framed_routing => {'O',framed_routing},
+			    network_instance => {'O',network_instance},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'O',ue_ip_address}}},
+		  create_urr =>
+		      {'C',
+			  #{additional_monitoring_time =>
+				{'O',
+				    #{event_quota => {'O',event_quota},
+				      event_threshold => {'O',event_threshold},
+				      monitoring_time => {'M',monitoring_time},
+				      subsequent_time_quota => {'O',subsequent_time_quota},
+				      subsequent_time_threshold =>
+					  {'O',subsequent_time_threshold},
+				      subsequent_volume_quota =>
+					  {'O',subsequent_volume_quota},
+				      subsequent_volume_threshold =>
+					  {'O',subsequent_volume_threshold}}},
+			    dropped_dl_traffic_threshold =>
+				{'C',dropped_dl_traffic_threshold},
+			    ethernet_inactivity_timer => {'C',ethernet_inactivity_timer},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id_ => {'C',linked_urr_id_},
+			    measurement_information => {'C',measurement_information},
+			    measurement_method => {'M',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'O',monitoring_time},
+			    quota_holding_time => {'C',quota_holding_time},
+			    reporting_triggers => {'M',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'O',subsequent_time_quota},
+			    subsequent_time_threshold => {'O',subsequent_time_threshold},
+			    subsequent_volume_quota => {'O',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
+		  f_seid => {'C',f_seid},
+		  query_urr => {'C',#{urr_id => {'M',urr_id}}},
+		  query_urr_reference => {'O',query_urr_reference},
+		  remove_bar => {'C',#{bar_id => {'M',bar_id}}},
+		  remove_far => {'C',#{far_id => {'M',far_id}}},
+		  remove_pdr => {'C',#{pdr_id => {'M',pdr_id}}},
+		  remove_qer => {'C',#{qer_id => {'M',qer_id}}},
+		  remove_traffic_endpoint =>
+		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
+		  remove_urr => {'C',#{urr_id => {'M',urr_id}}},
+		  sxsmreq_flags => {'C',sxsmreq_flags},
+		  trace_information => {'O',trace_information},
+		  update_bar =>
+		      {'C',
+			  #{bar_id => {'M',bar_id},
+			    downlink_data_notification_delay =>
+				{'C',downlink_data_notification_delay},
+			    suggested_buffering_packets_count =>
+				{'C',suggested_buffering_packets_count}}},
+		  update_far =>
+		      {'C',
+			  #{apply_action => {'C',apply_action},
+			    bar_id => {'C',bar_id},
+			    far_id => {'M',far_id},
+			    update_duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'C',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    update_forwarding_parameters =>
+				{'C',
+				    #{destination_interface => {'C',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'C',header_enrichment},
+				      network_instance => {'C',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      redirect_information => {'C',redirect_information},
+				      sxsmreq_flags => {'C',sxsmreq_flags},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}}}},
+		  update_pdr =>
+		      {'C',
+			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			    deactivate_predefined_rules_ =>
+				{'C',deactivate_predefined_rules_},
+			    far_id => {'C',far_id},
+			    outer_header_removal => {'C',outer_header_removal},
+			    pdi =>
+				{'C',
+				    #{application_id => {'O',application_id},
+				      ethernet_packet_filter =>
+					  {'O',
+					      #{c_tag => {'O',c_tag},
+						ethernet_filter_id =>
+						    {'C',ethernet_filter_id},
+						ethernet_filter_properties =>
+						    {'C',ethernet_filter_properties},
+						ethertype => {'O',ethertype},
+						mac_address => {'O',mac_address},
+						s_tag => {'O',s_tag},
+						sdf_filter => {'O',sdf_filter}}},
+				      ethernet_pdu_session_information =>
+					  {'O',ethernet_pdu_session_information},
+				      f_teid => {'O',f_teid},
+				      framed_ipv6_route => {'O',framed_ipv6_route},
+				      framed_route => {'O',framed_route},
+				      framed_routing => {'O',framed_routing},
+				      network_instance => {'O',network_instance},
+				      qfi => {'O',qfi},
+				      sdf_filter => {'O',sdf_filter},
+				      source_interface => {'M',source_interface},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      ue_ip_address => {'O',ue_ip_address}}},
+			    pdr_id => {'M',pdr_id},
+			    precedence => {'C',precedence},
+			    qer_id => {'C',qer_id},
+			    urr_id => {'C',urr_id}}},
+		  update_qer =>
+		      {'C',
+			  #{averaging_window => {'O',averaging_window},
+			    gate_status => {'C',gate_status},
+			    gbr => {'C',gbr},
+			    mbr => {'C',mbr},
+			    paging_policy_indicator => {'C',paging_policy_indicator},
+			    qer_correlation_id => {'C',qer_correlation_id},
+			    qer_id => {'M',qer_id},
+			    qfi => {'C',qfi},
+			    rqi => {'C',rqi}}},
+		  update_traffic_endpoint =>
+		      {'C',
+			  #{f_teid => {'C',f_teid},
+			    framed_ipv6_route => {'C',framed_ipv6_route},
+			    framed_route => {'C',framed_route},
+			    framed_routing => {'C',framed_routing},
+			    network_instance => {'O',network_instance},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'C',ue_ip_address}}},
+		  update_urr =>
+		      {'C',
+			  #{additional_monitoring_time => {'O',additional_monitoring_time},
+			    dropped_dl_traffic_threshold =>
+				{'C',dropped_dl_traffic_threshold},
+			    ethernet_inactivity_timer => {'C',ethernet_inactivity_timer},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id_ => {'C',linked_urr_id_},
+			    measurement_information => {'C',measurement_information},
+			    measurement_method => {'C',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'C',monitoring_time},
+			    quota_holding_time => {'C',quota_holding_time},
+			    reporting_triggers => {'C',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'C',subsequent_time_quota},
+			    subsequent_time_threshold => {'C',subsequent_time_threshold},
+			    subsequent_volume_quota => {'C',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'C',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
+		  user_plane_inactivity_timer => {'C',user_plane_inactivity_timer}},
+	    session_modification_response =>
+		#{additional_usage_reports_information =>
+		      {'C',additional_usage_reports_information},
+		  created_pdr => {'C',created_pdr},
+		  created_traffic_endpoint => {'C',created_traffic_endpoint},
+		  failed_rule_id => {'C',failed_rule_id},
+		  load_control_information => {'O',load_control_information},
+		  offending_ie => {'C',offending_ie},
+		  overload_control_information => {'O',overload_control_information},
+		  pfcp_cause => {'M',pfcp_cause},
+		  usage_report_smr =>
+		      {'C',
+			  #{duration_measurement => {'C',duration_measurement},
+			    end_time => {'C',end_time},
+			    ethernet_traffic_information =>
+				{'C',ethernet_traffic_information},
+			    query_urr_reference => {'C',query_urr_reference},
+			    start_time => {'C',start_time},
+			    time_of_first_packet => {'C',time_of_first_packet},
+			    time_of_last_packet => {'C',time_of_last_packet},
+			    ur_seqn => {'M',ur_seqn},
+			    urr_id => {'M',urr_id},
+			    usage_information => {'C',usage_information},
+			    usage_report_trigger => {'M',usage_report_trigger},
+			    volume_measurement => {'C',volume_measurement}}}},
+	    session_report_request =>
+		#{additional_usage_reports_information =>
+		      {'C',additional_usage_reports_information},
+		  downlink_data_report =>
+		      {'C',
+			  #{downlink_data_service_information =>
+				{'C',downlink_data_service_information},
+			    pdr_id => {'M',pdr_id}}},
+		  error_indication_report => {'C',#{f_teid => {'M',f_teid}}},
+		  load_control_information => {'O',load_control_information},
+		  overload_control_information => {'O',overload_control_information},
+		  report_type => {'M',report_type},
+		  usage_report_srr =>
+		      {'C',
+			  #{application_detection_information =>
+				{'C',
+				    #{application_id => {'M',application_id},
+				      application_instance_id =>
+					  {'C',application_instance_id},
+				      flow_information => {'C',flow_information}}},
+			    duration_measurement => {'C',duration_measurement},
+			    end_time => {'C',end_time},
+			    ethernet_traffic_information =>
+				{'C',
+				    #{mac_addresses_detected => {'C',mac_addresses_detected},
+				      mac_addresses_removed => {'C',mac_addresses_removed}}},
+			    event_time_stamp_ => {'C',event_time_stamp_},
+			    network_instance => {'C',network_instance},
+			    query_urr_reference => {'C',query_urr_reference},
+			    start_time => {'C',start_time},
+			    time_of_first_packet => {'C',time_of_first_packet},
+			    time_of_last_packet => {'C',time_of_last_packet},
+			    ue_ip_address => {'C',ue_ip_address},
+			    ur_seqn => {'M',ur_seqn},
+			    urr_id => {'M',urr_id},
+			    usage_information => {'C',usage_information},
+			    usage_report_trigger => {'M',usage_report_trigger},
+			    volume_measurement => {'C',volume_measurement}}}},
+	    session_report_response =>
+		#{offending_ie => {'C',offending_ie},
+		  pfcp_cause => {'M',pfcp_cause},
+		  sxsrrsp_flags => {'C',sxsrrsp_flags},
+		  update_bar =>
+		      {'C',
+			  #{bar_id => {'M',bar_id},
+			    dl_buffering_duration => {'C',dl_buffering_duration},
+			    dl_buffering_suggested_packet_count =>
+				{'O',dl_buffering_suggested_packet_count},
+			    downlink_data_notification_delay =>
+				{'C',downlink_data_notification_delay},
+			    suggested_buffering_packets_count =>
+				{'C',suggested_buffering_packets_count}}}},
+	    version_not_supported_response => #{}},
+      'Sxa' =>
+	  #{association_release_request => #{node_id => {'M',node_id}},
+	    association_release_response =>
+		#{node_id => {'M',node_id},pfcp_cause => {'M',pfcp_cause}},
+	    association_setup_request =>
+		#{cp_function_features => {'C',cp_function_features},
+		  node_id => {'M',node_id},
+		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  up_function_features => {'C',up_function_features},
+		  user_plane_ip_resource_information =>
+		      {'O',user_plane_ip_resource_information}},
+	    association_setup_response =>
+		#{cp_function_features => {'C',cp_function_features},
+		  node_id => {'M',node_id},
+		  pfcp_cause => {'M',pfcp_cause},
+		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  up_function_features => {'C',up_function_features},
+		  user_plane_ip_resource_information =>
+		      {'O',user_plane_ip_resource_information}},
+	    association_update_request =>
+		#{cp_function_features => {'O',cp_function_features},
+		  graceful_release_period => {'O',graceful_release_period},
+		  node_id => {'M',node_id},
+		  pfcp_association_release_request => {'O',pfcp_association_release_request},
+		  up_function_features => {'O',up_function_features},
+		  user_plane_ip_resource_information =>
+		      {'O',user_plane_ip_resource_information}},
+	    association_update_response =>
+		#{cp_function_features => {'O',cp_function_features},
+		  node_id => {'M',node_id},
+		  pfcp_cause => {'M',pfcp_cause},
+		  up_function_features => {'O',up_function_features}},
+	    heartbeat_request => #{recovery_time_stamp => {'M',recovery_time_stamp}},
+	    heartbeat_response => #{recovery_time_stamp => {'M',recovery_time_stamp}},
+	    node_report_request =>
+		#{node_id => {'M',node_id},
+		  node_report_type => {'M',node_report_type},
+		  user_plane_path_failure_report =>
+		      {'C',#{remote_gtp_u_peer => {'M',remote_gtp_u_peer}}}},
+	    node_report_response =>
+		#{node_id => {'M',node_id},
+		  offending_ie => {'C',offending_ie},
+		  pfcp_cause => {'M',pfcp_cause}},
+	    session_deletion_request => #{},
+	    session_deletion_response =>
+		#{load_control_information => {'O',load_control_information},
+		  offending_ie => {'C',offending_ie},
+		  overload_control_information => {'O',overload_control_information},
+		  pfcp_cause => {'M',pfcp_cause},
+		  usage_report_sdr =>
+		      {'C',
+			  #{duration_measurement => {'C',duration_measurement},
+			    end_time => {'C',end_time},
+			    start_time => {'C',start_time},
+			    ur_seqn => {'M',ur_seqn},
+			    urr_id => {'M',urr_id},
+			    usage_information => {'C',usage_information},
+			    usage_report_trigger => {'M',usage_report_trigger},
+			    volume_measurement => {'C',volume_measurement}}}},
+	    session_establishment_request =>
+		#{create_bar =>
+		      {'O',
+			  #{bar_id => {'M',bar_id},
+			    downlink_data_notification_delay =>
+				{'C',downlink_data_notification_delay}}},
+		  create_far =>
+		      {'M',
+			  #{apply_action => {'M',apply_action},
+			    bar_id => {'O',bar_id},
+			    duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    far_id => {'M',far_id},
+			    forwarding_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      network_instance => {'O',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}}}},
+		  create_pdr =>
+		      {'M',
+			  #{far_id => {'C',far_id},
+			    outer_header_removal => {'C',outer_header_removal},
+			    pdi =>
+				{'M',
+				    #{f_teid => {'O',f_teid},
+				      network_instance => {'O',network_instance},
+				      source_interface => {'M',source_interface},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id}}},
+			    pdr_id => {'M',pdr_id},
+			    urr_id => {'C',urr_id}}},
+		  create_traffic_endpoint =>
+		      {'C',
+			  #{f_teid => {'O',f_teid},
+			    network_instance => {'O',network_instance},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id}}},
+		  create_urr =>
+		      {'C',
+			  #{additional_monitoring_time =>
+				{'O',
+				    #{monitoring_time => {'M',monitoring_time},
+				      subsequent_time_threshold =>
+					  {'O',subsequent_time_threshold},
+				      subsequent_volume_threshold =>
+					  {'O',subsequent_volume_threshold}}},
+			    dropped_dl_traffic_threshold =>
+				{'C',dropped_dl_traffic_threshold},
+			    measurement_method => {'M',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'O',monitoring_time},
+			    reporting_triggers => {'M',reporting_triggers},
+			    subsequent_time_threshold => {'O',subsequent_time_threshold},
+			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_threshold => {'C',volume_threshold}}},
+		  f_seid => {'M',f_seid},
+		  node_id => {'M',node_id},
+		  pdn_type => {'C',pdn_type},
+		  trace_information => {'O',trace_information},
+		  user_id => {'O',user_id}},
+	    session_establishment_response =>
+		#{created_pdr => {'C',#{f_teid => {'C',f_teid},pdr_id => {'M',pdr_id}}},
+		  created_traffic_endpoint =>
+		      {'C',
+			  #{f_teid => {'C',f_teid},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id}}},
+		  f_seid => {'C',f_seid},
+		  failed_rule_id => {'C',failed_rule_id},
+		  fq_csid => {'C',fq_csid},
+		  load_control_information =>
+		      {'O',
+			  #{metric => {'M',metric},sequence_number => {'M',sequence_number}}},
+		  node_id => {'M',node_id},
+		  offending_ie => {'C',offending_ie},
+		  overload_control_information =>
+		      {'O',
+			  #{metric => {'M',metric},
+			    oci_flags => {'C',oci_flags},
+			    sequence_number => {'M',sequence_number},
+			    timer => {'M',timer}}},
+		  pfcp_cause => {'M',pfcp_cause}},
+	    session_modification_request =>
+		#{create_bar =>
+		      {'O',
+			  #{bar_id => {'M',bar_id},
+			    downlink_data_notification_delay =>
+				{'C',downlink_data_notification_delay}}},
+		  create_far =>
+		      {'C',
+			  #{apply_action => {'M',apply_action},
+			    bar_id => {'O',bar_id},
+			    duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    far_id => {'M',far_id},
+			    forwarding_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      network_instance => {'O',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}}}},
+		  create_pdr =>
+		      {'C',
+			  #{far_id => {'C',far_id},
+			    outer_header_removal => {'C',outer_header_removal},
+			    pdi =>
+				{'M',
+				    #{f_teid => {'O',f_teid},
+				      network_instance => {'O',network_instance},
+				      source_interface => {'M',source_interface},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id}}},
+			    pdr_id => {'M',pdr_id},
+			    urr_id => {'C',urr_id}}},
+		  create_traffic_endpoint =>
+		      {'C',
+			  #{f_teid => {'O',f_teid},
+			    network_instance => {'O',network_instance},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id}}},
+		  create_urr =>
+		      {'C',
+			  #{additional_monitoring_time =>
+				{'O',
+				    #{monitoring_time => {'M',monitoring_time},
+				      subsequent_time_threshold =>
+					  {'O',subsequent_time_threshold},
+				      subsequent_volume_threshold =>
+					  {'O',subsequent_volume_threshold}}},
+			    dropped_dl_traffic_threshold =>
+				{'C',dropped_dl_traffic_threshold},
+			    measurement_method => {'M',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'O',monitoring_time},
+			    reporting_triggers => {'M',reporting_triggers},
+			    subsequent_time_threshold => {'O',subsequent_time_threshold},
+			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_threshold => {'C',volume_threshold}}},
+		  f_seid => {'C',f_seid},
+		  fq_csid => {'C',fq_csid},
+		  query_urr => {'C',#{urr_id => {'M',urr_id}}},
+		  query_urr_reference => {'O',query_urr_reference},
+		  remove_bar => {'C',#{bar_id => {'M',bar_id}}},
+		  remove_far => {'C',#{far_id => {'M',far_id}}},
+		  remove_pdr => {'C',#{pdr_id => {'M',pdr_id}}},
+		  remove_traffic_endpoint =>
+		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
+		  remove_urr => {'C',#{urr_id => {'M',urr_id}}},
+		  sxsmreq_flags => {'C',sxsmreq_flags},
+		  trace_information => {'O',trace_information},
+		  update_bar =>
+		      {'C',
+			  #{bar_id => {'M',bar_id},
+			    downlink_data_notification_delay =>
+				{'C',downlink_data_notification_delay}}},
+		  update_far =>
+		      {'C',
+			  #{apply_action => {'C',apply_action},
+			    bar_id => {'C',bar_id},
+			    far_id => {'M',far_id},
+			    update_duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'C',destination_interface},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    update_forwarding_parameters =>
+				{'C',
+				    #{destination_interface => {'C',destination_interface},
+				      network_instance => {'C',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      sxsmreq_flags => {'C',sxsmreq_flags},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}}}},
+		  update_pdr =>
+		      {'C',
+			  #{far_id => {'C',far_id},
+			    outer_header_removal => {'C',outer_header_removal},
+			    pdi =>
+				{'C',
+				    #{f_teid => {'O',f_teid},
+				      network_instance => {'O',network_instance},
+				      source_interface => {'M',source_interface},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id}}},
+			    pdr_id => {'M',pdr_id},
+			    urr_id => {'C',urr_id}}},
+		  update_traffic_endpoint =>
+		      {'C',
+			  #{f_teid => {'C',f_teid},
+			    network_instance => {'O',network_instance},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id}}},
+		  update_urr =>
+		      {'C',
+			  #{additional_monitoring_time => {'O',additional_monitoring_time},
+			    dropped_dl_traffic_threshold =>
+				{'C',dropped_dl_traffic_threshold},
+			    measurement_method => {'C',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'C',monitoring_time},
+			    reporting_triggers => {'C',reporting_triggers},
+			    subsequent_time_threshold => {'C',subsequent_time_threshold},
+			    subsequent_volume_threshold => {'C',subsequent_volume_threshold},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_threshold => {'C',volume_threshold}}}},
+	    session_modification_response =>
+		#{additional_usage_reports_information =>
+		      {'C',additional_usage_reports_information},
+		  created_pdr => {'C',created_pdr},
+		  created_traffic_endpoint => {'C',created_traffic_endpoint},
+		  failed_rule_id => {'C',failed_rule_id},
+		  load_control_information => {'O',load_control_information},
+		  offending_ie => {'C',offending_ie},
+		  overload_control_information => {'O',overload_control_information},
+		  pfcp_cause => {'M',pfcp_cause},
+		  usage_report_smr =>
+		      {'C',
+			  #{duration_measurement => {'C',duration_measurement},
+			    end_time => {'C',end_time},
+			    query_urr_reference => {'C',query_urr_reference},
+			    start_time => {'C',start_time},
+			    ur_seqn => {'M',ur_seqn},
+			    urr_id => {'M',urr_id},
+			    usage_information => {'C',usage_information},
+			    usage_report_trigger => {'M',usage_report_trigger},
+			    volume_measurement => {'C',volume_measurement}}}},
+	    session_report_request =>
+		#{additional_usage_reports_information =>
+		      {'C',additional_usage_reports_information},
+		  downlink_data_report =>
+		      {'C',
+			  #{downlink_data_service_information =>
+				{'C',downlink_data_service_information},
+			    pdr_id => {'M',pdr_id}}},
+		  error_indication_report => {'C',#{f_teid => {'M',f_teid}}},
+		  load_control_information => {'O',load_control_information},
+		  overload_control_information => {'O',overload_control_information},
+		  report_type => {'M',report_type},
+		  usage_report_srr =>
+		      {'C',
+			  #{duration_measurement => {'C',duration_measurement},
+			    end_time => {'C',end_time},
+			    query_urr_reference => {'C',query_urr_reference},
+			    start_time => {'C',start_time},
+			    ur_seqn => {'M',ur_seqn},
+			    urr_id => {'M',urr_id},
+			    usage_information => {'C',usage_information},
+			    usage_report_trigger => {'M',usage_report_trigger},
+			    volume_measurement => {'C',volume_measurement}}}},
+	    session_report_response =>
+		#{offending_ie => {'C',offending_ie},
+		  pfcp_cause => {'M',pfcp_cause},
+		  sxsrrsp_flags => {'C',sxsrrsp_flags},
+		  update_bar =>
+		      {'C',
+			  #{bar_id => {'M',bar_id},
+			    dl_buffering_duration => {'C',dl_buffering_duration},
+			    dl_buffering_suggested_packet_count =>
+				{'O',dl_buffering_suggested_packet_count},
+			    downlink_data_notification_delay =>
+				{'C',downlink_data_notification_delay}}}},
+	    session_set_deletion_request =>
+		#{fq_csid => {'C',fq_csid},node_id => {'M',node_id}},
+	    session_set_deletion_response =>
+		#{node_id => {'M',node_id},
+		  offending_ie => {'C',offending_ie},
+		  pfcp_cause => {'M',pfcp_cause}},
+	    version_not_supported_response => #{}},
+      'Sxb' =>
+	  #{association_release_request => #{node_id => {'M',node_id}},
+	    association_release_response =>
+		#{node_id => {'M',node_id},pfcp_cause => {'M',pfcp_cause}},
+	    association_setup_request =>
+		#{cp_function_features => {'C',cp_function_features},
+		  node_id => {'M',node_id},
+		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  up_function_features => {'C',up_function_features},
+		  user_plane_ip_resource_information =>
+		      {'O',user_plane_ip_resource_information}},
+	    association_setup_response =>
+		#{cp_function_features => {'C',cp_function_features},
+		  node_id => {'M',node_id},
+		  pfcp_cause => {'M',pfcp_cause},
+		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  up_function_features => {'C',up_function_features},
+		  user_plane_ip_resource_information =>
+		      {'O',user_plane_ip_resource_information}},
+	    association_update_request =>
+		#{cp_function_features => {'O',cp_function_features},
+		  graceful_release_period => {'O',graceful_release_period},
+		  node_id => {'M',node_id},
+		  pfcp_association_release_request => {'O',pfcp_association_release_request},
+		  up_function_features => {'O',up_function_features},
+		  user_plane_ip_resource_information =>
+		      {'O',user_plane_ip_resource_information}},
+	    association_update_response =>
+		#{cp_function_features => {'O',cp_function_features},
+		  node_id => {'M',node_id},
+		  pfcp_cause => {'M',pfcp_cause},
+		  up_function_features => {'O',up_function_features}},
+	    heartbeat_request => #{recovery_time_stamp => {'M',recovery_time_stamp}},
+	    heartbeat_response => #{recovery_time_stamp => {'M',recovery_time_stamp}},
+	    node_report_request =>
+		#{node_id => {'M',node_id},
+		  node_report_type => {'M',node_report_type},
+		  user_plane_path_failure_report =>
+		      {'C',#{remote_gtp_u_peer => {'M',remote_gtp_u_peer}}}},
+	    node_report_response =>
+		#{node_id => {'M',node_id},
+		  offending_ie => {'C',offending_ie},
+		  pfcp_cause => {'M',pfcp_cause}},
+	    pfd_management_request =>
+		#{'application_id\'s_pfds' =>
+		      {'M',
+			  #{application_id => {'M',application_id},
+			    pfd_context => {'M',#{pfd_contents => {'M',pfd_contents}}}}}},
+	    pfd_management_response =>
+		#{offending_ie => {'M',offending_ie},pfcp_cause => {'M',pfcp_cause}},
+	    session_deletion_request => #{},
+	    session_deletion_response =>
+		#{load_control_information => {'O',load_control_information},
+		  offending_ie => {'C',offending_ie},
+		  overload_control_information => {'O',overload_control_information},
+		  pfcp_cause => {'M',pfcp_cause},
+		  usage_report_sdr =>
+		      {'C',
+			  #{duration_measurement => {'C',duration_measurement},
+			    end_time => {'C',end_time},
+			    start_time => {'C',start_time},
+			    time_of_first_packet => {'C',time_of_first_packet},
+			    time_of_last_packet => {'C',time_of_last_packet},
+			    ur_seqn => {'M',ur_seqn},
+			    urr_id => {'M',urr_id},
+			    usage_information => {'C',usage_information},
+			    usage_report_trigger => {'M',usage_report_trigger},
+			    volume_measurement => {'C',volume_measurement}}}},
+	    session_establishment_request =>
+		#{create_far =>
+		      {'M',
+			  #{apply_action => {'M',apply_action},
+			    duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    far_id => {'M',far_id},
+			    forwarding_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'O',header_enrichment},
+				      network_instance => {'O',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      redirect_information => {'C',redirect_information},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}}}},
+		  create_pdr =>
+		      {'M',
+			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			    far_id => {'C',far_id},
+			    outer_header_removal => {'C',outer_header_removal},
+			    pdi =>
+				{'M',
+				    #{application_id => {'O',application_id},
+				      f_teid => {'O',f_teid},
+				      framed_ipv6_route => {'O',framed_ipv6_route},
+				      framed_route => {'O',framed_route},
+				      framed_routing => {'O',framed_routing},
+				      network_instance => {'O',network_instance},
+				      sdf_filter => {'O',sdf_filter},
+				      source_interface => {'M',source_interface},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      ue_ip_address => {'O',ue_ip_address}}},
+			    pdr_id => {'M',pdr_id},
+			    precedence => {'M',precedence},
+			    qer_id => {'C',qer_id},
+			    urr_id => {'C',urr_id}}},
+		  create_qer =>
+		      {'C',
+			  #{dl_flow_level_marking => {'C',dl_flow_level_marking},
+			    gate_status => {'M',gate_status},
+			    gbr => {'C',gbr},
+			    mbr => {'C',mbr},
+			    packet_rate => {'C',packet_rate},
+			    qer_correlation_id => {'C',qer_correlation_id},
+			    qer_id => {'M',qer_id}}},
+		  create_traffic_endpoint =>
+		      {'C',
+			  #{f_teid => {'O',f_teid},
+			    framed_ipv6_route => {'O',framed_ipv6_route},
+			    framed_route => {'O',framed_route},
+			    framed_routing => {'O',framed_routing},
+			    network_instance => {'O',network_instance},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'O',ue_ip_address}}},
+		  create_urr =>
+		      {'C',
+			  #{additional_monitoring_time =>
+				{'O',
+				    #{event_quota => {'O',event_quota},
+				      event_threshold => {'O',event_threshold},
+				      monitoring_time => {'M',monitoring_time},
+				      subsequent_time_quota => {'O',subsequent_time_quota},
+				      subsequent_time_threshold =>
+					  {'O',subsequent_time_threshold},
+				      subsequent_volume_quota =>
+					  {'O',subsequent_volume_quota},
+				      subsequent_volume_threshold =>
+					  {'O',subsequent_volume_threshold}}},
+			    aggregated_urrs =>
+				{'C',
+				    #{aggregated_urr_id => {'M',aggregated_urr_id},
+				      multiplier => {'M',multiplier}}},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id_ => {'C',linked_urr_id_},
+			    measurement_information => {'C',measurement_information},
+			    measurement_method => {'M',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'O',monitoring_time},
+			    quota_holding_time => {'C',quota_holding_time},
+			    reporting_triggers => {'M',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'O',subsequent_time_quota},
+			    subsequent_time_threshold => {'O',subsequent_time_threshold},
+			    subsequent_volume_quota => {'O',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_quota_mechanism => {'C',time_quota_mechanism},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
+		  f_seid => {'M',f_seid},
+		  fq_csid => {'C',fq_csid},
+		  node_id => {'M',node_id},
+		  pdn_type => {'C',pdn_type},
+		  trace_information => {'O',trace_information},
+		  user_id => {'O',user_id},
+		  user_plane_inactivity_timer => {'O',user_plane_inactivity_timer}},
+	    session_establishment_response =>
+		#{created_pdr => {'C',#{f_teid => {'C',f_teid},pdr_id => {'M',pdr_id}}},
+		  created_traffic_endpoint =>
+		      {'C',
+			  #{f_teid => {'C',f_teid},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id}}},
+		  f_seid => {'C',f_seid},
+		  failed_rule_id => {'C',failed_rule_id},
+		  fq_csid => {'C',fq_csid},
+		  load_control_information =>
+		      {'O',
+			  #{metric => {'M',metric},sequence_number => {'M',sequence_number}}},
+		  node_id => {'M',node_id},
+		  offending_ie => {'C',offending_ie},
+		  overload_control_information =>
+		      {'O',
+			  #{metric => {'M',metric},
+			    oci_flags => {'C',oci_flags},
+			    sequence_number => {'M',sequence_number},
+			    timer => {'M',timer}}},
+		  pfcp_cause => {'M',pfcp_cause}},
+	    session_modification_request =>
+		#{create_far =>
+		      {'C',
+			  #{apply_action => {'M',apply_action},
+			    duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    far_id => {'M',far_id},
+			    forwarding_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'O',header_enrichment},
+				      network_instance => {'O',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      redirect_information => {'C',redirect_information},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}}}},
+		  create_pdr =>
+		      {'C',
+			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			    far_id => {'C',far_id},
+			    outer_header_removal => {'C',outer_header_removal},
+			    pdi =>
+				{'M',
+				    #{application_id => {'O',application_id},
+				      f_teid => {'O',f_teid},
+				      framed_ipv6_route => {'O',framed_ipv6_route},
+				      framed_route => {'O',framed_route},
+				      framed_routing => {'O',framed_routing},
+				      network_instance => {'O',network_instance},
+				      sdf_filter => {'O',sdf_filter},
+				      source_interface => {'M',source_interface},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      ue_ip_address => {'O',ue_ip_address}}},
+			    pdr_id => {'M',pdr_id},
+			    precedence => {'M',precedence},
+			    qer_id => {'C',qer_id},
+			    urr_id => {'C',urr_id}}},
+		  create_qer =>
+		      {'C',
+			  #{dl_flow_level_marking => {'C',dl_flow_level_marking},
+			    gate_status => {'M',gate_status},
+			    gbr => {'C',gbr},
+			    mbr => {'C',mbr},
+			    packet_rate => {'C',packet_rate},
+			    qer_correlation_id => {'C',qer_correlation_id},
+			    qer_id => {'M',qer_id}}},
+		  create_traffic_endpoint =>
+		      {'C',
+			  #{f_teid => {'O',f_teid},
+			    framed_ipv6_route => {'O',framed_ipv6_route},
+			    framed_route => {'O',framed_route},
+			    framed_routing => {'O',framed_routing},
+			    network_instance => {'O',network_instance},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'O',ue_ip_address}}},
+		  create_urr =>
+		      {'C',
+			  #{additional_monitoring_time =>
+				{'O',
+				    #{event_quota => {'O',event_quota},
+				      event_threshold => {'O',event_threshold},
+				      monitoring_time => {'M',monitoring_time},
+				      subsequent_time_quota => {'O',subsequent_time_quota},
+				      subsequent_time_threshold =>
+					  {'O',subsequent_time_threshold},
+				      subsequent_volume_quota =>
+					  {'O',subsequent_volume_quota},
+				      subsequent_volume_threshold =>
+					  {'O',subsequent_volume_threshold}}},
+			    aggregated_urrs =>
+				{'C',
+				    #{aggregated_urr_id => {'M',aggregated_urr_id},
+				      multiplier => {'M',multiplier}}},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id_ => {'C',linked_urr_id_},
+			    measurement_information => {'C',measurement_information},
+			    measurement_method => {'M',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'O',monitoring_time},
+			    quota_holding_time => {'C',quota_holding_time},
+			    reporting_triggers => {'M',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'O',subsequent_time_quota},
+			    subsequent_time_threshold => {'O',subsequent_time_threshold},
+			    subsequent_volume_quota => {'O',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_quota_mechanism => {'C',time_quota_mechanism},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
+		  f_seid => {'C',f_seid},
+		  fq_csid => {'C',fq_csid},
+		  query_urr => {'C',#{urr_id => {'M',urr_id}}},
+		  query_urr_reference => {'O',query_urr_reference},
+		  remove_far => {'C',#{far_id => {'M',far_id}}},
+		  remove_pdr => {'C',#{pdr_id => {'M',pdr_id}}},
+		  remove_qer => {'C',#{qer_id => {'M',qer_id}}},
+		  remove_traffic_endpoint =>
+		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
+		  remove_urr => {'C',#{urr_id => {'M',urr_id}}},
+		  sxsmreq_flags => {'C',sxsmreq_flags},
+		  trace_information => {'O',trace_information},
+		  update_far =>
+		      {'C',
+			  #{apply_action => {'C',apply_action},
+			    far_id => {'M',far_id},
+			    update_duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'C',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    update_forwarding_parameters =>
+				{'C',
+				    #{destination_interface => {'C',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'C',header_enrichment},
+				      network_instance => {'C',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      redirect_information => {'C',redirect_information},
+				      sxsmreq_flags => {'C',sxsmreq_flags},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}}}},
+		  update_pdr =>
+		      {'C',
+			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			    deactivate_predefined_rules_ =>
+				{'C',deactivate_predefined_rules_},
+			    far_id => {'C',far_id},
+			    outer_header_removal => {'C',outer_header_removal},
+			    pdi =>
+				{'C',
+				    #{application_id => {'O',application_id},
+				      f_teid => {'O',f_teid},
+				      framed_ipv6_route => {'O',framed_ipv6_route},
+				      framed_route => {'O',framed_route},
+				      framed_routing => {'O',framed_routing},
+				      network_instance => {'O',network_instance},
+				      sdf_filter => {'O',sdf_filter},
+				      source_interface => {'M',source_interface},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      ue_ip_address => {'O',ue_ip_address}}},
+			    pdr_id => {'M',pdr_id},
+			    precedence => {'C',precedence},
+			    qer_id => {'C',qer_id},
+			    urr_id => {'C',urr_id}}},
+		  update_qer =>
+		      {'C',
+			  #{dl_flow_level_marking => {'C',dl_flow_level_marking},
+			    gate_status => {'C',gate_status},
+			    gbr => {'C',gbr},
+			    mbr => {'C',mbr},
+			    packet_rate => {'C',packet_rate},
+			    qer_correlation_id => {'C',qer_correlation_id},
+			    qer_id => {'M',qer_id}}},
+		  update_traffic_endpoint =>
+		      {'C',
+			  #{framed_ipv6_route => {'C',framed_ipv6_route},
+			    framed_route => {'C',framed_route},
+			    framed_routing => {'C',framed_routing},
+			    network_instance => {'O',network_instance},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'C',ue_ip_address}}},
+		  update_urr =>
+		      {'C',
+			  #{additional_monitoring_time => {'O',additional_monitoring_time},
+			    aggregated_urrs => {'C',aggregated_urrs},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id_ => {'C',linked_urr_id_},
+			    measurement_information => {'C',measurement_information},
+			    measurement_method => {'C',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'C',monitoring_time},
+			    quota_holding_time => {'C',quota_holding_time},
+			    reporting_triggers => {'C',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'C',subsequent_time_quota},
+			    subsequent_time_threshold => {'C',subsequent_time_threshold},
+			    subsequent_volume_quota => {'C',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'C',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_quota_mechanism => {'C',time_quota_mechanism},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
+		  user_plane_inactivity_timer => {'C',user_plane_inactivity_timer}},
+	    session_modification_response =>
+		#{additional_usage_reports_information =>
+		      {'C',additional_usage_reports_information},
+		  created_pdr => {'C',created_pdr},
+		  created_traffic_endpoint => {'C',created_traffic_endpoint},
+		  failed_rule_id => {'C',failed_rule_id},
+		  load_control_information => {'O',load_control_information},
+		  offending_ie => {'C',offending_ie},
+		  overload_control_information => {'O',overload_control_information},
+		  pfcp_cause => {'M',pfcp_cause},
+		  usage_report_smr =>
+		      {'C',
+			  #{duration_measurement => {'C',duration_measurement},
+			    end_time => {'C',end_time},
+			    query_urr_reference => {'C',query_urr_reference},
+			    start_time => {'C',start_time},
+			    time_of_first_packet => {'C',time_of_first_packet},
+			    time_of_last_packet => {'C',time_of_last_packet},
+			    ur_seqn => {'M',ur_seqn},
+			    urr_id => {'M',urr_id},
+			    usage_information => {'C',usage_information},
+			    usage_report_trigger => {'M',usage_report_trigger},
+			    volume_measurement => {'C',volume_measurement}}}},
+	    session_report_request =>
+		#{additional_usage_reports_information =>
+		      {'C',additional_usage_reports_information},
+		  error_indication_report => {'C',#{f_teid => {'M',f_teid}}},
+		  load_control_information => {'O',load_control_information},
+		  overload_control_information => {'O',overload_control_information},
+		  report_type => {'M',report_type},
+		  usage_report_srr =>
+		      {'C',
+			  #{application_detection_information =>
+				{'C',
+				    #{application_id => {'M',application_id},
+				      application_instance_id =>
+					  {'C',application_instance_id},
+				      flow_information => {'C',flow_information}}},
+			    duration_measurement => {'C',duration_measurement},
+			    end_time => {'C',end_time},
+			    event_time_stamp_ => {'C',event_time_stamp_},
+			    query_urr_reference => {'C',query_urr_reference},
+			    start_time => {'C',start_time},
+			    time_of_first_packet => {'C',time_of_first_packet},
+			    time_of_last_packet => {'C',time_of_last_packet},
+			    ur_seqn => {'M',ur_seqn},
+			    urr_id => {'M',urr_id},
+			    usage_information => {'C',usage_information},
+			    usage_report_trigger => {'M',usage_report_trigger},
+			    volume_measurement => {'C',volume_measurement}}}},
+	    session_report_response =>
+		#{offending_ie => {'C',offending_ie},pfcp_cause => {'M',pfcp_cause}},
+	    session_set_deletion_request =>
+		#{fq_csid => {'C',fq_csid},node_id => {'M',node_id}},
+	    session_set_deletion_response =>
+		#{node_id => {'M',node_id},
+		  offending_ie => {'C',offending_ie},
+		  pfcp_cause => {'M',pfcp_cause}},
+	    version_not_supported_response => #{}},
+      'Sxc' =>
+	  #{association_release_request => #{node_id => {'M',node_id}},
+	    association_release_response =>
+		#{node_id => {'M',node_id},pfcp_cause => {'M',pfcp_cause}},
+	    association_setup_request =>
+		#{cp_function_features => {'C',cp_function_features},
+		  node_id => {'M',node_id},
+		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  up_function_features => {'C',up_function_features},
+		  user_plane_ip_resource_information =>
+		      {'O',user_plane_ip_resource_information}},
+	    association_setup_response =>
+		#{cp_function_features => {'C',cp_function_features},
+		  node_id => {'M',node_id},
+		  pfcp_cause => {'M',pfcp_cause},
+		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  up_function_features => {'C',up_function_features},
+		  user_plane_ip_resource_information =>
+		      {'O',user_plane_ip_resource_information}},
+	    association_update_request =>
+		#{cp_function_features => {'O',cp_function_features},
+		  graceful_release_period => {'O',graceful_release_period},
+		  node_id => {'M',node_id},
+		  pfcp_association_release_request => {'O',pfcp_association_release_request},
+		  up_function_features => {'O',up_function_features},
+		  user_plane_ip_resource_information =>
+		      {'O',user_plane_ip_resource_information}},
+	    association_update_response =>
+		#{cp_function_features => {'O',cp_function_features},
+		  node_id => {'M',node_id},
+		  pfcp_cause => {'M',pfcp_cause},
+		  up_function_features => {'O',up_function_features}},
+	    heartbeat_request => #{recovery_time_stamp => {'M',recovery_time_stamp}},
+	    heartbeat_response => #{recovery_time_stamp => {'M',recovery_time_stamp}},
+	    node_report_request =>
+		#{node_id => {'M',node_id},node_report_type => {'M',node_report_type}},
+	    node_report_response =>
+		#{node_id => {'M',node_id},
+		  offending_ie => {'C',offending_ie},
+		  pfcp_cause => {'M',pfcp_cause}},
+	    pfd_management_request =>
+		#{'application_id\'s_pfds' =>
+		      {'M',
+			  #{application_id => {'M',application_id},
+			    pfd_context => {'M',#{pfd_contents => {'M',pfd_contents}}}}}},
+	    pfd_management_response =>
+		#{offending_ie => {'M',offending_ie},pfcp_cause => {'M',pfcp_cause}},
+	    session_deletion_request => #{},
+	    session_deletion_response =>
+		#{load_control_information => {'O',load_control_information},
+		  offending_ie => {'C',offending_ie},
+		  overload_control_information => {'O',overload_control_information},
+		  pfcp_cause => {'M',pfcp_cause},
+		  usage_report_sdr =>
+		      {'C',
+			  #{duration_measurement => {'C',duration_measurement},
+			    end_time => {'C',end_time},
+			    start_time => {'C',start_time},
+			    time_of_first_packet => {'C',time_of_first_packet},
+			    time_of_last_packet => {'C',time_of_last_packet},
+			    ur_seqn => {'M',ur_seqn},
+			    urr_id => {'M',urr_id},
+			    usage_information => {'C',usage_information},
+			    usage_report_trigger => {'M',usage_report_trigger},
+			    volume_measurement => {'C',volume_measurement}}}},
+	    session_establishment_request =>
+		#{create_far =>
+		      {'M',
+			  #{apply_action => {'M',apply_action},
+			    far_id => {'M',far_id},
+			    forwarding_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'O',header_enrichment},
+				      network_instance => {'O',network_instance},
+				      redirect_information => {'C',redirect_information}}}}},
+		  create_pdr =>
+		      {'M',
+			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			    far_id => {'C',far_id},
+			    pdi =>
+				{'M',
+				    #{application_id => {'O',application_id},
+				      network_instance => {'O',network_instance},
+				      sdf_filter => {'O',sdf_filter},
+				      source_interface => {'M',source_interface},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      ue_ip_address => {'O',ue_ip_address}}},
+			    pdr_id => {'M',pdr_id},
+			    precedence => {'M',precedence},
+			    qer_id => {'C',qer_id},
+			    urr_id => {'C',urr_id}}},
+		  create_qer =>
+		      {'C',
+			  #{dl_flow_level_marking => {'C',dl_flow_level_marking},
+			    gate_status => {'M',gate_status},
+			    gbr => {'C',gbr},
+			    mbr => {'C',mbr},
+			    qer_id => {'M',qer_id}}},
+		  create_traffic_endpoint =>
+		      {'C',
+			  #{network_instance => {'O',network_instance},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'O',ue_ip_address}}},
+		  create_urr =>
+		      {'C',
+			  #{additional_monitoring_time =>
+				{'O',
+				    #{event_quota => {'O',event_quota},
+				      event_threshold => {'O',event_threshold},
+				      monitoring_time => {'M',monitoring_time},
+				      subsequent_time_quota => {'O',subsequent_time_quota},
+				      subsequent_time_threshold =>
+					  {'O',subsequent_time_threshold},
+				      subsequent_volume_quota =>
+					  {'O',subsequent_volume_quota},
+				      subsequent_volume_threshold =>
+					  {'O',subsequent_volume_threshold}}},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id_ => {'C',linked_urr_id_},
+			    measurement_information => {'C',measurement_information},
+			    measurement_method => {'M',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'O',monitoring_time},
+			    quota_holding_time => {'C',quota_holding_time},
+			    reporting_triggers => {'M',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'O',subsequent_time_quota},
+			    subsequent_time_threshold => {'O',subsequent_time_threshold},
+			    subsequent_volume_quota => {'O',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
+		  f_seid => {'M',f_seid},
+		  node_id => {'M',node_id},
+		  trace_information => {'O',trace_information},
+		  user_id => {'O',user_id},
+		  user_plane_inactivity_timer => {'O',user_plane_inactivity_timer}},
+	    session_establishment_response =>
+		#{f_seid => {'C',f_seid},
+		  failed_rule_id => {'C',failed_rule_id},
+		  load_control_information =>
+		      {'O',
+			  #{metric => {'M',metric},sequence_number => {'M',sequence_number}}},
+		  node_id => {'M',node_id},
+		  offending_ie => {'C',offending_ie},
+		  overload_control_information =>
+		      {'O',
+			  #{metric => {'M',metric},
+			    oci_flags => {'C',oci_flags},
+			    sequence_number => {'M',sequence_number},
+			    timer => {'M',timer}}},
+		  pfcp_cause => {'M',pfcp_cause}},
+	    session_modification_request =>
+		#{create_far =>
+		      {'C',
+			  #{apply_action => {'M',apply_action},
+			    far_id => {'M',far_id},
+			    forwarding_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'O',header_enrichment},
+				      network_instance => {'O',network_instance},
+				      redirect_information => {'C',redirect_information}}}}},
+		  create_pdr =>
+		      {'C',
+			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			    far_id => {'C',far_id},
+			    pdi =>
+				{'M',
+				    #{application_id => {'O',application_id},
+				      network_instance => {'O',network_instance},
+				      sdf_filter => {'O',sdf_filter},
+				      source_interface => {'M',source_interface},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      ue_ip_address => {'O',ue_ip_address}}},
+			    pdr_id => {'M',pdr_id},
+			    precedence => {'M',precedence},
+			    qer_id => {'C',qer_id},
+			    urr_id => {'C',urr_id}}},
+		  create_qer =>
+		      {'C',
+			  #{dl_flow_level_marking => {'C',dl_flow_level_marking},
+			    gate_status => {'M',gate_status},
+			    gbr => {'C',gbr},
+			    mbr => {'C',mbr},
+			    qer_id => {'M',qer_id}}},
+		  create_traffic_endpoint =>
+		      {'C',
+			  #{network_instance => {'O',network_instance},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'O',ue_ip_address}}},
+		  create_urr =>
+		      {'C',
+			  #{additional_monitoring_time =>
+				{'O',
+				    #{event_quota => {'O',event_quota},
+				      event_threshold => {'O',event_threshold},
+				      monitoring_time => {'M',monitoring_time},
+				      subsequent_time_quota => {'O',subsequent_time_quota},
+				      subsequent_time_threshold =>
+					  {'O',subsequent_time_threshold},
+				      subsequent_volume_quota =>
+					  {'O',subsequent_volume_quota},
+				      subsequent_volume_threshold =>
+					  {'O',subsequent_volume_threshold}}},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id_ => {'C',linked_urr_id_},
+			    measurement_information => {'C',measurement_information},
+			    measurement_method => {'M',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'O',monitoring_time},
+			    quota_holding_time => {'C',quota_holding_time},
+			    reporting_triggers => {'M',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'O',subsequent_time_quota},
+			    subsequent_time_threshold => {'O',subsequent_time_threshold},
+			    subsequent_volume_quota => {'O',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
+		  f_seid => {'C',f_seid},
+		  query_urr => {'C',#{urr_id => {'M',urr_id}}},
+		  query_urr_reference => {'O',query_urr_reference},
+		  remove_far => {'C',#{far_id => {'M',far_id}}},
+		  remove_pdr => {'C',#{pdr_id => {'M',pdr_id}}},
+		  remove_qer => {'C',#{qer_id => {'M',qer_id}}},
+		  remove_traffic_endpoint =>
+		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
+		  remove_urr => {'C',#{urr_id => {'M',urr_id}}},
+		  sxsmreq_flags => {'C',sxsmreq_flags},
+		  trace_information => {'O',trace_information},
+		  update_far =>
+		      {'C',
+			  #{apply_action => {'C',apply_action},
+			    far_id => {'M',far_id},
+			    update_forwarding_parameters =>
+				{'C',
+				    #{destination_interface => {'C',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'C',header_enrichment},
+				      network_instance => {'C',network_instance},
+				      redirect_information => {'C',redirect_information}}}}},
+		  update_pdr =>
+		      {'C',
+			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			    deactivate_predefined_rules_ =>
+				{'C',deactivate_predefined_rules_},
+			    far_id => {'C',far_id},
+			    pdi =>
+				{'C',
+				    #{application_id => {'O',application_id},
+				      network_instance => {'O',network_instance},
+				      sdf_filter => {'O',sdf_filter},
+				      source_interface => {'M',source_interface},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      ue_ip_address => {'O',ue_ip_address}}},
+			    pdr_id => {'M',pdr_id},
+			    precedence => {'C',precedence},
+			    qer_id => {'C',qer_id},
+			    urr_id => {'C',urr_id}}},
+		  update_qer =>
+		      {'C',
+			  #{dl_flow_level_marking => {'C',dl_flow_level_marking},
+			    gate_status => {'C',gate_status},
+			    gbr => {'C',gbr},
+			    mbr => {'C',mbr},
+			    qer_id => {'M',qer_id}}},
+		  update_traffic_endpoint =>
+		      {'C',
+			  #{network_instance => {'O',network_instance},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'C',ue_ip_address}}},
+		  update_urr =>
+		      {'C',
+			  #{additional_monitoring_time => {'O',additional_monitoring_time},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id_ => {'C',linked_urr_id_},
+			    measurement_method => {'C',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'C',monitoring_time},
+			    quota_holding_time => {'C',quota_holding_time},
+			    reporting_triggers => {'C',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'C',subsequent_time_quota},
+			    subsequent_time_threshold => {'C',subsequent_time_threshold},
+			    subsequent_volume_quota => {'C',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'C',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
+		  user_plane_inactivity_timer => {'C',user_plane_inactivity_timer}},
+	    session_modification_response =>
+		#{additional_usage_reports_information =>
+		      {'C',additional_usage_reports_information},
+		  failed_rule_id => {'C',failed_rule_id},
+		  load_control_information => {'O',load_control_information},
+		  offending_ie => {'C',offending_ie},
+		  overload_control_information => {'O',overload_control_information},
+		  pfcp_cause => {'M',pfcp_cause},
+		  usage_report_smr =>
+		      {'C',
+			  #{duration_measurement => {'C',duration_measurement},
+			    end_time => {'C',end_time},
+			    query_urr_reference => {'C',query_urr_reference},
+			    start_time => {'C',start_time},
+			    time_of_first_packet => {'C',time_of_first_packet},
+			    time_of_last_packet => {'C',time_of_last_packet},
+			    ur_seqn => {'M',ur_seqn},
+			    urr_id => {'M',urr_id},
+			    usage_information => {'C',usage_information},
+			    usage_report_trigger => {'M',usage_report_trigger},
+			    volume_measurement => {'C',volume_measurement}}}},
+	    session_report_request =>
+		#{additional_usage_reports_information =>
+		      {'C',additional_usage_reports_information},
+		  load_control_information => {'O',load_control_information},
+		  overload_control_information => {'O',overload_control_information},
+		  report_type => {'M',report_type},
+		  usage_report_srr =>
+		      {'C',
+			  #{application_detection_information =>
+				{'C',
+				    #{application_id => {'M',application_id},
+				      application_instance_id =>
+					  {'C',application_instance_id},
+				      flow_information => {'C',flow_information}}},
+			    duration_measurement => {'C',duration_measurement},
+			    end_time => {'C',end_time},
+			    event_time_stamp_ => {'C',event_time_stamp_},
+			    network_instance => {'C',network_instance},
+			    query_urr_reference => {'C',query_urr_reference},
+			    start_time => {'C',start_time},
+			    time_of_first_packet => {'C',time_of_first_packet},
+			    time_of_last_packet => {'C',time_of_last_packet},
+			    ue_ip_address => {'C',ue_ip_address},
+			    ur_seqn => {'M',ur_seqn},
+			    urr_id => {'M',urr_id},
+			    usage_information => {'C',usage_information},
+			    usage_report_trigger => {'M',usage_report_trigger},
+			    volume_measurement => {'C',volume_measurement}}}},
+	    session_report_response =>
+		#{offending_ie => {'C',offending_ie},pfcp_cause => {'M',pfcp_cause}},
+	    version_not_supported_response => #{}}}.
