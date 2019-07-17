@@ -717,3 +717,19 @@
 -record(ethernet_inactivity_timer, {
 	  timer = 0
 }).
+
+-record(tp_build_identifier, {
+	  id = <<>>
+}).
+
+-record(tp_now, {
+	  now = 0.0
+}).
+
+-record(tp_start_time, {
+	  start = 0.0
+}).
+
+-record(tp_stop_time, {
+	  stop = 0.0
+}).

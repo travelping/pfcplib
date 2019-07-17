@@ -485,7 +485,18 @@ ies() ->
      {146, "Ethernet Inactivity Timer",
       [{"Timer", 32, integer},
        {'_', 0}]},
-     {{18681, 1}, "TP Packet Measurement", volume_threshold}
+     {{18681, 1}, "TP Packet Measurement", volume_threshold},
+     {{18681, 2}, "TP Build Identifier",
+      [{"Id", 0, binary}]},
+     {{18681, 3}, "TP Now",
+      [{"Now", 64, float},
+       {'_', 0}]},
+     {{18681, 4}, "TP Start Time",
+      [{"Start", 64, float},
+       {'_', 0}]},
+     {{18681, 5}, "TP Stop Time",
+      [{"Stop", 64, float},
+       {'_', 0}]}
     ].
 
 msgs() ->
@@ -508,14 +519,16 @@ msgs() ->
        {"Recovery Time Stamp",			   'M', {'X', 'X', 'X', 'X'}},
        {"UP Function Features",			   'C', {'X', 'X', 'X', 'X'}},
        {"CP Function Features",			   'C', {'X', 'X', 'X', 'X'}},
-       {"User Plane IP Resource Information",	   'O', {'X', 'X', 'X', 'X'}}]},
+       {"User Plane IP Resource Information",	   'O', {'X', 'X', 'X', 'X'}},
+       {"TP Build Identifier",			   'O', {'X', 'X', 'X', 'X'}}]},
      {6, "Association Setup Response",			{'X', 'X', 'X', 'X'},
       [{"Node ID",				   'M', {'X', 'X', 'X', 'X'}},
        {"PFCP Cause",				   'M', {'X', 'X', 'X', 'X'}},
        {"Recovery Time Stamp",			   'M', {'X', 'X', 'X', 'X'}},
        {"UP Function Features",			   'C', {'X', 'X', 'X', 'X'}},
        {"CP Function Features",			   'C', {'X', 'X', 'X', 'X'}},
-       {"User Plane IP Resource Information",	   'O', {'X', 'X', 'X', 'X'}}]},
+       {"User Plane IP Resource Information",	   'O', {'X', 'X', 'X', 'X'}},
+       {"TP Build Identifier",			   'O', {'X', 'X', 'X', 'X'}}]},
      {7, "Association Update Request",			{'X', 'X', 'X', 'X'},
       [{"Node ID",				   'M', {'X', 'X', 'X', 'X'}},
        {"UP Function Features",			   'O', {'X', 'X', 'X', 'X'}},
@@ -945,7 +958,10 @@ msgs() ->
 	 {"Time of Last Packet",		   'C', {'-', 'X', 'X', 'X'}},
 	 {"Usage Information",			   'C', {'X', 'X', 'X', 'X'}},
 	 {"Query URR Reference",		   'C', {'X', 'X', 'X', 'X'}},
-	 {"Ethernet Traffic Information",	   'C', {'-', '-', '-', 'X'}}]},
+	 {"Ethernet Traffic Information",	   'C', {'-', '-', '-', 'X'}},
+	 {"TP Now",				   'O', {'X', 'X', 'X', 'X'}},
+	 {"TP Start Time",			   'O', {'X', 'X', 'X', 'X'}},
+	 {"TP End Time",			   'O', {'X', 'X', 'X', 'X'}}]},
        {"Failed Rule ID",			   'C', {'X', 'X', 'X', 'X'}},
        {"Additional Usage Reports Information",	   'C', {'X', 'X', 'X', 'X'}},
        {"Created Traffic Endpoint",		   'C', {'X', 'X', '-', 'X'}}]},
@@ -967,7 +983,10 @@ msgs() ->
 	 {"Time of First Packet",		   'C', {'-', 'X', 'X', 'X'}},
 	 {"Time of Last Packet",		   'C', {'-', 'X', 'X', 'X'}},
 	 {"Usage Information",			   'C', {'X', 'X', 'X', 'X'}},
-	 {"Ethernet Traffic Information",	   'C', {'-', '-', '-', 'X'}}]}
+	 {"Ethernet Traffic Information",	   'C', {'-', '-', '-', 'X'}},
+	 {"TP Now",				   'O', {'X', 'X', 'X', 'X'}},
+	 {"TP Start Time",			   'O', {'X', 'X', 'X', 'X'}},
+	 {"TP End Time",			   'O', {'X', 'X', 'X', 'X'}}]}
       ]},
      {56, "Session Report Request",			{'X', 'X', 'X', 'X'},
       [{"Report Type",				   'M', {'X', 'X', 'X', 'X'}},
@@ -995,8 +1014,10 @@ msgs() ->
 	 {"Event Time Stamp ",			   'C', {'-', 'X', 'X', 'X'}},
 	 {"Ethernet Traffic Information",	   'C', {'-', '-', '-', 'X'},
 	  [{"MAC Addresses Detected",		   'C', {'-', '-', '-', 'X'}},
-	   {"MAC Addresses Removed",		   'C', {'-', '-', '-', 'X'}}]}
-	]},
+	   {"MAC Addresses Removed",		   'C', {'-', '-', '-', 'X'}}]},
+	 {"TP Now",				   'O', {'X', 'X', 'X', 'X'}},
+	 {"TP Start Time",			   'O', {'X', 'X', 'X', 'X'}},
+	 {"TP End Time",			   'O', {'X', 'X', 'X', 'X'}}]},
        {"Error Indication Report",		   'C', {'X', 'X', '-', 'X'},
 	[{"F-TEID",				   'M', {'X', 'X', '-', 'X'}}]},
        {"Load Control Information",		   'O', {'X', 'X', 'X', 'X'}},
@@ -1023,6 +1044,8 @@ gen_record_def({Name, _, {enum, [H|_]}}) ->
     [io_lib:format("~s = ~s", [s2a(Name), s2e(H)])];
 gen_record_def({Name, _, integer}) ->
     [io_lib:format("~s = 0", [s2a(Name)])];
+gen_record_def({Name, _, float}) ->
+    [io_lib:format("~s = 0.0", [s2a(Name)])];
 gen_record_def({Name, Size, bits}) ->
     [io_lib:format("~s = ~w", [s2a(Name), <<0:Size>>])];
 gen_record_def({Name, Size, bytes}) ->
@@ -1114,6 +1137,8 @@ gen_encoder_bin({Name, Size, bytes}) ->
     [io_lib:format("M_~s:~w/bytes", [s2a(Name), Size])];
 gen_encoder_bin({Name, Size, bits}) ->
     [io_lib:format("M_~s:~w/bits", [s2a(Name), Size])];
+gen_encoder_bin({Name, Size, float}) ->
+    [io_lib:format("M_~s:~w/float", [s2a(Name), Size])];
 gen_encoder_bin({Name, Size, _Type}) ->
     [io_lib:format("M_~s:~w", [s2a(Name), Size])].
 

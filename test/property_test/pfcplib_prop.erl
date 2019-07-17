@@ -378,6 +378,10 @@ simple_ie() ->
      gen_mac_addresses_removed(),
      gen_ethernet_inactivity_timer(),
      gen_tp_packet_measurement(),
+     gen_tp_build_identifier(),
+     gen_tp_now(),
+     gen_tp_start_time(),
+     gen_tp_stop_time(),
      gen_enterprise_priv()
     ].
 
@@ -1218,6 +1222,26 @@ gen_ethernet_inactivity_timer() ->
 
 gen_tp_packet_measurement() ->
     gen_volume(tp_packet_measurement).
+
+gen_tp_build_identifier() ->
+    #tp_build_identifier{
+       id = binary()
+      }.
+
+gen_tp_now() ->
+    #tp_now{
+       now = float()
+      }.
+
+gen_tp_start_time() ->
+    #tp_start_time{
+       start = float()
+      }.
+
+gen_tp_stop_time() ->
+    #tp_stop_time{
+       stop = float()
+      }.
 
 gen_enterprise_priv() ->
     {{18681, 500}, binary()}.

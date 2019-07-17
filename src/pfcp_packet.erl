@@ -307,8 +307,7 @@ maybe_unsigned_integer(_, _, IE) ->
 
 decode_v1(<<>>, IEs) ->
     IEs;
-decode_v1(<<0:1, Type:15/integer, Length:16/integer, Data:Length/bytes, Next/binary>>, IEs)
-  when Type < 32768 ->
+decode_v1(<<0:1, Type:15/integer, Length:16/integer, Data:Length/bytes, Next/binary>>, IEs) ->
     IE = decode_v1_element(Data, Type),
     decode_v1(Next, put_ie(IE, IEs));
 decode_v1(<<1:1, Type:15/integer, Length:16/integer, EnterpriseId:16/integer,
@@ -1781,6 +1780,25 @@ decode_v1_element(<<M_timer:32/integer,
 decode_v1_element(<<Data/binary>>, {18681,1}) ->
     decode_volume_threshold(Data, tp_packet_measurement);
 
+%% decode tp_build_identifier
+decode_v1_element(<<M_id/binary>>, {18681,2}) ->
+    #tp_build_identifier{id = M_id};
+
+%% decode tp_now
+decode_v1_element(<<M_now:64/float,
+		    _/binary>>, {18681,3}) ->
+    #tp_now{now = M_now};
+
+%% decode tp_start_time
+decode_v1_element(<<M_start:64/float,
+		    _/binary>>, {18681,4}) ->
+    #tp_start_time{start = M_start};
+
+%% decode tp_stop_time
+decode_v1_element(<<M_stop:64/float,
+		    _/binary>>, {18681,5}) ->
+    #tp_stop_time{stop = M_stop};
+
 decode_v1_element(Value, Tag) ->
     {Tag, Value}.
 
@@ -2507,6 +2525,22 @@ encode_v1_element(#ethernet_inactivity_timer{
 encode_v1_element(#tp_packet_measurement{} = IE, Acc) ->
     encode_tlv({18681,1}, encode_volume_threshold(IE), Acc);
 
+encode_v1_element(#tp_build_identifier{
+		       id = M_id}, Acc) ->
+    encode_tlv({18681,2}, <<M_id/binary>>, Acc);
+
+encode_v1_element(#tp_now{
+		       now = M_now}, Acc) ->
+    encode_tlv({18681,3}, <<M_now:64/float>>, Acc);
+
+encode_v1_element(#tp_start_time{
+		       start = M_start}, Acc) ->
+    encode_tlv({18681,4}, <<M_start:64/float>>, Acc);
+
+encode_v1_element(#tp_stop_time{
+		       stop = M_stop}, Acc) ->
+    encode_tlv({18681,5}, <<M_stop:64/float>>, Acc);
+
 encode_v1_element(IEs, Acc) when is_list(IEs) ->
     encode_v1(IEs, Acc);
 
@@ -2660,6 +2694,10 @@ encode_v1_element({Tag, Value}, Acc) when is_binary(Value) ->
 ?PRETTY_PRINT(pretty_print_v1, mac_addresses_removed);
 ?PRETTY_PRINT(pretty_print_v1, ethernet_inactivity_timer);
 ?PRETTY_PRINT(pretty_print_v1, tp_packet_measurement);
+?PRETTY_PRINT(pretty_print_v1, tp_build_identifier);
+?PRETTY_PRINT(pretty_print_v1, tp_now);
+?PRETTY_PRINT(pretty_print_v1, tp_start_time);
+?PRETTY_PRINT(pretty_print_v1, tp_stop_time);
 pretty_print_v1(_, _) ->
     no.
 
@@ -2672,6 +2710,7 @@ v1_msg_defs() ->
 		#{cp_function_features => {'C',cp_function_features},
 		  node_id => {'M',node_id},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
 		      {'O',user_plane_ip_resource_information}},
@@ -2680,6 +2719,7 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
 		      {'O',user_plane_ip_resource_information}},
@@ -2729,6 +2769,9 @@ v1_msg_defs() ->
 			    start_time => {'C',start_time},
 			    time_of_first_packet => {'C',time_of_first_packet},
 			    time_of_last_packet => {'C',time_of_last_packet},
+			    tp_end_time => {'O',tp_end_time},
+			    tp_now => {'O',tp_now},
+			    tp_start_time => {'O',tp_start_time},
 			    ur_seqn => {'M',ur_seqn},
 			    urr_id => {'M',urr_id},
 			    usage_information => {'C',usage_information},
@@ -3161,6 +3204,9 @@ v1_msg_defs() ->
 			    start_time => {'C',start_time},
 			    time_of_first_packet => {'C',time_of_first_packet},
 			    time_of_last_packet => {'C',time_of_last_packet},
+			    tp_end_time => {'O',tp_end_time},
+			    tp_now => {'O',tp_now},
+			    tp_start_time => {'O',tp_start_time},
 			    ur_seqn => {'M',ur_seqn},
 			    urr_id => {'M',urr_id},
 			    usage_information => {'C',usage_information},
@@ -3198,6 +3244,9 @@ v1_msg_defs() ->
 			    start_time => {'C',start_time},
 			    time_of_first_packet => {'C',time_of_first_packet},
 			    time_of_last_packet => {'C',time_of_last_packet},
+			    tp_end_time => {'O',tp_end_time},
+			    tp_now => {'O',tp_now},
+			    tp_start_time => {'O',tp_start_time},
 			    ue_ip_address => {'C',ue_ip_address},
 			    ur_seqn => {'M',ur_seqn},
 			    urr_id => {'M',urr_id},
@@ -3227,6 +3276,7 @@ v1_msg_defs() ->
 		#{cp_function_features => {'C',cp_function_features},
 		  node_id => {'M',node_id},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
 		      {'O',user_plane_ip_resource_information}},
@@ -3235,6 +3285,7 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
 		      {'O',user_plane_ip_resource_information}},
@@ -3273,6 +3324,9 @@ v1_msg_defs() ->
 			  #{duration_measurement => {'C',duration_measurement},
 			    end_time => {'C',end_time},
 			    start_time => {'C',start_time},
+			    tp_end_time => {'O',tp_end_time},
+			    tp_now => {'O',tp_now},
+			    tp_start_time => {'O',tp_start_time},
 			    ur_seqn => {'M',ur_seqn},
 			    urr_id => {'M',urr_id},
 			    usage_information => {'C',usage_information},
@@ -3514,6 +3568,9 @@ v1_msg_defs() ->
 			    end_time => {'C',end_time},
 			    query_urr_reference => {'C',query_urr_reference},
 			    start_time => {'C',start_time},
+			    tp_end_time => {'O',tp_end_time},
+			    tp_now => {'O',tp_now},
+			    tp_start_time => {'O',tp_start_time},
 			    ur_seqn => {'M',ur_seqn},
 			    urr_id => {'M',urr_id},
 			    usage_information => {'C',usage_information},
@@ -3537,6 +3594,9 @@ v1_msg_defs() ->
 			    end_time => {'C',end_time},
 			    query_urr_reference => {'C',query_urr_reference},
 			    start_time => {'C',start_time},
+			    tp_end_time => {'O',tp_end_time},
+			    tp_now => {'O',tp_now},
+			    tp_start_time => {'O',tp_start_time},
 			    ur_seqn => {'M',ur_seqn},
 			    urr_id => {'M',urr_id},
 			    usage_information => {'C',usage_information},
@@ -3569,6 +3629,7 @@ v1_msg_defs() ->
 		#{cp_function_features => {'C',cp_function_features},
 		  node_id => {'M',node_id},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
 		      {'O',user_plane_ip_resource_information}},
@@ -3577,6 +3638,7 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
 		      {'O',user_plane_ip_resource_information}},
@@ -3624,6 +3686,9 @@ v1_msg_defs() ->
 			    start_time => {'C',start_time},
 			    time_of_first_packet => {'C',time_of_first_packet},
 			    time_of_last_packet => {'C',time_of_last_packet},
+			    tp_end_time => {'O',tp_end_time},
+			    tp_now => {'O',tp_now},
+			    tp_start_time => {'O',tp_start_time},
 			    ur_seqn => {'M',ur_seqn},
 			    urr_id => {'M',urr_id},
 			    usage_information => {'C',usage_information},
@@ -3984,6 +4049,9 @@ v1_msg_defs() ->
 			    start_time => {'C',start_time},
 			    time_of_first_packet => {'C',time_of_first_packet},
 			    time_of_last_packet => {'C',time_of_last_packet},
+			    tp_end_time => {'O',tp_end_time},
+			    tp_now => {'O',tp_now},
+			    tp_start_time => {'O',tp_start_time},
 			    ur_seqn => {'M',ur_seqn},
 			    urr_id => {'M',urr_id},
 			    usage_information => {'C',usage_information},
@@ -4011,6 +4079,9 @@ v1_msg_defs() ->
 			    start_time => {'C',start_time},
 			    time_of_first_packet => {'C',time_of_first_packet},
 			    time_of_last_packet => {'C',time_of_last_packet},
+			    tp_end_time => {'O',tp_end_time},
+			    tp_now => {'O',tp_now},
+			    tp_start_time => {'O',tp_start_time},
 			    ur_seqn => {'M',ur_seqn},
 			    urr_id => {'M',urr_id},
 			    usage_information => {'C',usage_information},
@@ -4033,6 +4104,7 @@ v1_msg_defs() ->
 		#{cp_function_features => {'C',cp_function_features},
 		  node_id => {'M',node_id},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
 		      {'O',user_plane_ip_resource_information}},
@@ -4041,6 +4113,7 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
 		      {'O',user_plane_ip_resource_information}},
@@ -4085,6 +4158,9 @@ v1_msg_defs() ->
 			    start_time => {'C',start_time},
 			    time_of_first_packet => {'C',time_of_first_packet},
 			    time_of_last_packet => {'C',time_of_last_packet},
+			    tp_end_time => {'O',tp_end_time},
+			    tp_now => {'O',tp_now},
+			    tp_start_time => {'O',tp_start_time},
 			    ur_seqn => {'M',ur_seqn},
 			    urr_id => {'M',urr_id},
 			    usage_information => {'C',usage_information},
@@ -4355,6 +4431,9 @@ v1_msg_defs() ->
 			    start_time => {'C',start_time},
 			    time_of_first_packet => {'C',time_of_first_packet},
 			    time_of_last_packet => {'C',time_of_last_packet},
+			    tp_end_time => {'O',tp_end_time},
+			    tp_now => {'O',tp_now},
+			    tp_start_time => {'O',tp_start_time},
 			    ur_seqn => {'M',ur_seqn},
 			    urr_id => {'M',urr_id},
 			    usage_information => {'C',usage_information},
@@ -4382,6 +4461,9 @@ v1_msg_defs() ->
 			    start_time => {'C',start_time},
 			    time_of_first_packet => {'C',time_of_first_packet},
 			    time_of_last_packet => {'C',time_of_last_packet},
+			    tp_end_time => {'O',tp_end_time},
+			    tp_now => {'O',tp_now},
+			    tp_start_time => {'O',tp_start_time},
 			    ue_ip_address => {'C',ue_ip_address},
 			    ur_seqn => {'M',ur_seqn},
 			    urr_id => {'M',urr_id},
