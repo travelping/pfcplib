@@ -2,6 +2,6 @@
 {application, pfcplib, [
     {vsn, git},
     {description, "Erlang library for Packet Forwarding Control Protocol (PFCP)"},
-    {applications, [kernel, stdlib, lager]},
+    {applications, [kernel, stdlib]},
     {registered, []}
 ]}.
