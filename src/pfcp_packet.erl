@@ -2765,7 +2765,7 @@ v1_msg_defs() ->
 					  {'C',transport_level_marking}}}}},
 		  create_pdr =>
 		      {'M',
-			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			  #{activate_predefined_rules => {'C',activate_predefined_rules},
 			    far_id => {'C',far_id},
 			    outer_header_removal => {'C',outer_header_removal},
 			    pdi =>
@@ -2841,7 +2841,7 @@ v1_msg_defs() ->
 			    event_threshold => {'C',event_threshold},
 			    far_id => {'C',far_id},
 			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id_ => {'C',linked_urr_id_},
+			    linked_urr_id => {'C',linked_urr_id},
 			    measurement_information => {'C',measurement_information},
 			    measurement_method => {'M',measurement_method},
 			    measurement_period => {'C',measurement_period},
@@ -2917,7 +2917,7 @@ v1_msg_defs() ->
 					  {'C',transport_level_marking}}}}},
 		  create_pdr =>
 		      {'C',
-			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			  #{activate_predefined_rules => {'C',activate_predefined_rules},
 			    far_id => {'C',far_id},
 			    outer_header_removal => {'C',outer_header_removal},
 			    pdi =>
@@ -2993,7 +2993,7 @@ v1_msg_defs() ->
 			    event_threshold => {'C',event_threshold},
 			    far_id => {'C',far_id},
 			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id_ => {'C',linked_urr_id_},
+			    linked_urr_id => {'C',linked_urr_id},
 			    measurement_information => {'C',measurement_information},
 			    measurement_method => {'M',measurement_method},
 			    measurement_period => {'C',measurement_period},
@@ -3056,9 +3056,8 @@ v1_msg_defs() ->
 					  {'C',transport_level_marking}}}}},
 		  update_pdr =>
 		      {'C',
-			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
-			    deactivate_predefined_rules_ =>
-				{'C',deactivate_predefined_rules_},
+			  #{activate_predefined_rules => {'C',activate_predefined_rules},
+			    deactivate_predefined_rules => {'C',deactivate_predefined_rules},
 			    far_id => {'C',far_id},
 			    outer_header_removal => {'C',outer_header_removal},
 			    pdi =>
@@ -3121,7 +3120,7 @@ v1_msg_defs() ->
 			    event_threshold => {'C',event_threshold},
 			    far_id => {'C',far_id},
 			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id_ => {'C',linked_urr_id_},
+			    linked_urr_id => {'C',linked_urr_id},
 			    measurement_information => {'C',measurement_information},
 			    measurement_method => {'C',measurement_method},
 			    measurement_period => {'C',measurement_period},
@@ -3194,7 +3193,7 @@ v1_msg_defs() ->
 				{'C',
 				    #{mac_addresses_detected => {'C',mac_addresses_detected},
 				      mac_addresses_removed => {'C',mac_addresses_removed}}},
-			    event_time_stamp_ => {'C',event_time_stamp_},
+			    event_time_stamp => {'C',event_time_stamp},
 			    network_instance => {'C',network_instance},
 			    query_urr_reference => {'C',query_urr_reference},
 			    start_time => {'C',start_time},
@@ -3675,7 +3674,7 @@ v1_msg_defs() ->
 					  {'C',transport_level_marking}}}}},
 		  create_pdr =>
 		      {'M',
-			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			  #{activate_predefined_rules => {'C',activate_predefined_rules},
 			    far_id => {'C',far_id},
 			    outer_header_removal => {'C',outer_header_removal},
 			    pdi =>
@@ -3734,7 +3733,7 @@ v1_msg_defs() ->
 			    event_threshold => {'C',event_threshold},
 			    far_id => {'C',far_id},
 			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id_ => {'C',linked_urr_id_},
+			    linked_urr_id => {'C',linked_urr_id},
 			    measurement_information => {'C',measurement_information},
 			    measurement_method => {'M',measurement_method},
 			    measurement_period => {'C',measurement_period},
@@ -3806,7 +3805,7 @@ v1_msg_defs() ->
 					  {'C',transport_level_marking}}}}},
 		  create_pdr =>
 		      {'C',
-			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			  #{activate_predefined_rules => {'C',activate_predefined_rules},
 			    far_id => {'C',far_id},
 			    outer_header_removal => {'C',outer_header_removal},
 			    pdi =>
@@ -3865,7 +3864,7 @@ v1_msg_defs() ->
 			    event_threshold => {'C',event_threshold},
 			    far_id => {'C',far_id},
 			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id_ => {'C',linked_urr_id_},
+			    linked_urr_id => {'C',linked_urr_id},
 			    measurement_information => {'C',measurement_information},
 			    measurement_method => {'M',measurement_method},
 			    measurement_period => {'C',measurement_period},
@@ -3921,9 +3920,8 @@ v1_msg_defs() ->
 					  {'C',transport_level_marking}}}}},
 		  update_pdr =>
 		      {'C',
-			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
-			    deactivate_predefined_rules_ =>
-				{'C',deactivate_predefined_rules_},
+			  #{activate_predefined_rules => {'C',activate_predefined_rules},
+			    deactivate_predefined_rules => {'C',deactivate_predefined_rules},
 			    far_id => {'C',far_id},
 			    outer_header_removal => {'C',outer_header_removal},
 			    pdi =>
@@ -3967,7 +3965,7 @@ v1_msg_defs() ->
 			    event_threshold => {'C',event_threshold},
 			    far_id => {'C',far_id},
 			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id_ => {'C',linked_urr_id_},
+			    linked_urr_id => {'C',linked_urr_id},
 			    measurement_information => {'C',measurement_information},
 			    measurement_method => {'C',measurement_method},
 			    measurement_period => {'C',measurement_period},
@@ -4030,7 +4028,7 @@ v1_msg_defs() ->
 				      flow_information => {'C',flow_information}}},
 			    duration_measurement => {'C',duration_measurement},
 			    end_time => {'C',end_time},
-			    event_time_stamp_ => {'C',event_time_stamp_},
+			    event_time_stamp => {'C',event_time_stamp},
 			    query_urr_reference => {'C',query_urr_reference},
 			    start_time => {'C',start_time},
 			    time_of_first_packet => {'C',time_of_first_packet},
@@ -4136,7 +4134,7 @@ v1_msg_defs() ->
 				      redirect_information => {'C',redirect_information}}}}},
 		  create_pdr =>
 		      {'M',
-			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			  #{activate_predefined_rules => {'C',activate_predefined_rules},
 			    far_id => {'C',far_id},
 			    pdi =>
 				{'M',
@@ -4180,7 +4178,7 @@ v1_msg_defs() ->
 			    event_threshold => {'C',event_threshold},
 			    far_id => {'C',far_id},
 			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id_ => {'C',linked_urr_id_},
+			    linked_urr_id => {'C',linked_urr_id},
 			    measurement_information => {'C',measurement_information},
 			    measurement_method => {'M',measurement_method},
 			    measurement_period => {'C',measurement_period},
@@ -4232,7 +4230,7 @@ v1_msg_defs() ->
 				      redirect_information => {'C',redirect_information}}}}},
 		  create_pdr =>
 		      {'C',
-			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
+			  #{activate_predefined_rules => {'C',activate_predefined_rules},
 			    far_id => {'C',far_id},
 			    pdi =>
 				{'M',
@@ -4276,7 +4274,7 @@ v1_msg_defs() ->
 			    event_threshold => {'C',event_threshold},
 			    far_id => {'C',far_id},
 			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id_ => {'C',linked_urr_id_},
+			    linked_urr_id => {'C',linked_urr_id},
 			    measurement_information => {'C',measurement_information},
 			    measurement_method => {'M',measurement_method},
 			    measurement_period => {'C',measurement_period},
@@ -4318,9 +4316,8 @@ v1_msg_defs() ->
 				      redirect_information => {'C',redirect_information}}}}},
 		  update_pdr =>
 		      {'C',
-			  #{activate_predefined_rules_ => {'C',activate_predefined_rules_},
-			    deactivate_predefined_rules_ =>
-				{'C',deactivate_predefined_rules_},
+			  #{activate_predefined_rules => {'C',activate_predefined_rules},
+			    deactivate_predefined_rules => {'C',deactivate_predefined_rules},
 			    far_id => {'C',far_id},
 			    pdi =>
 				{'C',
@@ -4353,7 +4350,7 @@ v1_msg_defs() ->
 			    event_threshold => {'C',event_threshold},
 			    far_id => {'C',far_id},
 			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id_ => {'C',linked_urr_id_},
+			    linked_urr_id => {'C',linked_urr_id},
 			    measurement_method => {'C',measurement_method},
 			    measurement_period => {'C',measurement_period},
 			    monitoring_time => {'C',monitoring_time},
@@ -4411,7 +4408,7 @@ v1_msg_defs() ->
 				      flow_information => {'C',flow_information}}},
 			    duration_measurement => {'C',duration_measurement},
 			    end_time => {'C',end_time},
-			    event_time_stamp_ => {'C',event_time_stamp_},
+			    event_time_stamp => {'C',event_time_stamp},
 			    network_instance => {'C',network_instance},
 			    query_urr_reference => {'C',query_urr_reference},
 			    start_time => {'C',start_time},
