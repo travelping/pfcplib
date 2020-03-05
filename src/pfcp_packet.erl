@@ -1594,8 +1594,8 @@ decode_v1_element(<<M_group/binary>>, 118) ->
     #aggregated_urrs{group = decode_v1_grouped(M_group)};
 
 %% decode multiplier
-decode_v1_element(<<M_digits:40/integer,
-		    M_exponent:40/integer>>, 119) ->
+decode_v1_element(<<M_digits:64/signed-integer,
+		    M_exponent:32/signed-integer>>, 119) ->
     #multiplier{digits = M_digits,
 		exponent = M_exponent};
 
@@ -2364,8 +2364,8 @@ encode_v1_element(#aggregated_urrs{
 encode_v1_element(#multiplier{
 		       digits = M_digits,
 		       exponent = M_exponent}, Acc) ->
-    encode_tlv(119, <<M_digits:40,
-		      M_exponent:40>>, Acc);
+    encode_tlv(119, <<M_digits:64/signed,
+		      M_exponent:32/signed>>, Acc);
 
 encode_v1_element(#aggregated_urr_id{
 		       id = M_id}, Acc) ->

@@ -415,8 +415,8 @@ ies() ->
      {118, "Aggregated URRs",
       [{"Group", 0, {type, v1_grouped}}]},
      {119, "Multiplier",
-      [{"Digits", 40, integer},
-       {"Exponent", 40, integer}]},
+      [{"Digits", 64, 'signed-integer'},
+       {"Exponent", 32, 'signed-integer'}]},
      {120, "Aggregated URR ID",
       [{"Id", 32, integer}]},
      {121, "Subsequent Volume Quota", volume_threshold},
@@ -1042,7 +1042,8 @@ gen_record_def({Name, _, {enum, [{_,H}|_]}}) ->
     [io_lib:format("~s = ~s", [s2a(Name), s2e(H)])];
 gen_record_def({Name, _, {enum, [H|_]}}) ->
     [io_lib:format("~s = ~s", [s2a(Name), s2e(H)])];
-gen_record_def({Name, _, integer}) ->
+gen_record_def({Name, _, Type})
+  when Type =:= integer; Type =:= 'signed-integer' ->
     [io_lib:format("~s = 0", [s2a(Name)])];
 gen_record_def({Name, _, float}) ->
     [io_lib:format("~s = 0.0", [s2a(Name)])];
@@ -1139,6 +1140,8 @@ gen_encoder_bin({Name, Size, bits}) ->
     [io_lib:format("M_~s:~w/bits", [s2a(Name), Size])];
 gen_encoder_bin({Name, Size, float}) ->
     [io_lib:format("M_~s:~w/float", [s2a(Name), Size])];
+gen_encoder_bin({Name, Size, 'signed-integer'}) ->
+    [io_lib:format("M_~s:~w/signed", [s2a(Name), Size])];
 gen_encoder_bin({Name, Size, _Type}) ->
     [io_lib:format("M_~s:~w", [s2a(Name), Size])].
 

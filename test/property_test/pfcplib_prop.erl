@@ -165,6 +165,9 @@ uint24() ->
 int32() ->
     integer(-16#7fffffff,16#7fffffff).
 
+int64() ->
+    integer(-16#7fffffffffffffff,16#7fffffffffffffff).
+
 uint32() ->
     integer(0,16#ffffffff).
 
@@ -1085,7 +1088,7 @@ gen_aggregated_urrs() ->
 
 gen_multiplier() ->
     #multiplier{
-       digits = uint64(),
+       digits = int64(),
        exponent = int32()
       }.
 
