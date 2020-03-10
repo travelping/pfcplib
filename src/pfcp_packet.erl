@@ -236,7 +236,7 @@ maybe_bin(<<Bin/binary>>, 1, Len, Pos, IE) ->
 maybe_bin(Bin, Len, IE)
   when is_binary(Bin) andalso byte_size(Bin) =:= Len ->
     <<IE/binary, Bin:Len/bytes>>;
-maybe_bin(undefined, _, IE) ->
+maybe_bin(_, _, IE) ->
     IE.
 
 maybe_len_bin(<<Bin/binary>>, 0, _, _, IE) ->
