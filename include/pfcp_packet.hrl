@@ -56,7 +56,8 @@
 	  flow		:: binary(),
 	  url		:: binary(),
 	  domain	:: binary(),
-	  custom	:: binary()
+	  custom	:: binary(),
+	  dnp		:: binary()
 	 }).
 
 -record(fq_csid, {
