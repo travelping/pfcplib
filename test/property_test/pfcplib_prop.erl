@@ -44,8 +44,10 @@
 -define(equal(Expected, Actual),
     (fun (Expected@@@, Expected@@@) -> true;
 	 (Expected@@@, Actual@@@) ->
-	     ct:pal("MISMATCH(~s:~b, ~s)~nExpected: ~p~nActual:   ~p~n",
-		    [?FILE, ?LINE, ??Actual, Expected@@@, Actual@@@]),
+	     ct:pal("MISMATCH(~s:~b, ~s)~nExpected: ~s~nActual:   ~s~n",
+		    [?FILE, ?LINE, ??Actual,
+		     pfcp_packet:pretty_print(Expected@@@),
+		     pfcp_packet:pretty_print(Actual@@@)]),
 	     false
      end)(Expected, Actual) orelse error(badmatch)).
 
@@ -58,9 +60,8 @@ enc_dec_prop(Config) ->
     numtests(1000,
 	     ?FORALL(Msg, msg_gen(),
 		     begin
-			 ct:pal("Msg: ~p", [Msg]),
-			 Enc = pfcp_packet:encode(Msg),
-			 ?equal(Enc, pfcp_packet:encode(pfcp_packet:decode(Enc)))
+			 ?equal(pfcp_packet:to_map(Msg),
+				pfcp_packet:decode(pfcp_packet:encode(Msg)))
 		     end)).
 
 %%%===================================================================
@@ -138,11 +139,13 @@ encode_dns_label(Labels) ->
 flag() ->
     oneof([0,1]).
 
+string(I) ->
+    vector(I,
+	   oneof(
+	     lists:seq($A, $Z) ++ lists:seq($a, $z) ++ lists:seq($0, $9) ++ [$-])).
+
 dns_label() ->
-    ?LET(I, integer(1,63),
-	 vector(I,
-		oneof(
-		  lists:seq($A, $Z) ++ lists:seq($a, $z) ++ lists:seq($0, $9) ++ [$-]))).
+    ?LET(I, integer(1,63), string(I)).
 
 dns_name_list() ->
     ?SUCHTHAT(N,
@@ -500,13 +503,24 @@ gen_source_interface() ->
 			  'CP-function'])
       }.
 
-gen_f_teid() ->
+gen_f_teid(TEID, IP4, IP6, ChId) ->
     #f_teid{
-       teid = uint32(),
-       ipv6 = oneof([undefined, ip6_address()]),
-       ipv4 = oneof([undefined, ip4_address()]),
-       choose_id = byte()
-}.
+       teid = TEID,
+       ipv6 = IP6,
+       ipv4 = IP4,
+       choose_id = ChId}.
+
+gen_f_teid() ->
+    oneof(
+      [gen_f_teid(uint32(), ip4_address(), ip6_address(), undefined),
+       gen_f_teid(uint32(), ip4_address(), undefined,     undefined),
+       gen_f_teid(uint32(), undefined,     ip6_address(), undefined),
+       gen_f_teid(choose,   choose,        choose,        undefined),
+       gen_f_teid(choose,   choose,        undefined,     undefined),
+       gen_f_teid(choose,   undefined,     choose,        undefined),
+       gen_f_teid(choose,   choose,        choose,        uint8()),
+       gen_f_teid(choose,   choose,        undefined,     uint8()),
+       gen_f_teid(choose,   undefined,     choose,        uint8())]).
 
 gen_network_instance() ->
     #network_instance{
@@ -936,19 +950,31 @@ gen_flow_information() ->
 
 gen_ue_ip_address() ->
     #ue_ip_address{
-       type = oneof([undefined, src, dst]),
+       type = oneof([src, dst]),
        ipv4 = oneof([undefined, ip4_address()]),
        ipv6 = oneof([undefined, ip6_address()])
       }.
 
 gen_packet_rate() ->
     Unit = oneof([undefined, 'minute','6 minutes', 'hour', 'day', 'week']),
-    #packet_rate{
-       ul_time_unit = Unit,
-       ul_max_packet_rate = uint16(),
-       dl_time_unit = Unit,
-       dl_max_packet_rate = uint16()
-      }.
+    Type =
+	#packet_rate{
+	   ul_time_unit = Unit,
+	   ul_max_packet_rate = oneof([undefined, uint16()]),
+	   dl_time_unit = Unit,
+	   dl_max_packet_rate = oneof([undefined, uint16()])
+	  },
+    ?SUCHTHAT(X, Type,
+	      begin
+		  #packet_rate{
+		     ul_time_unit = UlUnit, ul_max_packet_rate = UlRate,
+		     dl_time_unit = DlUnit, dl_max_packet_rate = DlRate} = X,
+		  (((UlUnit /= undefined andalso UlRate /= undefined) orelse
+		    UlUnit =:= UlRate)
+		   andalso
+		     ((DlUnit /= undefined andalso DlRate /= undefined) orelse
+		      DlUnit =:= DlRate))
+	      end).
 
 gen_outer_header_removal() ->
     #outer_header_removal{
@@ -1075,7 +1101,7 @@ gen_user_plane_ip_resource_information() ->
        teid_range = oneof([undefined, {byte(), integer(1,7)}]),
        ipv4 = oneof([undefined, ip4_address()]),
        ipv6 = oneof([undefined, ip6_address()]),
-       network_instance = oneof([undefined, dns_name()])
+       network_instance = oneof([undefined, encode_dns_label(dns_name()), binary()])
       }.
 
 gen_user_plane_inactivity_timer() ->
