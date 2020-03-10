@@ -431,7 +431,7 @@ ies() ->
       [{"QFI", 8, integer},
        {'_', 0}]},
      {125, "Query URR Reference",
-      [{"Reference", 8, integer},
+      [{"Reference", 32, integer},
        {'_', 0}]},
      {126, "Additional Usage Reports Information",
       [{"AURI", 1, integer},

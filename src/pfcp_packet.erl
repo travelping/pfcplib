@@ -406,21 +406,27 @@ encode_node_id(#node_id{id = FQDN})
   when is_list(FQDN) ->
     <<0:4, 2:4, << <<(size(Part)):8, Part/binary>> || Part <- FQDN >>/binary >>.
 
-decode_pfd_contents(<<_:4, CP:1, DN:1, URL:1, FD:1, Rest0/binary>>, _Type) ->
+decode_pfd_contents(<<_:3, DNP: 1, CP:1, DN:1, URL:1, FD:1, _:8, Rest0/binary>>, _Type) ->
     IE0 = #pfd_contents{},
-    {IE1, Rest1} = maybe_len_bin(Rest0, CP, 16, #pfd_contents.flow, IE0),
-    {IE2, Rest2} = maybe_len_bin(Rest1, DN, 16, #pfd_contents.url, IE1),
-    {IE3, Rest3} = maybe_len_bin(Rest2, URL, 16, #pfd_contents.domain, IE2),
-    {IE4, _Rest4} = maybe_len_bin(Rest3, FD, 16, #pfd_contents.custom, IE3),
-    IE4.
+    {IE1, Rest1} = maybe_len_bin(Rest0, FD, 16, #pfd_contents.flow, IE0),
+    {IE2, Rest2} = maybe_len_bin(Rest1, URL, 16, #pfd_contents.url, IE1),
+    {IE3, Rest3} = maybe_len_bin(Rest2, DN, 16, #pfd_contents.domain, IE2),
+    {IE4, Rest4} = maybe_len_bin(Rest3, CP, 16, #pfd_contents.custom, IE3),
+    {IE5, _Rest5} = maybe_len_bin(Rest4, DNP, 16, #pfd_contents.dnp, IE4),
+    IE5.
 
 encode_pfd_contents(#pfd_contents{flow = Flow, url = URL,
-				  domain = Domain, custom = Custom}) ->
-    IE0 = <<0:4, (is_set(Flow)):1, (is_set(URL)):1, (is_set(Domain)):1, (is_set(Custom)):1>>,
+				  domain = Domain, custom = Custom,
+                                  dnp = DNP}) ->
+    IE0 = <<0:1, 0:1, 0:1, (is_set(DNP)):1,
+            (is_set(Custom)):1, (is_set(Domain)):1,
+            (is_set(URL)):1, (is_set(Flow)):1,
+            0:8>>,
     IE1 = maybe_len_bin(Flow, 16, IE0),
     IE2 = maybe_len_bin(URL, 16, IE1),
     IE3 = maybe_len_bin(Domain, 16, IE2),
-    maybe_len_bin(Custom, 16, IE3).
+    IE4 = maybe_len_bin(Custom, 16, IE3),
+    IE5 = maybe_len_bin(DNP, 16, IE4).
 
 decode_fq_csid(<<Type:4, Count:4, Rest0/binary>>, _Type) ->
     {IE1, Rest1} =
@@ -1624,7 +1630,7 @@ decode_v1_element(<<M_qfi:8/integer,
     #qfi{qfi = M_qfi};
 
 %% decode query_urr_reference
-decode_v1_element(<<M_reference:8/integer,
+decode_v1_element(<<M_reference:32/integer,
 		    _/binary>>, 125) ->
     #query_urr_reference{reference = M_reference};
 
@@ -2389,7 +2395,7 @@ encode_v1_element(#qfi{
 
 encode_v1_element(#query_urr_reference{
 		       reference = M_reference}, Acc) ->
-    encode_tlv(125, <<M_reference:8>>, Acc);
+    encode_tlv(125, <<M_reference:32>>, Acc);
 
 encode_v1_element(#additional_usage_reports_information{
 		       auri = M_auri,
