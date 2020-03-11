@@ -378,6 +378,19 @@ encode_paging_policy_indication(#downlink_data_service_information{value = Value
     IE0 = <<0:7, (is_set(Value)):1>>,
     maybe_unsigned_integer(Value, 8, IE0).
 
+%% decode dl_buffering_suggested_packet_count
+decode_dl_buffering_suggested_packet_count(<<Count:8/integer>>, _Type) ->
+    #dl_buffering_suggested_packet_count{count = Count};
+decode_dl_buffering_suggested_packet_count(<<Count:16/integer>>, _Type) ->
+    #dl_buffering_suggested_packet_count{count = Count}.
+
+encode_dl_buffering_suggested_packet_count(
+  #dl_buffering_suggested_packet_count{count = Count}) when Count < 256 ->
+    <<Count:8>>;
+encode_dl_buffering_suggested_packet_count(
+  #dl_buffering_suggested_packet_count{count = Count}) ->
+    <<Count:16>>.
+
 decode_f_seid(<<_:6, IPv4:1, IPv6:1, SEID:64/integer, Rest0/binary>>, _Type) ->
     IE0 = #f_seid{seid = SEID},
     {IE1, Rest1} = maybe_bin(Rest0, IPv4, 4, #f_seid.ipv4, IE0),
@@ -1209,8 +1222,8 @@ decode_v1_element(<<M_dl_buffer_unit:3/integer,
 			   dl_buffer_value = M_dl_buffer_value};
 
 %% decode dl_buffering_suggested_packet_count
-decode_v1_element(<<M_count:16/integer>>, 48) ->
-    #dl_buffering_suggested_packet_count{count = M_count};
+decode_v1_element(<<Data/binary>>, 48) ->
+    decode_dl_buffering_suggested_packet_count(Data, dl_buffering_suggested_packet_count);
 
 %% decode sxsmreq_flags
 decode_v1_element(<<_:5,
@@ -2023,9 +2036,8 @@ encode_v1_element(#dl_buffering_duration{
     encode_tlv(47, <<(enum_v1_dl_buffer_unit(M_dl_buffer_unit)):3/integer,
 		     M_dl_buffer_value:5>>, Acc);
 
-encode_v1_element(#dl_buffering_suggested_packet_count{
-		       count = M_count}, Acc) ->
-    encode_tlv(48, <<M_count:16>>, Acc);
+encode_v1_element(#dl_buffering_suggested_packet_count{} = IE, Acc) ->
+    encode_tlv(48, encode_dl_buffering_suggested_packet_count(IE), Acc);
 
 encode_v1_element(#sxsmreq_flags{
 		       qaurr = M_qaurr,

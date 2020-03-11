@@ -42,6 +42,10 @@
 	  value :: 0..16#3f
 	 }).
 
+-record(dl_buffering_suggested_packet_count, {
+	  count = 0	:: 0..16#ffff
+}).
+
 -record(f_seid, {
 	  seid	:: 0..16#ffffffffffffffff,
 	  ipv4	:: inet:ip4_address(),
@@ -364,10 +368,6 @@
 -record(dl_buffering_duration, {
 	  dl_buffer_unit = '2 seconds',
 	  dl_buffer_value = 0
-}).
-
--record(dl_buffering_suggested_packet_count, {
-	  count = 0
 }).
 
 -record(sxsmreq_flags, {

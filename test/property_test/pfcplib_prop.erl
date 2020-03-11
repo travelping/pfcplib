@@ -705,7 +705,7 @@ gen_dl_buffering_duration() ->
 
 gen_dl_buffering_suggested_packet_count() ->
     #dl_buffering_suggested_packet_count{
-       count = uint32()
+       count = oneof([uint8(), uint16()])
       }.
 
 gen_sxsmreq_flags() ->
