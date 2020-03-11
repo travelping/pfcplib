@@ -132,6 +132,12 @@ gen_pcap(Cnt) ->
 %%% Internal functions
 %%%===================================================================
 
+%% proper generates a random value for integers. That does not
+%% guarantee that the full range of the integer value is tested.
+%% Include Min and Max explicitly to ensure the full range is covered.
+int_range(Min, Max) ->
+    oneof([integer(Min, Max), Min, Max]).
+
 encode_dns_label(Labels) ->
     ?LET(Name, Labels,
 	 << <<(size(Label)):8, Label/binary>> || Label <- Name >>).
@@ -145,11 +151,11 @@ string(I) ->
 	     lists:seq($A, $Z) ++ lists:seq($a, $z) ++ lists:seq($0, $9) ++ [$-])).
 
 dns_label() ->
-    ?LET(I, integer(1,63), string(I)).
+    ?LET(I, int_range(1,63), string(I)).
 
 dns_name_list() ->
     ?SUCHTHAT(N,
-	      ?LET(I, integer(1,7), vector(I, dns_label())),
+	      ?LET(I, int_range(1,7), vector(I, dns_label())),
 	      length(lists:flatten(N)) < 100).
 
 dns_name() ->
@@ -157,25 +163,25 @@ dns_name() ->
 	 [list_to_binary(X) || X <- L]).
 
 uint8() ->
-    integer(0,16#ff).
+    int_range(0,16#ff).
 
 uint16() ->
-    integer(0,16#ffff).
+    int_range(0,16#ffff).
 
 uint24() ->
-    integer(0,16#ffffff).
+    int_range(0,16#ffffff).
 
 int32() ->
-    integer(-16#7fffffff,16#7fffffff).
+    int_range(-16#7fffffff,16#7fffffff).
 
 int64() ->
-    integer(-16#7fffffffffffffff,16#7fffffffffffffff).
+    int_range(-16#7fffffffffffffff,16#7fffffffffffffff).
 
 uint32() ->
-    integer(0,16#ffffffff).
+    int_range(0,16#ffffffff).
 
 uint64() ->
-    integer(0,16#ffffffffffffffff).
+    int_range(0,16#ffffffffffffffff).
 
 ip4_address() ->
     binary(4).
@@ -185,7 +191,7 @@ ip6_address() ->
 
 binstr_number(Min, Max) ->
     ?LET(X,
-	 ?LET(I, integer(Min,Max), vector(I, integer($0, $9))), list_to_binary(X)).
+	 ?LET(I, int_range(Min,Max), vector(I, integer($0, $9))), list_to_binary(X)).
 
 imsi() ->
     binstr_number(7,15).
@@ -200,8 +206,8 @@ msg_gen() ->
     #pfcp{
       version = v1,
       type = msg_type(),
-      seid = frequency([ {1,undefined}, {10, integer(0,16#ffffffff)}]),
-      seq_no = integer(0,16#ffffff),
+      seid = frequency([{1,undefined}, {10, uint32()}]),
+      seq_no = uint24(),
       ie = ie()
      }.
 
@@ -640,7 +646,7 @@ gen_offending_ie() ->
 
 gen_forwarding_policy() ->
     #forwarding_policy{
-       policy_identifier = ?LET(I, integer(0,255), binary(I))
+       policy_identifier = ?LET(I, uint8(), binary(I))
       }.
 
 gen_destination_interface() ->
@@ -694,7 +700,7 @@ gen_dl_buffering_duration() ->
 			       '1 hour',
 			       '10 hours',
 			       'infinite']),
-       dl_buffer_value = integer(0,16#1f)
+       dl_buffer_value = int_range(0,16#1f)
       }.
 
 gen_dl_buffering_suggested_packet_count() ->
@@ -738,7 +744,7 @@ gen_timer() ->
 			   '1 hour',
 			   '10 hours',
 			   'infinite']),
-       timer_value = integer(0,16#1f)
+       timer_value = int_range(0,16#1f)
       }.
 
 gen_pdr_id() ->
@@ -817,9 +823,9 @@ gen_fq_csid() ->
 	   oneof(
 	     [ip4_address(),
 	      ip6_address(),
-	      {integer(0,99), integer(0,999), integer(0,16#fff)}
+	      {int_range(0,99), int_range(0,999), int_range(0,16#fff)}
 	     ]),
-       csid = ?LET(I, integer(0,15), vector(I, uint16()))
+       csid = ?LET(I, int_range(0,15), vector(I, uint16()))
       }.
 
 gen_volume_measurement() ->
@@ -1070,7 +1076,7 @@ gen_graceful_release_period() ->
 				   '1 hour',
 				   '10 hours',
 				   'infinite']),
-       release_timer_value = integer(0,16#1f)
+       release_timer_value = int_range(0,16#1f)
       }.
 
 gen_pdn_type() ->
@@ -1078,9 +1084,9 @@ gen_pdn_type() ->
        pdn_type = oneof(['IPv4', 'IPv6', 'IPv4v6', 'Non-IP'])
       }.
 
-id_range(bar) -> integer(0, 16#ff);
-id_range(pdr) -> integer(0, 16#ffff);
-id_range(_)   -> integer(0, 16#ffffffff).
+id_range(bar) -> uint8();
+id_range(pdr) -> uint16();
+id_range(_)   -> uint32().
 
 gen_failed_rule_id() ->
     ?LET(Type, oneof([pdr, far, qer, urr, bar]),
@@ -1098,7 +1104,7 @@ gen_time_quota_mechanism() ->
 
 gen_user_plane_ip_resource_information() ->
     #user_plane_ip_resource_information{
-       teid_range = oneof([undefined, {byte(), integer(1,7)}]),
+       teid_range = oneof([undefined, {byte(), int_range(1,7)}]),
        ipv4 = oneof([undefined, ip4_address()]),
        ipv6 = oneof([undefined, ip6_address()]),
        network_instance = oneof([undefined, encode_dns_label(dns_name()), binary()])
@@ -1149,7 +1155,7 @@ gen_query_urr_reference() ->
 gen_additional_usage_reports_information() ->
     #additional_usage_reports_information{
        auri = flag(),
-       reports = integer(0, 16#7fff)
+       reports = int_range(0, 16#7fff)
       }.
 
 gen_create_traffic_endpoint() ->
@@ -1182,16 +1188,16 @@ gen_mac_address() ->
 
 gen_c_tag() ->
     #c_tag{
-       pcp = oneof(['undefined', integer(0, 7)]),
+       pcp = oneof(['undefined', int_range(0, 7)]),
        dei = oneof(['undefined', flag()]),
-       vid = oneof(['undefined', integer(0, 16#fff)])
+       vid = oneof(['undefined', int_range(0, 16#fff)])
       }.
 
 gen_s_tag() ->
     #s_tag{
-       pcp = oneof(['undefined', integer(0, 7)]),
+       pcp = oneof(['undefined', int_range(0, 7)]),
        dei = oneof(['undefined', flag()]),
-       vid = oneof(['undefined', integer(0, 16#fff)])
+       vid = oneof(['undefined', int_range(0, 16#fff)])
       }.
 
 gen_ethertype() ->
@@ -1236,12 +1242,12 @@ gen_ethernet_traffic_information() ->
 
 gen_mac_addresses_detected() ->
     #mac_addresses_detected{
-       macs = ?LET(I, integer(0,15), vector(I, binary(6)))
+       macs = ?LET(I, int_range(0,15), vector(I, binary(6)))
       }.
 
 gen_mac_addresses_removed() ->
     #mac_addresses_removed{
-       macs = ?LET(I, integer(0,15), vector(I, binary(6)))
+       macs = ?LET(I, int_range(0,15), vector(I, binary(6)))
       }.
 
 gen_ethernet_inactivity_timer() ->
