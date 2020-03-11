@@ -2677,9 +2677,12 @@ pretty_print_v1(_, _) ->
 
 v1_msg_defs() ->
     #{'N4' =>
-	  #{association_release_request => #{node_id => {'M',node_id}},
+	  #{association_release_request =>
+		#{node_id => {'M',node_id},tp_build_identifier => {'O',tp_build_identifier}},
 	    association_release_response =>
-		#{node_id => {'M',node_id},pfcp_cause => {'M',pfcp_cause}},
+		#{node_id => {'M',node_id},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    association_setup_request =>
 		#{cp_function_features => {'C',cp_function_features},
 		  node_id => {'M',node_id},
@@ -2709,18 +2712,21 @@ v1_msg_defs() ->
 		#{cp_function_features => {'O',cp_function_features},
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  up_function_features => {'O',up_function_features}},
 	    heartbeat_request => #{recovery_time_stamp => {'M',recovery_time_stamp}},
 	    heartbeat_response => #{recovery_time_stamp => {'M',recovery_time_stamp}},
 	    node_report_request =>
 		#{node_id => {'M',node_id},
 		  node_report_type => {'M',node_report_type},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  user_plane_path_failure_report =>
 		      {'C',#{remote_gtp_u_peer => {'M',remote_gtp_u_peer}}}},
 	    node_report_response =>
 		#{node_id => {'M',node_id},
 		  offending_ie => {'C',offending_ie},
-		  pfcp_cause => {'M',pfcp_cause}},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    pfd_management_request =>
 		#{'application_id\'s_pfds' =>
 		      {'M',
@@ -2880,6 +2886,7 @@ v1_msg_defs() ->
 		  f_seid => {'M',f_seid},
 		  node_id => {'M',node_id},
 		  pdn_type => {'C',pdn_type},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  trace_information => {'O',trace_information},
 		  user_id => {'O',user_id},
 		  user_plane_inactivity_timer => {'O',user_plane_inactivity_timer}},
@@ -2902,7 +2909,8 @@ v1_msg_defs() ->
 			    oci_flags => {'C',oci_flags},
 			    sequence_number => {'M',sequence_number},
 			    timer => {'M',timer}}},
-		  pfcp_cause => {'M',pfcp_cause}},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    session_modification_request =>
 		#{create_bar =>
 		      {'O',
@@ -3242,9 +3250,12 @@ v1_msg_defs() ->
 				{'C',suggested_buffering_packets_count}}}},
 	    version_not_supported_response => #{}},
       'Sxa' =>
-	  #{association_release_request => #{node_id => {'M',node_id}},
+	  #{association_release_request =>
+		#{node_id => {'M',node_id},tp_build_identifier => {'O',tp_build_identifier}},
 	    association_release_response =>
-		#{node_id => {'M',node_id},pfcp_cause => {'M',pfcp_cause}},
+		#{node_id => {'M',node_id},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    association_setup_request =>
 		#{cp_function_features => {'C',cp_function_features},
 		  node_id => {'M',node_id},
@@ -3274,18 +3285,21 @@ v1_msg_defs() ->
 		#{cp_function_features => {'O',cp_function_features},
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  up_function_features => {'O',up_function_features}},
 	    heartbeat_request => #{recovery_time_stamp => {'M',recovery_time_stamp}},
 	    heartbeat_response => #{recovery_time_stamp => {'M',recovery_time_stamp}},
 	    node_report_request =>
 		#{node_id => {'M',node_id},
 		  node_report_type => {'M',node_report_type},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  user_plane_path_failure_report =>
 		      {'C',#{remote_gtp_u_peer => {'M',remote_gtp_u_peer}}}},
 	    node_report_response =>
 		#{node_id => {'M',node_id},
 		  offending_ie => {'C',offending_ie},
-		  pfcp_cause => {'M',pfcp_cause}},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    session_deletion_request => #{},
 	    session_deletion_response =>
 		#{load_control_information => {'O',load_control_information},
@@ -3371,6 +3385,7 @@ v1_msg_defs() ->
 		  f_seid => {'M',f_seid},
 		  node_id => {'M',node_id},
 		  pdn_type => {'C',pdn_type},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  trace_information => {'O',trace_information},
 		  user_id => {'O',user_id}},
 	    session_establishment_response =>
@@ -3393,7 +3408,8 @@ v1_msg_defs() ->
 			    oci_flags => {'C',oci_flags},
 			    sequence_number => {'M',sequence_number},
 			    timer => {'M',timer}}},
-		  pfcp_cause => {'M',pfcp_cause}},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    session_modification_request =>
 		#{create_bar =>
 		      {'O',
@@ -3588,16 +3604,22 @@ v1_msg_defs() ->
 			    downlink_data_notification_delay =>
 				{'C',downlink_data_notification_delay}}}},
 	    session_set_deletion_request =>
-		#{fq_csid => {'C',fq_csid},node_id => {'M',node_id}},
+		#{fq_csid => {'C',fq_csid},
+		  node_id => {'M',node_id},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    session_set_deletion_response =>
 		#{node_id => {'M',node_id},
 		  offending_ie => {'C',offending_ie},
-		  pfcp_cause => {'M',pfcp_cause}},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    version_not_supported_response => #{}},
       'Sxb' =>
-	  #{association_release_request => #{node_id => {'M',node_id}},
+	  #{association_release_request =>
+		#{node_id => {'M',node_id},tp_build_identifier => {'O',tp_build_identifier}},
 	    association_release_response =>
-		#{node_id => {'M',node_id},pfcp_cause => {'M',pfcp_cause}},
+		#{node_id => {'M',node_id},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    association_setup_request =>
 		#{cp_function_features => {'C',cp_function_features},
 		  node_id => {'M',node_id},
@@ -3627,18 +3649,21 @@ v1_msg_defs() ->
 		#{cp_function_features => {'O',cp_function_features},
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  up_function_features => {'O',up_function_features}},
 	    heartbeat_request => #{recovery_time_stamp => {'M',recovery_time_stamp}},
 	    heartbeat_response => #{recovery_time_stamp => {'M',recovery_time_stamp}},
 	    node_report_request =>
 		#{node_id => {'M',node_id},
 		  node_report_type => {'M',node_report_type},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  user_plane_path_failure_report =>
 		      {'C',#{remote_gtp_u_peer => {'M',remote_gtp_u_peer}}}},
 	    node_report_response =>
 		#{node_id => {'M',node_id},
 		  offending_ie => {'C',offending_ie},
-		  pfcp_cause => {'M',pfcp_cause}},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    pfd_management_request =>
 		#{'application_id\'s_pfds' =>
 		      {'M',
@@ -3774,6 +3799,7 @@ v1_msg_defs() ->
 		  fq_csid => {'C',fq_csid},
 		  node_id => {'M',node_id},
 		  pdn_type => {'C',pdn_type},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  trace_information => {'O',trace_information},
 		  user_id => {'O',user_id},
 		  user_plane_inactivity_timer => {'O',user_plane_inactivity_timer}},
@@ -3797,7 +3823,8 @@ v1_msg_defs() ->
 			    oci_flags => {'C',oci_flags},
 			    sequence_number => {'M',sequence_number},
 			    timer => {'M',timer}}},
-		  pfcp_cause => {'M',pfcp_cause}},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    session_modification_request =>
 		#{create_far =>
 		      {'C',
@@ -4062,16 +4089,22 @@ v1_msg_defs() ->
 	    session_report_response =>
 		#{offending_ie => {'C',offending_ie},pfcp_cause => {'M',pfcp_cause}},
 	    session_set_deletion_request =>
-		#{fq_csid => {'C',fq_csid},node_id => {'M',node_id}},
+		#{fq_csid => {'C',fq_csid},
+		  node_id => {'M',node_id},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    session_set_deletion_response =>
 		#{node_id => {'M',node_id},
 		  offending_ie => {'C',offending_ie},
-		  pfcp_cause => {'M',pfcp_cause}},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    version_not_supported_response => #{}},
       'Sxc' =>
-	  #{association_release_request => #{node_id => {'M',node_id}},
+	  #{association_release_request =>
+		#{node_id => {'M',node_id},tp_build_identifier => {'O',tp_build_identifier}},
 	    association_release_response =>
-		#{node_id => {'M',node_id},pfcp_cause => {'M',pfcp_cause}},
+		#{node_id => {'M',node_id},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    association_setup_request =>
 		#{cp_function_features => {'C',cp_function_features},
 		  node_id => {'M',node_id},
@@ -4101,15 +4134,19 @@ v1_msg_defs() ->
 		#{cp_function_features => {'O',cp_function_features},
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  up_function_features => {'O',up_function_features}},
 	    heartbeat_request => #{recovery_time_stamp => {'M',recovery_time_stamp}},
 	    heartbeat_response => #{recovery_time_stamp => {'M',recovery_time_stamp}},
 	    node_report_request =>
-		#{node_id => {'M',node_id},node_report_type => {'M',node_report_type}},
+		#{node_id => {'M',node_id},
+		  node_report_type => {'M',node_report_type},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    node_report_response =>
 		#{node_id => {'M',node_id},
 		  offending_ie => {'C',offending_ie},
-		  pfcp_cause => {'M',pfcp_cause}},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    pfd_management_request =>
 		#{'application_id\'s_pfds' =>
 		      {'M',
@@ -4216,6 +4253,7 @@ v1_msg_defs() ->
 			    volume_threshold => {'C',volume_threshold}}},
 		  f_seid => {'M',f_seid},
 		  node_id => {'M',node_id},
+		  tp_build_identifier => {'O',tp_build_identifier},
 		  trace_information => {'O',trace_information},
 		  user_id => {'O',user_id},
 		  user_plane_inactivity_timer => {'O',user_plane_inactivity_timer}},
@@ -4233,7 +4271,8 @@ v1_msg_defs() ->
 			    oci_flags => {'C',oci_flags},
 			    sequence_number => {'M',sequence_number},
 			    timer => {'M',timer}}},
-		  pfcp_cause => {'M',pfcp_cause}},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_build_identifier => {'O',tp_build_identifier}},
 	    session_modification_request =>
 		#{create_far =>
 		      {'C',
