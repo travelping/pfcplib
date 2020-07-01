@@ -789,153 +789,165 @@ message_type_v1(56) -> session_report_request;
 message_type_v1(57) -> session_report_response;
 message_type_v1(Type) -> error(badarg, [Type]).
 
-enum_v1_base_time_interval_type('CTP') -> 0;
-enum_v1_base_time_interval_type('DTP') -> 1;
-enum_v1_base_time_interval_type(0) -> 'CTP';
-enum_v1_base_time_interval_type(1) -> 'DTP';
-enum_v1_base_time_interval_type(X) when is_integer(X) -> X.
+enum_v1_destination_interface_interface('Access') -> 0;
+enum_v1_destination_interface_interface('Core') -> 1;
+enum_v1_destination_interface_interface('SGi-LAN') -> 2;
+enum_v1_destination_interface_interface('CP-function') -> 3;
+enum_v1_destination_interface_interface('LI-function') -> 4;
+enum_v1_destination_interface_interface(0) -> 'Access';
+enum_v1_destination_interface_interface(1) -> 'Core';
+enum_v1_destination_interface_interface(2) -> 'SGi-LAN';
+enum_v1_destination_interface_interface(3) -> 'CP-function';
+enum_v1_destination_interface_interface(4) -> 'LI-function';
+enum_v1_destination_interface_interface(X) when is_integer(X) -> X.
 
-enum_v1_pdn_type('IPv4') -> 1;
-enum_v1_pdn_type('IPv6') -> 2;
-enum_v1_pdn_type('IPv4v6') -> 3;
-enum_v1_pdn_type('Non-IP') -> 4;
-enum_v1_pdn_type(1) -> 'IPv4';
-enum_v1_pdn_type(2) -> 'IPv6';
-enum_v1_pdn_type(3) -> 'IPv4v6';
-enum_v1_pdn_type(4) -> 'Non-IP';
-enum_v1_pdn_type(X) when is_integer(X) -> X.
+enum_v1_dl_buffering_duration_dl_buffer_unit('2 seconds') -> 0;
+enum_v1_dl_buffering_duration_dl_buffer_unit('1 minute') -> 1;
+enum_v1_dl_buffering_duration_dl_buffer_unit('10 minutes') -> 2;
+enum_v1_dl_buffering_duration_dl_buffer_unit('1 hour') -> 3;
+enum_v1_dl_buffering_duration_dl_buffer_unit('10 hours') -> 4;
+enum_v1_dl_buffering_duration_dl_buffer_unit(infinite) -> 7;
+enum_v1_dl_buffering_duration_dl_buffer_unit(0) -> '2 seconds';
+enum_v1_dl_buffering_duration_dl_buffer_unit(1) -> '1 minute';
+enum_v1_dl_buffering_duration_dl_buffer_unit(2) -> '10 minutes';
+enum_v1_dl_buffering_duration_dl_buffer_unit(3) -> '1 hour';
+enum_v1_dl_buffering_duration_dl_buffer_unit(4) -> '10 hours';
+enum_v1_dl_buffering_duration_dl_buffer_unit(7) -> infinite;
+enum_v1_dl_buffering_duration_dl_buffer_unit(X) when is_integer(X) -> X.
 
-enum_v1_release_timer_unit('2 seconds') -> 0;
-enum_v1_release_timer_unit('1 minute') -> 1;
-enum_v1_release_timer_unit('10 minutes') -> 2;
-enum_v1_release_timer_unit('1 hour') -> 3;
-enum_v1_release_timer_unit('10 hours') -> 4;
-enum_v1_release_timer_unit(infinite) -> 7;
-enum_v1_release_timer_unit(0) -> '2 seconds';
-enum_v1_release_timer_unit(1) -> '1 minute';
-enum_v1_release_timer_unit(2) -> '10 minutes';
-enum_v1_release_timer_unit(3) -> '1 hour';
-enum_v1_release_timer_unit(4) -> '10 hours';
-enum_v1_release_timer_unit(7) -> infinite;
-enum_v1_release_timer_unit(X) when is_integer(X) -> X.
+enum_v1_flow_information_direction('Unspecified') -> 0;
+enum_v1_flow_information_direction('Downlink') -> 1;
+enum_v1_flow_information_direction('Uplink') -> 2;
+enum_v1_flow_information_direction('Bidirectional') -> 3;
+enum_v1_flow_information_direction(0) -> 'Unspecified';
+enum_v1_flow_information_direction(1) -> 'Downlink';
+enum_v1_flow_information_direction(2) -> 'Uplink';
+enum_v1_flow_information_direction(3) -> 'Bidirectional';
+enum_v1_flow_information_direction(X) when is_integer(X) -> X.
 
-enum_v1_header_type('HTTP') -> 0;
-enum_v1_header_type(0) -> 'HTTP';
-enum_v1_header_type(X) when is_integer(X) -> X.
+enum_v1_gate_status_dl('OPEN') -> 0;
+enum_v1_gate_status_dl('CLOSED') -> 1;
+enum_v1_gate_status_dl(0) -> 'OPEN';
+enum_v1_gate_status_dl(1) -> 'CLOSED';
+enum_v1_gate_status_dl(X) when is_integer(X) -> X.
 
-enum_v1_header('GTP-U/UDP/IPv4') -> 0;
-enum_v1_header('GTP-U/UDP/IPv6') -> 1;
-enum_v1_header('UDP/IPv4') -> 2;
-enum_v1_header('UDP/IPv6') -> 3;
-enum_v1_header(0) -> 'GTP-U/UDP/IPv4';
-enum_v1_header(1) -> 'GTP-U/UDP/IPv6';
-enum_v1_header(2) -> 'UDP/IPv4';
-enum_v1_header(3) -> 'UDP/IPv6';
-enum_v1_header(X) when is_integer(X) -> X.
+enum_v1_gate_status_ul('OPEN') -> 0;
+enum_v1_gate_status_ul('CLOSED') -> 1;
+enum_v1_gate_status_ul(0) -> 'OPEN';
+enum_v1_gate_status_ul(1) -> 'CLOSED';
+enum_v1_gate_status_ul(X) when is_integer(X) -> X.
 
-enum_v1_direction('Unspecified') -> 0;
-enum_v1_direction('Downlink') -> 1;
-enum_v1_direction('Uplink') -> 2;
-enum_v1_direction('Bidirectional') -> 3;
-enum_v1_direction(0) -> 'Unspecified';
-enum_v1_direction(1) -> 'Downlink';
-enum_v1_direction(2) -> 'Uplink';
-enum_v1_direction(3) -> 'Bidirectional';
-enum_v1_direction(X) when is_integer(X) -> X.
+enum_v1_graceful_release_period_release_timer_unit('2 seconds') -> 0;
+enum_v1_graceful_release_period_release_timer_unit('1 minute') -> 1;
+enum_v1_graceful_release_period_release_timer_unit('10 minutes') -> 2;
+enum_v1_graceful_release_period_release_timer_unit('1 hour') -> 3;
+enum_v1_graceful_release_period_release_timer_unit('10 hours') -> 4;
+enum_v1_graceful_release_period_release_timer_unit(infinite) -> 7;
+enum_v1_graceful_release_period_release_timer_unit(0) -> '2 seconds';
+enum_v1_graceful_release_period_release_timer_unit(1) -> '1 minute';
+enum_v1_graceful_release_period_release_timer_unit(2) -> '10 minutes';
+enum_v1_graceful_release_period_release_timer_unit(3) -> '1 hour';
+enum_v1_graceful_release_period_release_timer_unit(4) -> '10 hours';
+enum_v1_graceful_release_period_release_timer_unit(7) -> infinite;
+enum_v1_graceful_release_period_release_timer_unit(X) when is_integer(X) -> X.
 
-enum_v1_timer_unit('2 seconds') -> 0;
-enum_v1_timer_unit('1 minute') -> 1;
-enum_v1_timer_unit('10 minutes') -> 2;
-enum_v1_timer_unit('1 hour') -> 3;
-enum_v1_timer_unit('10 hours') -> 4;
-enum_v1_timer_unit(infinite) -> 7;
-enum_v1_timer_unit(0) -> '2 seconds';
-enum_v1_timer_unit(1) -> '1 minute';
-enum_v1_timer_unit(2) -> '10 minutes';
-enum_v1_timer_unit(3) -> '1 hour';
-enum_v1_timer_unit(4) -> '10 hours';
-enum_v1_timer_unit(7) -> infinite;
-enum_v1_timer_unit(X) when is_integer(X) -> X.
+enum_v1_header_enrichment_header_type('HTTP') -> 0;
+enum_v1_header_enrichment_header_type(0) -> 'HTTP';
+enum_v1_header_enrichment_header_type(X) when is_integer(X) -> X.
 
-enum_v1_dl_buffer_unit('2 seconds') -> 0;
-enum_v1_dl_buffer_unit('1 minute') -> 1;
-enum_v1_dl_buffer_unit('10 minutes') -> 2;
-enum_v1_dl_buffer_unit('1 hour') -> 3;
-enum_v1_dl_buffer_unit('10 hours') -> 4;
-enum_v1_dl_buffer_unit(infinite) -> 7;
-enum_v1_dl_buffer_unit(0) -> '2 seconds';
-enum_v1_dl_buffer_unit(1) -> '1 minute';
-enum_v1_dl_buffer_unit(2) -> '10 minutes';
-enum_v1_dl_buffer_unit(3) -> '1 hour';
-enum_v1_dl_buffer_unit(4) -> '10 hours';
-enum_v1_dl_buffer_unit(7) -> infinite;
-enum_v1_dl_buffer_unit(X) when is_integer(X) -> X.
+enum_v1_outer_header_removal_header('GTP-U/UDP/IPv4') -> 0;
+enum_v1_outer_header_removal_header('GTP-U/UDP/IPv6') -> 1;
+enum_v1_outer_header_removal_header('UDP/IPv4') -> 2;
+enum_v1_outer_header_removal_header('UDP/IPv6') -> 3;
+enum_v1_outer_header_removal_header(0) -> 'GTP-U/UDP/IPv4';
+enum_v1_outer_header_removal_header(1) -> 'GTP-U/UDP/IPv6';
+enum_v1_outer_header_removal_header(2) -> 'UDP/IPv4';
+enum_v1_outer_header_removal_header(3) -> 'UDP/IPv6';
+enum_v1_outer_header_removal_header(X) when is_integer(X) -> X.
 
-enum_v1_interface('Access') -> 0;
-enum_v1_interface('Core') -> 1;
-enum_v1_interface('SGi-LAN') -> 2;
-enum_v1_interface('CP-function') -> 3;
-enum_v1_interface(0) -> 'Access';
-enum_v1_interface(1) -> 'Core';
-enum_v1_interface(2) -> 'SGi-LAN';
-enum_v1_interface(3) -> 'CP-function';
-enum_v1_interface(X) when is_integer(X) -> X.
+enum_v1_pdn_type_pdn_type('IPv4') -> 1;
+enum_v1_pdn_type_pdn_type('IPv6') -> 2;
+enum_v1_pdn_type_pdn_type('IPv4v6') -> 3;
+enum_v1_pdn_type_pdn_type('Non-IP') -> 4;
+enum_v1_pdn_type_pdn_type(1) -> 'IPv4';
+enum_v1_pdn_type_pdn_type(2) -> 'IPv6';
+enum_v1_pdn_type_pdn_type(3) -> 'IPv4v6';
+enum_v1_pdn_type_pdn_type(4) -> 'Non-IP';
+enum_v1_pdn_type_pdn_type(X) when is_integer(X) -> X.
 
-enum_v1_type('IPv4') -> 0;
-enum_v1_type('IPv6') -> 1;
-enum_v1_type('URL') -> 2;
-enum_v1_type('SIP URI') -> 3;
-enum_v1_type(0) -> 'IPv4';
-enum_v1_type(1) -> 'IPv6';
-enum_v1_type(2) -> 'URL';
-enum_v1_type(3) -> 'SIP URI';
-enum_v1_type(X) when is_integer(X) -> X.
+enum_v1_pfcp_cause_cause('Reserved') -> 0;
+enum_v1_pfcp_cause_cause('Request accepted') -> 1;
+enum_v1_pfcp_cause_cause('Request rejected') -> 64;
+enum_v1_pfcp_cause_cause('Session context not found') -> 65;
+enum_v1_pfcp_cause_cause('Mandatory IE missing') -> 66;
+enum_v1_pfcp_cause_cause('Conditional IE missing') -> 67;
+enum_v1_pfcp_cause_cause('Invalid length') -> 68;
+enum_v1_pfcp_cause_cause('Mandatory IE incorrect') -> 69;
+enum_v1_pfcp_cause_cause('Invalid Forwarding Policy') -> 70;
+enum_v1_pfcp_cause_cause('Invalid F-TEID allocation option') -> 71;
+enum_v1_pfcp_cause_cause('No established Sx Association') -> 72;
+enum_v1_pfcp_cause_cause('Rule creation/modification Failure') -> 73;
+enum_v1_pfcp_cause_cause('PFCP entity in congestion') -> 74;
+enum_v1_pfcp_cause_cause('No resources available') -> 75;
+enum_v1_pfcp_cause_cause('Service not supported') -> 76;
+enum_v1_pfcp_cause_cause('System failure') -> 77;
+enum_v1_pfcp_cause_cause(0) -> 'Reserved';
+enum_v1_pfcp_cause_cause(1) -> 'Request accepted';
+enum_v1_pfcp_cause_cause(64) -> 'Request rejected';
+enum_v1_pfcp_cause_cause(65) -> 'Session context not found';
+enum_v1_pfcp_cause_cause(66) -> 'Mandatory IE missing';
+enum_v1_pfcp_cause_cause(67) -> 'Conditional IE missing';
+enum_v1_pfcp_cause_cause(68) -> 'Invalid length';
+enum_v1_pfcp_cause_cause(69) -> 'Mandatory IE incorrect';
+enum_v1_pfcp_cause_cause(70) -> 'Invalid Forwarding Policy';
+enum_v1_pfcp_cause_cause(71) -> 'Invalid F-TEID allocation option';
+enum_v1_pfcp_cause_cause(72) -> 'No established Sx Association';
+enum_v1_pfcp_cause_cause(73) -> 'Rule creation/modification Failure';
+enum_v1_pfcp_cause_cause(74) -> 'PFCP entity in congestion';
+enum_v1_pfcp_cause_cause(75) -> 'No resources available';
+enum_v1_pfcp_cause_cause(76) -> 'Service not supported';
+enum_v1_pfcp_cause_cause(77) -> 'System failure';
+enum_v1_pfcp_cause_cause(X) when is_integer(X) -> X.
 
-enum_v1_dl('OPEN') -> 0;
-enum_v1_dl('CLOSED') -> 1;
-enum_v1_dl(0) -> 'OPEN';
-enum_v1_dl(1) -> 'CLOSED';
-enum_v1_dl(X) when is_integer(X) -> X.
+enum_v1_redirect_information_type('IPv4') -> 0;
+enum_v1_redirect_information_type('IPv6') -> 1;
+enum_v1_redirect_information_type('URL') -> 2;
+enum_v1_redirect_information_type('SIP URI') -> 3;
+enum_v1_redirect_information_type(0) -> 'IPv4';
+enum_v1_redirect_information_type(1) -> 'IPv6';
+enum_v1_redirect_information_type(2) -> 'URL';
+enum_v1_redirect_information_type(3) -> 'SIP URI';
+enum_v1_redirect_information_type(X) when is_integer(X) -> X.
 
-enum_v1_ul('OPEN') -> 0;
-enum_v1_ul('CLOSED') -> 1;
-enum_v1_ul(0) -> 'OPEN';
-enum_v1_ul(1) -> 'CLOSED';
-enum_v1_ul(X) when is_integer(X) -> X.
+enum_v1_source_interface_interface('Access') -> 0;
+enum_v1_source_interface_interface('Core') -> 1;
+enum_v1_source_interface_interface('SGi-LAN') -> 2;
+enum_v1_source_interface_interface('CP-function') -> 3;
+enum_v1_source_interface_interface(0) -> 'Access';
+enum_v1_source_interface_interface(1) -> 'Core';
+enum_v1_source_interface_interface(2) -> 'SGi-LAN';
+enum_v1_source_interface_interface(3) -> 'CP-function';
+enum_v1_source_interface_interface(X) when is_integer(X) -> X.
 
-enum_v1_cause('Reserved') -> 0;
-enum_v1_cause('Request accepted') -> 1;
-enum_v1_cause('Request rejected') -> 64;
-enum_v1_cause('Session context not found') -> 65;
-enum_v1_cause('Mandatory IE missing') -> 66;
-enum_v1_cause('Conditional IE missing') -> 67;
-enum_v1_cause('Invalid length') -> 68;
-enum_v1_cause('Mandatory IE incorrect') -> 69;
-enum_v1_cause('Invalid Forwarding Policy') -> 70;
-enum_v1_cause('Invalid F-TEID allocation option') -> 71;
-enum_v1_cause('No established Sx Association') -> 72;
-enum_v1_cause('Rule creation/modification Failure') -> 73;
-enum_v1_cause('PFCP entity in congestion') -> 74;
-enum_v1_cause('No resources available') -> 75;
-enum_v1_cause('Service not supported') -> 76;
-enum_v1_cause('System failure') -> 77;
-enum_v1_cause(0) -> 'Reserved';
-enum_v1_cause(1) -> 'Request accepted';
-enum_v1_cause(64) -> 'Request rejected';
-enum_v1_cause(65) -> 'Session context not found';
-enum_v1_cause(66) -> 'Mandatory IE missing';
-enum_v1_cause(67) -> 'Conditional IE missing';
-enum_v1_cause(68) -> 'Invalid length';
-enum_v1_cause(69) -> 'Mandatory IE incorrect';
-enum_v1_cause(70) -> 'Invalid Forwarding Policy';
-enum_v1_cause(71) -> 'Invalid F-TEID allocation option';
-enum_v1_cause(72) -> 'No established Sx Association';
-enum_v1_cause(73) -> 'Rule creation/modification Failure';
-enum_v1_cause(74) -> 'PFCP entity in congestion';
-enum_v1_cause(75) -> 'No resources available';
-enum_v1_cause(76) -> 'Service not supported';
-enum_v1_cause(77) -> 'System failure';
-enum_v1_cause(X) when is_integer(X) -> X.
+enum_v1_time_quota_mechanism_base_time_interval_type('CTP') -> 0;
+enum_v1_time_quota_mechanism_base_time_interval_type('DTP') -> 1;
+enum_v1_time_quota_mechanism_base_time_interval_type(0) -> 'CTP';
+enum_v1_time_quota_mechanism_base_time_interval_type(1) -> 'DTP';
+enum_v1_time_quota_mechanism_base_time_interval_type(X) when is_integer(X) -> X.
+
+enum_v1_timer_timer_unit('2 seconds') -> 0;
+enum_v1_timer_timer_unit('1 minute') -> 1;
+enum_v1_timer_timer_unit('10 minutes') -> 2;
+enum_v1_timer_timer_unit('1 hour') -> 3;
+enum_v1_timer_timer_unit('10 hours') -> 4;
+enum_v1_timer_timer_unit(infinite) -> 7;
+enum_v1_timer_timer_unit(0) -> '2 seconds';
+enum_v1_timer_timer_unit(1) -> '1 minute';
+enum_v1_timer_timer_unit(2) -> '10 minutes';
+enum_v1_timer_timer_unit(3) -> '1 hour';
+enum_v1_timer_timer_unit(4) -> '10 hours';
+enum_v1_timer_timer_unit(7) -> infinite;
+enum_v1_timer_timer_unit(X) when is_integer(X) -> X.
 
 %% decode create_pdr
 decode_v1_element(<<M_group/binary>>, 1) ->
@@ -1011,13 +1023,13 @@ decode_v1_element(<<M_group/binary>>, 18) ->
 
 %% decode pfcp_cause
 decode_v1_element(<<M_cause:8/integer>>, 19) ->
-    #pfcp_cause{cause = enum_v1_cause(M_cause)};
+    #pfcp_cause{cause = enum_v1_pfcp_cause_cause(M_cause)};
 
 %% decode source_interface
 decode_v1_element(<<_:4,
 		    M_interface:4/integer,
 		    _/binary>>, 20) ->
-    #source_interface{interface = enum_v1_interface(M_interface)};
+    #source_interface{interface = enum_v1_source_interface_interface(M_interface)};
 
 %% decode f_teid
 decode_v1_element(<<Data/binary>>, 21) ->
@@ -1040,8 +1052,8 @@ decode_v1_element(<<_:4,
 		    M_ul:2/integer,
 		    M_dl:2/integer,
 		    _/binary>>, 25) ->
-    #gate_status{ul = enum_v1_ul(M_ul),
-		 dl = enum_v1_dl(M_dl)};
+    #gate_status{ul = enum_v1_gate_status_ul(M_ul),
+		 dl = enum_v1_gate_status_dl(M_dl)};
 
 %% decode mbr
 decode_v1_element(<<M_ul:40/integer,
@@ -1133,7 +1145,7 @@ decode_v1_element(<<_:4,
 		    M_type:4/integer,
 		    M_address_len:16/integer, M_address:M_address_len/bytes,
 		    _/binary>>, 38) ->
-    #redirect_information{type = enum_v1_type(M_type),
+    #redirect_information{type = enum_v1_redirect_information_type(M_type),
 			  address = M_address};
 
 %% decode report_type
@@ -1161,7 +1173,7 @@ decode_v1_element(<<M_policy_identifier_len:8/integer, M_policy_identifier:M_pol
 decode_v1_element(<<_:4,
 		    M_interface:4/integer,
 		    _/binary>>, 42) ->
-    #destination_interface{interface = enum_v1_interface(M_interface)};
+    #destination_interface{interface = enum_v1_destination_interface_interface(M_interface)};
 
 %% decode up_function_features
 decode_v1_element(<<M_treu:1/integer,
@@ -1218,7 +1230,7 @@ decode_v1_element(<<M_delay:8/integer,
 decode_v1_element(<<M_dl_buffer_unit:3/integer,
 		    M_dl_buffer_value:5/integer,
 		    _/binary>>, 47) ->
-    #dl_buffering_duration{dl_buffer_unit = enum_v1_dl_buffer_unit(M_dl_buffer_unit),
+    #dl_buffering_duration{dl_buffer_unit = enum_v1_dl_buffering_duration_dl_buffer_unit(M_dl_buffer_unit),
 			   dl_buffer_value = M_dl_buffer_value};
 
 %% decode dl_buffering_suggested_packet_count
@@ -1261,7 +1273,7 @@ decode_v1_element(<<M_group/binary>>, 54) ->
 decode_v1_element(<<M_timer_unit:3/integer,
 		    M_timer_value:5/integer,
 		    _/binary>>, 55) ->
-    #timer{timer_unit = enum_v1_timer_unit(M_timer_unit),
+    #timer{timer_unit = enum_v1_timer_timer_unit(M_timer_unit),
 	   timer_value = M_timer_value};
 
 %% decode pdr_id
@@ -1473,7 +1485,7 @@ decode_v1_element(<<_:4,
 		    M_direction:4/integer,
 		    M_flow_len:16/integer, M_flow:M_flow_len/bytes,
 		    _/binary>>, 92) ->
-    #flow_information{direction = enum_v1_direction(M_direction),
+    #flow_information{direction = enum_v1_flow_information_direction(M_direction),
 		      flow = M_flow};
 
 %% decode ue_ip_address
@@ -1487,7 +1499,7 @@ decode_v1_element(<<Data/binary>>, 94) ->
 %% decode outer_header_removal
 decode_v1_element(<<M_header:8/integer,
 		    _/binary>>, 95) ->
-    #outer_header_removal{header = enum_v1_header(M_header)};
+    #outer_header_removal{header = enum_v1_outer_header_removal_header(M_header)};
 
 %% decode recovery_time_stamp
 decode_v1_element(<<M_time:32/integer,
@@ -1504,7 +1516,7 @@ decode_v1_element(<<_:4,
 		    M_name_len:8/integer, M_name:M_name_len/bytes,
 		    M_value_len:8/integer, M_value:M_value_len/bytes,
 		    _/binary>>, 98) ->
-    #header_enrichment{header_type = enum_v1_header_type(M_header_type),
+    #header_enrichment{header_type = enum_v1_header_enrichment_header_type(M_header_type),
 		       name = M_name,
 		       value = M_value};
 
@@ -1578,14 +1590,14 @@ decode_v1_element(<<_:7,
 decode_v1_element(<<M_release_timer_unit:3/integer,
 		    M_release_timer_value:5/integer,
 		    _/binary>>, 112) ->
-    #graceful_release_period{release_timer_unit = enum_v1_release_timer_unit(M_release_timer_unit),
+    #graceful_release_period{release_timer_unit = enum_v1_graceful_release_period_release_timer_unit(M_release_timer_unit),
 			     release_timer_value = M_release_timer_value};
 
 %% decode pdn_type
 decode_v1_element(<<_:5,
 		    M_pdn_type:3/integer,
 		    _/binary>>, 113) ->
-    #pdn_type{pdn_type = enum_v1_pdn_type(M_pdn_type)};
+    #pdn_type{pdn_type = enum_v1_pdn_type_pdn_type(M_pdn_type)};
 
 %% decode failed_rule_id
 decode_v1_element(<<Data/binary>>, 114) ->
@@ -1596,7 +1608,7 @@ decode_v1_element(<<_:6,
 		    M_base_time_interval_type:2/integer,
 		    M_interval:32/integer,
 		    _/binary>>, 115) ->
-    #time_quota_mechanism{base_time_interval_type = enum_v1_base_time_interval_type(M_base_time_interval_type),
+    #time_quota_mechanism{base_time_interval_type = enum_v1_time_quota_mechanism_base_time_interval_type(M_base_time_interval_type),
 			  interval = M_interval};
 
 %% decode user_plane_ip_resource_information
@@ -1851,12 +1863,12 @@ encode_v1_element(#remove_qer{
 
 encode_v1_element(#pfcp_cause{
 		       cause = M_cause}, Acc) ->
-    encode_tlv(19, <<(enum_v1_cause(M_cause)):8/integer>>, Acc);
+    encode_tlv(19, <<(enum_v1_pfcp_cause_cause(M_cause)):8/integer>>, Acc);
 
 encode_v1_element(#source_interface{
 		       interface = M_interface}, Acc) ->
     encode_tlv(20, <<0:4,
-		     (enum_v1_interface(M_interface)):4/integer>>, Acc);
+		     (enum_v1_source_interface_interface(M_interface)):4/integer>>, Acc);
 
 encode_v1_element(#f_teid{} = IE, Acc) ->
     encode_tlv(21, encode_f_teid(IE), Acc);
@@ -1876,8 +1888,8 @@ encode_v1_element(#gate_status{
 		       ul = M_ul,
 		       dl = M_dl}, Acc) ->
     encode_tlv(25, <<0:4,
-		     (enum_v1_ul(M_ul)):2/integer,
-		     (enum_v1_dl(M_dl)):2/integer>>, Acc);
+		     (enum_v1_gate_status_ul(M_ul)):2/integer,
+		     (enum_v1_gate_status_dl(M_dl)):2/integer>>, Acc);
 
 encode_v1_element(#mbr{
 		       ul = M_ul,
@@ -1956,7 +1968,7 @@ encode_v1_element(#redirect_information{
 		       type = M_type,
 		       address = M_address}, Acc) ->
     encode_tlv(38, <<0:4,
-		     (enum_v1_type(M_type)):4/integer,
+		     (enum_v1_redirect_information_type(M_type)):4/integer,
 		     (byte_size(M_address)):16/integer, M_address/binary>>, Acc);
 
 encode_v1_element(#report_type{
@@ -1981,7 +1993,7 @@ encode_v1_element(#forwarding_policy{
 encode_v1_element(#destination_interface{
 		       interface = M_interface}, Acc) ->
     encode_tlv(42, <<0:4,
-		     (enum_v1_interface(M_interface)):4/integer>>, Acc);
+		     (enum_v1_destination_interface_interface(M_interface)):4/integer>>, Acc);
 
 encode_v1_element(#up_function_features{
 		       treu = M_treu,
@@ -2033,7 +2045,7 @@ encode_v1_element(#downlink_data_notification_delay{
 encode_v1_element(#dl_buffering_duration{
 		       dl_buffer_unit = M_dl_buffer_unit,
 		       dl_buffer_value = M_dl_buffer_value}, Acc) ->
-    encode_tlv(47, <<(enum_v1_dl_buffer_unit(M_dl_buffer_unit)):3/integer,
+    encode_tlv(47, <<(enum_v1_dl_buffering_duration_dl_buffer_unit(M_dl_buffer_unit)):3/integer,
 		     M_dl_buffer_value:5/integer>>, Acc);
 
 encode_v1_element(#dl_buffering_suggested_packet_count{} = IE, Acc) ->
@@ -2072,7 +2084,7 @@ encode_v1_element(#overload_control_information{
 encode_v1_element(#timer{
 		       timer_unit = M_timer_unit,
 		       timer_value = M_timer_value}, Acc) ->
-    encode_tlv(55, <<(enum_v1_timer_unit(M_timer_unit)):3/integer,
+    encode_tlv(55, <<(enum_v1_timer_timer_unit(M_timer_unit)):3/integer,
 		     M_timer_value:5/integer>>, Acc);
 
 encode_v1_element(#pdr_id{
@@ -2259,7 +2271,7 @@ encode_v1_element(#flow_information{
 		       direction = M_direction,
 		       flow = M_flow}, Acc) ->
     encode_tlv(92, <<0:4,
-		     (enum_v1_direction(M_direction)):4/integer,
+		     (enum_v1_flow_information_direction(M_direction)):4/integer,
 		     (byte_size(M_flow)):16/integer, M_flow/binary>>, Acc);
 
 encode_v1_element(#ue_ip_address{} = IE, Acc) ->
@@ -2270,7 +2282,7 @@ encode_v1_element(#packet_rate{} = IE, Acc) ->
 
 encode_v1_element(#outer_header_removal{
 		       header = M_header}, Acc) ->
-    encode_tlv(95, <<(enum_v1_header(M_header)):8/integer>>, Acc);
+    encode_tlv(95, <<(enum_v1_outer_header_removal_header(M_header)):8/integer>>, Acc);
 
 encode_v1_element(#recovery_time_stamp{
 		       time = M_time}, Acc) ->
@@ -2284,7 +2296,7 @@ encode_v1_element(#header_enrichment{
 		       name = M_name,
 		       value = M_value}, Acc) ->
     encode_tlv(98, <<0:4,
-		     (enum_v1_header_type(M_header_type)):4/integer,
+		     (enum_v1_header_enrichment_header_type(M_header_type)):4/integer,
 		     (byte_size(M_name)):8/integer, M_name/binary,
 		     (byte_size(M_value)):8/integer, M_value/binary>>, Acc);
 
@@ -2350,13 +2362,13 @@ encode_v1_element(#sx_association_release_request{
 encode_v1_element(#graceful_release_period{
 		       release_timer_unit = M_release_timer_unit,
 		       release_timer_value = M_release_timer_value}, Acc) ->
-    encode_tlv(112, <<(enum_v1_release_timer_unit(M_release_timer_unit)):3/integer,
+    encode_tlv(112, <<(enum_v1_graceful_release_period_release_timer_unit(M_release_timer_unit)):3/integer,
 		      M_release_timer_value:5/integer>>, Acc);
 
 encode_v1_element(#pdn_type{
 		       pdn_type = M_pdn_type}, Acc) ->
     encode_tlv(113, <<0:5,
-		      (enum_v1_pdn_type(M_pdn_type)):3/integer>>, Acc);
+		      (enum_v1_pdn_type_pdn_type(M_pdn_type)):3/integer>>, Acc);
 
 encode_v1_element(#failed_rule_id{} = IE, Acc) ->
     encode_tlv(114, encode_failed_rule_id(IE), Acc);
@@ -2365,7 +2377,7 @@ encode_v1_element(#time_quota_mechanism{
 		       base_time_interval_type = M_base_time_interval_type,
 		       interval = M_interval}, Acc) ->
     encode_tlv(115, <<0:6,
-		      (enum_v1_base_time_interval_type(M_base_time_interval_type)):2/integer,
+		      (enum_v1_time_quota_mechanism_base_time_interval_type(M_base_time_interval_type)):2/integer,
 		      M_interval:32/integer>>, Acc);
 
 encode_v1_element(#user_plane_ip_resource_information{} = IE, Acc) ->

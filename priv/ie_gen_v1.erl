@@ -1056,7 +1056,7 @@ msgs() ->
     tuple().
 
 -record(ie, {id, name, type, min_field_count, fields}).
--record(field, {name, len, optional, type, spec}).
+-record(field, {rec, name, len, optional, type, spec}).
 
 -define('WildCard', #field{type = '_', len = 0}).
 -define('DecoderFunName', "decode_v1_element").
@@ -1068,20 +1068,20 @@ ies() ->
 		({array, Size}, F) when is_integer(Size) -> F#field{type = array, spec = {Size, bytes}};
 		({Type,  Spec}, F) when is_atom(Type) -> F#field{type = Type, spec = Spec}
 	     end,
-    FieldF = fun({Name, Len, Type}, Optional, F) when is_integer(Len) ->
-		     [TypeFF(Type, #field{name = s2a(Name), len = Len,
+    FieldF = fun(Rec, {Name, Len, Type}, Optional, F) when is_integer(Len) ->
+		     [TypeFF(Type, #field{rec = Rec, name = s2a(Name), len = Len,
 					  optional = Optional}) | F];
-		({Name, Type}, Optional, F) when is_list(Name), is_atom(Type) ->
-		     [#field{name = s2a(Name), len = 0, optional = Optional,
+		(Rec, {Name, Type}, Optional, F) when is_list(Name), is_atom(Type) ->
+		     [#field{rec = Rec, name = s2a(Name), len = 0, optional = Optional,
 			     type = helper, spec = Type} | F];
-		({'_', Len}, Optional, F) when is_integer(Len) ->
-		     [#field{len = Len, optional = Optional, type = '_'} | F]
+		(Rec, {'_', Len}, Optional, F) when is_integer(Len) ->
+		     [#field{rec = Rec, len = Len, optional = Optional, type = '_'} | F]
 	     end,
-    SpecF = fun(Fields, #ie{min_field_count = MinLen} = IE) when is_list(Fields) ->
+    SpecF = fun(Fields, #ie{name = Rec, min_field_count = MinLen} = IE) when is_list(Fields) ->
 		    {FieldDef, _} =
 			lists:foldl(
 			  fun(Field, {F, Cnt}) ->
-				  {FieldF(Field, Cnt >= MinLen, F), Cnt + 1} end,
+				  {FieldF(Rec, Field, Cnt >= MinLen, F), Cnt + 1} end,
 			  {[], 0}, Fields),
 		    IE#ie{fields = lists:reverse(FieldDef)};
 	      (Helper, IE) when is_atom(Helper) ->
@@ -1171,8 +1171,8 @@ gen_decoder_record_assign(#field{name = Name, spec = mccmnc}) ->
 gen_decoder_record_assign(#field{name = Name, type = flags, spec = Flags}) ->
     F = [io_lib:format("[ '~s' || M_~s_~s =/= 0 ]", [X, Name, X]) || X <- Flags],
     [io_lib:format("~s = ~s", [Name, string:join(F, " ++ ")])];
-gen_decoder_record_assign(#field{name = Name, type = enum}) ->
-    [io_lib:format("~s = enum_v1_~s(M_~s)", [Name, Name, Name])];
+gen_decoder_record_assign(#field{rec = Rec, name = Name, type = enum}) ->
+    [io_lib:format("~s = enum_v1_~s_~s(M_~s)", [Name, Rec, Name, Name])];
 gen_decoder_record_assign(#field{name = Name, len = Size, type = array, spec = Multi})
   when is_list(Multi) ->
     [io_lib:format("~s = [X || <<X:~w/bytes>> <= M_~s]", [Name, Size, Name])];
@@ -1217,8 +1217,8 @@ gen_encoder_bin(#field{spec = mccmnc}) ->
 gen_encoder_bin(#field{name = Name, type = flags, spec = Flags}) ->
     [io_lib:format("(encode_v1_flag('~s', M_~s)):1", [Flag, Name]) || Flag <- Flags];
 
-gen_encoder_bin(#field{name = Name, len = Size, type = enum}) ->
-    [io_lib:format("(enum_v1_~s(M_~s)):~w/integer", [Name, Name, Size])];
+gen_encoder_bin(#field{rec = Rec, name = Name, len = Size, type = enum}) ->
+    [io_lib:format("(enum_v1_~s_~s(M_~s)):~w/integer", [Rec, Name, Name, Size])];
 gen_encoder_bin(#field{name = Name, len = Len, type = array, spec = {Size, Type}}) ->
     [io_lib:format("(length(M_~s)):~w/integer, (<< <<X:~w/~w>> || X <- M_~s>>)/binary",
 		   [Name, Len, Size, Type, Name])];
@@ -1284,17 +1284,17 @@ collect(Fun, [F|Fields], Acc) ->
 collect(Fun, Fields) ->
     collect(Fun, Fields, []).
 
-gen_enum(Name, Value, Cnt, Next, {FwdFuns, RevFuns}) ->
-    Fwd = io_lib:format("enum_v1_~s(~w) -> ~w", [Name, s2e(Value), Cnt]),
-    Rev = io_lib:format("enum_v1_~s(~w) -> ~w", [Name, Cnt, s2e(Value)]),
-    gen_enum(Name, Next, Cnt + 1, {[Fwd|FwdFuns], [Rev|RevFuns]}).
+gen_enum(Rec, Name, Value, Cnt, Next, {FwdFuns, RevFuns}) ->
+    Fwd = io_lib:format("enum_v1_~s_~s(~w) -> ~w", [Rec, Name, s2e(Value), Cnt]),
+    Rev = io_lib:format("enum_v1_~s_~s(~w) -> ~w", [Rec, Name, Cnt, s2e(Value)]),
+    gen_enum(Rec, Name, Next, Cnt + 1, {[Fwd|FwdFuns], [Rev|RevFuns]}).
 
-gen_enum(_, [], _, {FwdFuns, RevFuns}) ->
+gen_enum(_, _, [], _, {FwdFuns, RevFuns}) ->
     {lists:reverse(FwdFuns), lists:reverse(RevFuns)};
-gen_enum(Name, [{Cnt, Value}|Rest], _, Acc) ->
-    gen_enum(Name, Value, Cnt, Rest, Acc);
-gen_enum(Name, [Value|Rest], Cnt, Acc) ->
-    gen_enum(Name, Value, Cnt, Rest, Acc).
+gen_enum(Rec, Name, [{Cnt, Value}|Rest], _, Acc) ->
+    gen_enum(Rec, Name, Value, Cnt, Rest, Acc);
+gen_enum(Rec, Name, [Value|Rest], Cnt, Acc) ->
+    gen_enum(Rec, Name, Value, Cnt, Rest, Acc).
 
 gen_message_type(Value, Name, Next, {FwdFuns, RevFuns}) ->
     Fwd = io_lib:format("message_type_v1(~s) -> ~w", [s2a(Name), Value]),
@@ -1342,11 +1342,11 @@ collect_late_assign(Fields = [H | T], Acc) ->
     end.
 
 
-collect_enum(#field{name = Name, type = enum, spec = Enum}, Acc) ->
-    {FwdFuns, RevFuns} = gen_enum(Name, Enum, 0, {[], []}),
-    Wildcard = io_lib:format("enum_v1_~s(X) when is_integer(X) -> X", [Name]),
+collect_enum(#field{rec = Rec, name = Name, type = enum, spec = Enum}, Acc) ->
+    {FwdFuns, RevFuns} = gen_enum(Rec, Name, Enum, 0, {[], []}),
+    Wildcard = io_lib:format("enum_v1_~s_~s(X) when is_integer(X) -> X", [Rec, Name]),
     S = string:join(FwdFuns ++ RevFuns ++ [Wildcard], ";\n") ++ ".\n",
-    lists:keystore(Name, 1, Acc, {Name, S});
+    maps:put({Rec, Name}, S, Acc);
 collect_enum(_, Acc) ->
     Acc.
 
@@ -1356,8 +1356,8 @@ collect_enums(_, AccIn) ->
     AccIn.
 
 write_enums(IEs) ->
-    E = lists:foldr(fun(X, Acc) -> collect_enums(X, Acc) end, [], IEs),
-    {_, Str} = lists:unzip(E),
+    E = lists:foldr(fun collect_enums/2, #{}, IEs),
+    Str = maps:values(E),
     string:join(Str, "\n").
 
 write_record(#ie{name = Name, type = undefined, fields = Fields}) ->
