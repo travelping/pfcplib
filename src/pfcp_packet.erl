@@ -810,13 +810,13 @@ enum_v1_release_timer_unit('1 minute') -> 1;
 enum_v1_release_timer_unit('10 minutes') -> 2;
 enum_v1_release_timer_unit('1 hour') -> 3;
 enum_v1_release_timer_unit('10 hours') -> 4;
-enum_v1_release_timer_unit('infinite') -> 7;
+enum_v1_release_timer_unit(infinite) -> 7;
 enum_v1_release_timer_unit(0) -> '2 seconds';
 enum_v1_release_timer_unit(1) -> '1 minute';
 enum_v1_release_timer_unit(2) -> '10 minutes';
 enum_v1_release_timer_unit(3) -> '1 hour';
 enum_v1_release_timer_unit(4) -> '10 hours';
-enum_v1_release_timer_unit(7) -> 'infinite';
+enum_v1_release_timer_unit(7) -> infinite;
 enum_v1_release_timer_unit(X) when is_integer(X) -> X.
 
 enum_v1_header_type('HTTP') -> 0;
@@ -848,13 +848,13 @@ enum_v1_timer_unit('1 minute') -> 1;
 enum_v1_timer_unit('10 minutes') -> 2;
 enum_v1_timer_unit('1 hour') -> 3;
 enum_v1_timer_unit('10 hours') -> 4;
-enum_v1_timer_unit('infinite') -> 7;
+enum_v1_timer_unit(infinite) -> 7;
 enum_v1_timer_unit(0) -> '2 seconds';
 enum_v1_timer_unit(1) -> '1 minute';
 enum_v1_timer_unit(2) -> '10 minutes';
 enum_v1_timer_unit(3) -> '1 hour';
 enum_v1_timer_unit(4) -> '10 hours';
-enum_v1_timer_unit(7) -> 'infinite';
+enum_v1_timer_unit(7) -> infinite;
 enum_v1_timer_unit(X) when is_integer(X) -> X.
 
 enum_v1_dl_buffer_unit('2 seconds') -> 0;
@@ -862,13 +862,13 @@ enum_v1_dl_buffer_unit('1 minute') -> 1;
 enum_v1_dl_buffer_unit('10 minutes') -> 2;
 enum_v1_dl_buffer_unit('1 hour') -> 3;
 enum_v1_dl_buffer_unit('10 hours') -> 4;
-enum_v1_dl_buffer_unit('infinite') -> 7;
+enum_v1_dl_buffer_unit(infinite) -> 7;
 enum_v1_dl_buffer_unit(0) -> '2 seconds';
 enum_v1_dl_buffer_unit(1) -> '1 minute';
 enum_v1_dl_buffer_unit(2) -> '10 minutes';
 enum_v1_dl_buffer_unit(3) -> '1 hour';
 enum_v1_dl_buffer_unit(4) -> '10 hours';
-enum_v1_dl_buffer_unit(7) -> 'infinite';
+enum_v1_dl_buffer_unit(7) -> infinite;
 enum_v1_dl_buffer_unit(X) when is_integer(X) -> X.
 
 enum_v1_interface('Access') -> 0;
@@ -1736,14 +1736,14 @@ decode_v1_element(<<M_group/binary>>, 143) ->
 
 %% decode mac_addresses_detected
 decode_v1_element(<<M_macs_len:8/integer, M_macs_Rest/binary>>, 144) ->
-    M_macs_size = M_macs_len * 6,
-    <<M_macs:M_macs_size/bytes>> = M_macs_Rest,
+    M_macs_size = M_macs_len * 6 * 8,
+    <<M_macs:M_macs_size/bits>> = M_macs_Rest,
     #mac_addresses_detected{macs = [X || <<X:6/bytes>> <= M_macs]};
 
 %% decode mac_addresses_removed
 decode_v1_element(<<M_macs_len:8/integer, M_macs_Rest/binary>>, 145) ->
-    M_macs_size = M_macs_len * 6,
-    <<M_macs:M_macs_size/bytes>> = M_macs_Rest,
+    M_macs_size = M_macs_len * 6 * 8,
+    <<M_macs:M_macs_size/bits>> = M_macs_Rest,
     #mac_addresses_removed{macs = [X || <<X:6/bytes>> <= M_macs]};
 
 %% decode ethernet_inactivity_timer
@@ -1882,48 +1882,48 @@ encode_v1_element(#gate_status{
 encode_v1_element(#mbr{
 		       ul = M_ul,
 		       dl = M_dl}, Acc) ->
-    encode_tlv(26, <<M_ul:40,
-		     M_dl:40>>, Acc);
+    encode_tlv(26, <<M_ul:40/integer,
+		     M_dl:40/integer>>, Acc);
 
 encode_v1_element(#gbr{
 		       ul = M_ul,
 		       dl = M_dl}, Acc) ->
-    encode_tlv(27, <<M_ul:40,
-		     M_dl:40>>, Acc);
+    encode_tlv(27, <<M_ul:40/integer,
+		     M_dl:40/integer>>, Acc);
 
 encode_v1_element(#qer_correlation_id{
 		       id = M_id}, Acc) ->
-    encode_tlv(28, <<M_id:32>>, Acc);
+    encode_tlv(28, <<M_id:32/integer>>, Acc);
 
 encode_v1_element(#precedence{
 		       precedence = M_precedence}, Acc) ->
-    encode_tlv(29, <<M_precedence:32>>, Acc);
+    encode_tlv(29, <<M_precedence:32/integer>>, Acc);
 
 encode_v1_element(#transport_level_marking{
 		       tos = M_tos}, Acc) ->
-    encode_tlv(30, <<M_tos:16>>, Acc);
+    encode_tlv(30, <<M_tos:16/integer>>, Acc);
 
 encode_v1_element(#volume_threshold{} = IE, Acc) ->
     encode_tlv(31, encode_volume_threshold(IE), Acc);
 
 encode_v1_element(#time_threshold{
 		       threshold = M_threshold}, Acc) ->
-    encode_tlv(32, <<M_threshold:32>>, Acc);
+    encode_tlv(32, <<M_threshold:32/integer>>, Acc);
 
 encode_v1_element(#monitoring_time{
 		       time = M_time}, Acc) ->
-    encode_tlv(33, <<M_time:32>>, Acc);
+    encode_tlv(33, <<M_time:32/integer>>, Acc);
 
 encode_v1_element(#subsequent_volume_threshold{} = IE, Acc) ->
     encode_tlv(34, encode_volume_threshold(IE), Acc);
 
 encode_v1_element(#subsequent_time_threshold{
 		       threshold = M_threshold}, Acc) ->
-    encode_tlv(35, <<M_threshold:32>>, Acc);
+    encode_tlv(35, <<M_threshold:32/integer>>, Acc);
 
 encode_v1_element(#inactivity_detection_time{
 		       time = M_time}, Acc) ->
-    encode_tlv(36, <<M_time:32>>, Acc);
+    encode_tlv(36, <<M_time:32/integer>>, Acc);
 
 encode_v1_element(#reporting_triggers{
 		       linked_usage_reporting = M_linked_usage_reporting,
@@ -1938,19 +1938,19 @@ encode_v1_element(#reporting_triggers{
 		       envelope_closure = M_envelope_closure,
 		       time_quota = M_time_quota,
 		       volume_quota = M_volume_quota}, Acc) ->
-    encode_tlv(37, <<M_linked_usage_reporting:1,
-		     M_dropped_dl_traffic_threshold:1,
-		     M_stop_of_traffic:1,
-		     M_start_of_traffic:1,
-		     M_quota_holding_time:1,
-		     M_time_threshold:1,
-		     M_volume_threshold:1,
-		     M_periodic_reporting:1,
+    encode_tlv(37, <<M_linked_usage_reporting:1/integer,
+		     M_dropped_dl_traffic_threshold:1/integer,
+		     M_stop_of_traffic:1/integer,
+		     M_start_of_traffic:1/integer,
+		     M_quota_holding_time:1/integer,
+		     M_time_threshold:1/integer,
+		     M_volume_threshold:1/integer,
+		     M_periodic_reporting:1/integer,
 		     0:4,
-		     M_mac_addresses_reporting:1,
-		     M_envelope_closure:1,
-		     M_time_quota:1,
-		     M_volume_quota:1>>, Acc);
+		     M_mac_addresses_reporting:1/integer,
+		     M_envelope_closure:1/integer,
+		     M_time_quota:1/integer,
+		     M_volume_quota:1/integer>>, Acc);
 
 encode_v1_element(#redirect_information{
 		       type = M_type,
@@ -1965,14 +1965,14 @@ encode_v1_element(#report_type{
 		       usar = M_usar,
 		       dldr = M_dldr}, Acc) ->
     encode_tlv(39, <<0:4,
-		     M_upir:1,
-		     M_erir:1,
-		     M_usar:1,
-		     M_dldr:1>>, Acc);
+		     M_upir:1/integer,
+		     M_erir:1/integer,
+		     M_usar:1/integer,
+		     M_dldr:1/integer>>, Acc);
 
 encode_v1_element(#offending_ie{
 		       type = M_type}, Acc) ->
-    encode_tlv(40, <<M_type:16>>, Acc);
+    encode_tlv(40, <<M_type:16/integer>>, Acc);
 
 encode_v1_element(#forwarding_policy{
 		       policy_identifier = M_policy_identifier}, Acc) ->
@@ -1996,19 +1996,19 @@ encode_v1_element(#up_function_features{
 		       udbc = M_udbc,
 		       pdiu = M_pdiu,
 		       empu = M_empu}, Acc) ->
-    encode_tlv(43, <<M_treu:1,
-		     M_heeu:1,
-		     M_pfdm:1,
-		     M_ftup:1,
-		     M_trst:1,
-		     M_dlbd:1,
-		     M_ddnd:1,
-		     M_bucp:1,
+    encode_tlv(43, <<M_treu:1/integer,
+		     M_heeu:1/integer,
+		     M_pfdm:1/integer,
+		     M_ftup:1/integer,
+		     M_trst:1/integer,
+		     M_dlbd:1/integer,
+		     M_ddnd:1/integer,
+		     M_bucp:1/integer,
 		     0:4,
-		     M_quoac:1,
-		     M_udbc:1,
-		     M_pdiu:1,
-		     M_empu:1>>, Acc);
+		     M_quoac:1/integer,
+		     M_udbc:1/integer,
+		     M_pdiu:1/integer,
+		     M_empu:1/integer>>, Acc);
 
 encode_v1_element(#apply_action{
 		       dupl = M_dupl,
@@ -2017,24 +2017,24 @@ encode_v1_element(#apply_action{
 		       forw = M_forw,
 		       drop = M_drop}, Acc) ->
     encode_tlv(44, <<0:3,
-		     M_dupl:1,
-		     M_nocp:1,
-		     M_buff:1,
-		     M_forw:1,
-		     M_drop:1>>, Acc);
+		     M_dupl:1/integer,
+		     M_nocp:1/integer,
+		     M_buff:1/integer,
+		     M_forw:1/integer,
+		     M_drop:1/integer>>, Acc);
 
 encode_v1_element(#downlink_data_service_information{} = IE, Acc) ->
     encode_tlv(45, encode_paging_policy_indication(IE), Acc);
 
 encode_v1_element(#downlink_data_notification_delay{
 		       delay = M_delay}, Acc) ->
-    encode_tlv(46, <<M_delay:8>>, Acc);
+    encode_tlv(46, <<M_delay:8/integer>>, Acc);
 
 encode_v1_element(#dl_buffering_duration{
 		       dl_buffer_unit = M_dl_buffer_unit,
 		       dl_buffer_value = M_dl_buffer_value}, Acc) ->
     encode_tlv(47, <<(enum_v1_dl_buffer_unit(M_dl_buffer_unit)):3/integer,
-		     M_dl_buffer_value:5>>, Acc);
+		     M_dl_buffer_value:5/integer>>, Acc);
 
 encode_v1_element(#dl_buffering_suggested_packet_count{} = IE, Acc) ->
     encode_tlv(48, encode_dl_buffering_suggested_packet_count(IE), Acc);
@@ -2044,14 +2044,14 @@ encode_v1_element(#sxsmreq_flags{
 		       sndem = M_sndem,
 		       drobu = M_drobu}, Acc) ->
     encode_tlv(49, <<0:5,
-		     M_qaurr:1,
-		     M_sndem:1,
-		     M_drobu:1>>, Acc);
+		     M_qaurr:1/integer,
+		     M_sndem:1/integer,
+		     M_drobu:1/integer>>, Acc);
 
 encode_v1_element(#sxsrrsp_flags{
 		       drobu = M_drobu}, Acc) ->
     encode_tlv(50, <<0:7,
-		     M_drobu:1>>, Acc);
+		     M_drobu:1/integer>>, Acc);
 
 encode_v1_element(#load_control_information{
 		       group = M_group}, Acc) ->
@@ -2059,11 +2059,11 @@ encode_v1_element(#load_control_information{
 
 encode_v1_element(#sequence_number{
 		       number = M_number}, Acc) ->
-    encode_tlv(52, <<M_number:32>>, Acc);
+    encode_tlv(52, <<M_number:32/integer>>, Acc);
 
 encode_v1_element(#metric{
 		       metric = M_metric}, Acc) ->
-    encode_tlv(53, <<M_metric:8>>, Acc);
+    encode_tlv(53, <<M_metric:8/integer>>, Acc);
 
 encode_v1_element(#overload_control_information{
 		       group = M_group}, Acc) ->
@@ -2073,11 +2073,11 @@ encode_v1_element(#timer{
 		       timer_unit = M_timer_unit,
 		       timer_value = M_timer_value}, Acc) ->
     encode_tlv(55, <<(enum_v1_timer_unit(M_timer_unit)):3/integer,
-		     M_timer_value:5>>, Acc);
+		     M_timer_value:5/integer>>, Acc);
 
 encode_v1_element(#pdr_id{
 		       id = M_id}, Acc) ->
-    encode_tlv(56, <<M_id:16>>, Acc);
+    encode_tlv(56, <<M_id:16/integer>>, Acc);
 
 encode_v1_element(#f_seid{} = IE, Acc) ->
     encode_tlv(57, encode_f_seid(IE), Acc);
@@ -2101,9 +2101,9 @@ encode_v1_element(#measurement_method{
 		       volum = M_volum,
 		       durat = M_durat}, Acc) ->
     encode_tlv(62, <<0:5,
-		     M_event:1,
-		     M_volum:1,
-		     M_durat:1>>, Acc);
+		     M_event:1/integer,
+		     M_volum:1/integer,
+		     M_durat:1/integer>>, Acc);
 
 encode_v1_element(#usage_report_trigger{
 		       immer = M_immer,
@@ -2121,26 +2121,26 @@ encode_v1_element(#usage_report_trigger{
 		       liusa = M_liusa,
 		       timqu = M_timqu,
 		       volqu = M_volqu}, Acc) ->
-    encode_tlv(63, <<M_immer:1,
-		     M_droth:1,
-		     M_stopt:1,
-		     M_start:1,
-		     M_quhti:1,
-		     M_timth:1,
-		     M_volth:1,
-		     M_perio:1,
+    encode_tlv(63, <<M_immer:1/integer,
+		     M_droth:1/integer,
+		     M_stopt:1/integer,
+		     M_start:1/integer,
+		     M_quhti:1/integer,
+		     M_timth:1/integer,
+		     M_volth:1/integer,
+		     M_perio:1/integer,
 		     0:1,
-		     M_macar:1,
-		     M_envcl:1,
-		     M_monit:1,
-		     M_termr:1,
-		     M_liusa:1,
-		     M_timqu:1,
-		     M_volqu:1>>, Acc);
+		     M_macar:1/integer,
+		     M_envcl:1/integer,
+		     M_monit:1/integer,
+		     M_termr:1/integer,
+		     M_liusa:1/integer,
+		     M_timqu:1/integer,
+		     M_volqu:1/integer>>, Acc);
 
 encode_v1_element(#measurement_period{
 		       period = M_period}, Acc) ->
-    encode_tlv(64, <<M_period:32>>, Acc);
+    encode_tlv(64, <<M_period:32/integer>>, Acc);
 
 encode_v1_element(#fq_csid{} = IE, Acc) ->
     encode_tlv(65, encode_fq_csid(IE), Acc);
@@ -2150,7 +2150,7 @@ encode_v1_element(#volume_measurement{} = IE, Acc) ->
 
 encode_v1_element(#duration_measurement{
 		       duration = M_duration}, Acc) ->
-    encode_tlv(67, <<M_duration:32>>, Acc);
+    encode_tlv(67, <<M_duration:32/integer>>, Acc);
 
 encode_v1_element(#application_detection_information{
 		       group = M_group}, Acc) ->
@@ -2158,15 +2158,15 @@ encode_v1_element(#application_detection_information{
 
 encode_v1_element(#time_of_first_packet{
 		       time = M_time}, Acc) ->
-    encode_tlv(69, <<M_time:32>>, Acc);
+    encode_tlv(69, <<M_time:32/integer>>, Acc);
 
 encode_v1_element(#time_of_last_packet{
 		       time = M_time}, Acc) ->
-    encode_tlv(70, <<M_time:32>>, Acc);
+    encode_tlv(70, <<M_time:32/integer>>, Acc);
 
 encode_v1_element(#quota_holding_time{
 		       time = M_time}, Acc) ->
-    encode_tlv(71, <<M_time:32>>, Acc);
+    encode_tlv(71, <<M_time:32/integer>>, Acc);
 
 encode_v1_element(#dropped_dl_traffic_threshold{} = IE, Acc) ->
     encode_tlv(72, encode_dropped_dl_traffic_threshold(IE), Acc);
@@ -2176,15 +2176,15 @@ encode_v1_element(#volume_quota{} = IE, Acc) ->
 
 encode_v1_element(#time_quota{
 		       quota = M_quota}, Acc) ->
-    encode_tlv(74, <<M_quota:32>>, Acc);
+    encode_tlv(74, <<M_quota:32/integer>>, Acc);
 
 encode_v1_element(#start_time{
 		       time = M_time}, Acc) ->
-    encode_tlv(75, <<M_time:32>>, Acc);
+    encode_tlv(75, <<M_time:32/integer>>, Acc);
 
 encode_v1_element(#end_time{
 		       time = M_time}, Acc) ->
-    encode_tlv(76, <<M_time:32>>, Acc);
+    encode_tlv(76, <<M_time:32/integer>>, Acc);
 
 encode_v1_element(#query_urr{
 		       group = M_group}, Acc) ->
@@ -2204,11 +2204,11 @@ encode_v1_element(#usage_report_srr{
 
 encode_v1_element(#urr_id{
 		       id = M_id}, Acc) ->
-    encode_tlv(81, <<M_id:32>>, Acc);
+    encode_tlv(81, <<M_id:32/integer>>, Acc);
 
 encode_v1_element(#linked_urr_id{
 		       id = M_id}, Acc) ->
-    encode_tlv(82, <<M_id:32>>, Acc);
+    encode_tlv(82, <<M_id:32/integer>>, Acc);
 
 encode_v1_element(#downlink_data_report{
 		       group = M_group}, Acc) ->
@@ -2231,14 +2231,14 @@ encode_v1_element(#remove_bar{
 
 encode_v1_element(#bar_id{
 		       id = M_id}, Acc) ->
-    encode_tlv(88, <<M_id:8>>, Acc);
+    encode_tlv(88, <<M_id:8/integer>>, Acc);
 
 encode_v1_element(#cp_function_features{
 		       ovrl = M_ovrl,
 		       load = M_load}, Acc) ->
     encode_tlv(89, <<0:6,
-		     M_ovrl:1,
-		     M_load:1>>, Acc);
+		     M_ovrl:1/integer,
+		     M_load:1/integer>>, Acc);
 
 encode_v1_element(#usage_information{
 		       ube = M_ube,
@@ -2246,10 +2246,10 @@ encode_v1_element(#usage_information{
 		       aft = M_aft,
 		       bef = M_bef}, Acc) ->
     encode_tlv(90, <<0:4,
-		     M_ube:1,
-		     M_uae:1,
-		     M_aft:1,
-		     M_bef:1>>, Acc);
+		     M_ube:1/integer,
+		     M_uae:1/integer,
+		     M_aft:1/integer,
+		     M_bef:1/integer>>, Acc);
 
 encode_v1_element(#application_instance_id{
 		       id = M_id}, Acc) ->
@@ -2274,7 +2274,7 @@ encode_v1_element(#outer_header_removal{
 
 encode_v1_element(#recovery_time_stamp{
 		       time = M_time}, Acc) ->
-    encode_tlv(96, <<M_time:32>>, Acc);
+    encode_tlv(96, <<M_time:32/integer>>, Acc);
 
 encode_v1_element(#dl_flow_level_marking{} = IE, Acc) ->
     encode_tlv(97, encode_dl_flow_level_marking(IE), Acc);
@@ -2297,14 +2297,14 @@ encode_v1_element(#measurement_information{
 		       inam = M_inam,
 		       mbqe = M_mbqe}, Acc) ->
     encode_tlv(100, <<0:5,
-		      M_radi:1,
-		      M_inam:1,
-		      M_mbqe:1>>, Acc);
+		      M_radi:1/integer,
+		      M_inam:1/integer,
+		      M_mbqe:1/integer>>, Acc);
 
 encode_v1_element(#node_report_type{
 		       upfr = M_upfr}, Acc) ->
     encode_tlv(101, <<0:7,
-		      M_upfr:1>>, Acc);
+		      M_upfr:1/integer>>, Acc);
 
 encode_v1_element(#user_plane_path_failure_report{
 		       group = M_group}, Acc) ->
@@ -2315,7 +2315,7 @@ encode_v1_element(#remote_gtp_u_peer{} = IE, Acc) ->
 
 encode_v1_element(#ur_seqn{
 		       number = M_number}, Acc) ->
-    encode_tlv(104, <<M_number:32>>, Acc);
+    encode_tlv(104, <<M_number:32/integer>>, Acc);
 
 encode_v1_element(#update_duplicating_parameters{
 		       group = M_group}, Acc) ->
@@ -2331,27 +2331,27 @@ encode_v1_element(#deactivate_predefined_rules{
 
 encode_v1_element(#far_id{
 		       id = M_id}, Acc) ->
-    encode_tlv(108, <<M_id:32>>, Acc);
+    encode_tlv(108, <<M_id:32/integer>>, Acc);
 
 encode_v1_element(#qer_id{
 		       id = M_id}, Acc) ->
-    encode_tlv(109, <<M_id:32>>, Acc);
+    encode_tlv(109, <<M_id:32/integer>>, Acc);
 
 encode_v1_element(#oci_flags{
 		       aoci = M_aoci}, Acc) ->
     encode_tlv(110, <<0:7,
-		      M_aoci:1>>, Acc);
+		      M_aoci:1/integer>>, Acc);
 
 encode_v1_element(#sx_association_release_request{
 		       sarr = M_sarr}, Acc) ->
     encode_tlv(111, <<0:7,
-		      M_sarr:1>>, Acc);
+		      M_sarr:1/integer>>, Acc);
 
 encode_v1_element(#graceful_release_period{
 		       release_timer_unit = M_release_timer_unit,
 		       release_timer_value = M_release_timer_value}, Acc) ->
     encode_tlv(112, <<(enum_v1_release_timer_unit(M_release_timer_unit)):3/integer,
-		      M_release_timer_value:5>>, Acc);
+		      M_release_timer_value:5/integer>>, Acc);
 
 encode_v1_element(#pdn_type{
 		       pdn_type = M_pdn_type}, Acc) ->
@@ -2366,14 +2366,14 @@ encode_v1_element(#time_quota_mechanism{
 		       interval = M_interval}, Acc) ->
     encode_tlv(115, <<0:6,
 		      (enum_v1_base_time_interval_type(M_base_time_interval_type)):2/integer,
-		      M_interval:32>>, Acc);
+		      M_interval:32/integer>>, Acc);
 
 encode_v1_element(#user_plane_ip_resource_information{} = IE, Acc) ->
     encode_tlv(116, encode_user_plane_ip_resource_information(IE), Acc);
 
 encode_v1_element(#user_plane_inactivity_timer{
 		       timer = M_timer}, Acc) ->
-    encode_tlv(117, <<M_timer:32>>, Acc);
+    encode_tlv(117, <<M_timer:32/integer>>, Acc);
 
 encode_v1_element(#aggregated_urrs{
 		       group = M_group}, Acc) ->
@@ -2382,38 +2382,38 @@ encode_v1_element(#aggregated_urrs{
 encode_v1_element(#multiplier{
 		       digits = M_digits,
 		       exponent = M_exponent}, Acc) ->
-    encode_tlv(119, <<M_digits:64/signed,
-		      M_exponent:32/signed>>, Acc);
+    encode_tlv(119, <<M_digits:64/signed-integer,
+		      M_exponent:32/signed-integer>>, Acc);
 
 encode_v1_element(#aggregated_urr_id{
 		       id = M_id}, Acc) ->
-    encode_tlv(120, <<M_id:32>>, Acc);
+    encode_tlv(120, <<M_id:32/integer>>, Acc);
 
 encode_v1_element(#subsequent_volume_quota{} = IE, Acc) ->
     encode_tlv(121, encode_volume_threshold(IE), Acc);
 
 encode_v1_element(#subsequent_time_quota{
 		       quota = M_quota}, Acc) ->
-    encode_tlv(122, <<M_quota:32>>, Acc);
+    encode_tlv(122, <<M_quota:32/integer>>, Acc);
 
 encode_v1_element(#rqi{
 		       rqi = M_rqi}, Acc) ->
     encode_tlv(123, <<0:7,
-		      M_rqi:1>>, Acc);
+		      M_rqi:1/integer>>, Acc);
 
 encode_v1_element(#qfi{
 		       qfi = M_qfi}, Acc) ->
-    encode_tlv(124, <<M_qfi:8>>, Acc);
+    encode_tlv(124, <<M_qfi:8/integer>>, Acc);
 
 encode_v1_element(#query_urr_reference{
 		       reference = M_reference}, Acc) ->
-    encode_tlv(125, <<M_reference:32>>, Acc);
+    encode_tlv(125, <<M_reference:32/integer>>, Acc);
 
 encode_v1_element(#additional_usage_reports_information{
 		       auri = M_auri,
 		       reports = M_reports}, Acc) ->
-    encode_tlv(126, <<M_auri:1,
-		      M_reports:15>>, Acc);
+    encode_tlv(126, <<M_auri:1/integer,
+		      M_reports:15/integer>>, Acc);
 
 encode_v1_element(#create_traffic_endpoint{
 		       group = M_group}, Acc) ->
@@ -2433,7 +2433,7 @@ encode_v1_element(#remove_traffic_endpoint{
 
 encode_v1_element(#traffic_endpoint_id{
 		       id = M_id}, Acc) ->
-    encode_tlv(131, <<M_id:8>>, Acc);
+    encode_tlv(131, <<M_id:8/integer>>, Acc);
 
 encode_v1_element(#ethernet_packet_filter{
 		       group = M_group}, Acc) ->
@@ -2450,27 +2450,27 @@ encode_v1_element(#s_tag{} = IE, Acc) ->
 
 encode_v1_element(#ethertype{
 		       type = M_type}, Acc) ->
-    encode_tlv(136, <<M_type:16>>, Acc);
+    encode_tlv(136, <<M_type:16/integer>>, Acc);
 
 encode_v1_element(#proxying{
 		       ins = M_ins,
 		       arp = M_arp}, Acc) ->
     encode_tlv(137, <<0:6,
-		      M_ins:1,
-		      M_arp:1>>, Acc);
+		      M_ins:1/integer,
+		      M_arp:1/integer>>, Acc);
 
 encode_v1_element(#ethernet_filter_id{
 		       id = M_id}, Acc) ->
-    encode_tlv(138, <<M_id:32>>, Acc);
+    encode_tlv(138, <<M_id:32/integer>>, Acc);
 
 encode_v1_element(#ethernet_filter_properties{
 		       bide = M_bide}, Acc) ->
     encode_tlv(139, <<0:7,
-		      M_bide:1>>, Acc);
+		      M_bide:1/integer>>, Acc);
 
 encode_v1_element(#suggested_buffering_packets_count{
 		       count = M_count}, Acc) ->
-    encode_tlv(140, <<M_count:8>>, Acc);
+    encode_tlv(140, <<M_count:8/integer>>, Acc);
 
 encode_v1_element(#user_id{} = IE, Acc) ->
     encode_tlv(141, encode_user_id(IE), Acc);
@@ -2478,7 +2478,7 @@ encode_v1_element(#user_id{} = IE, Acc) ->
 encode_v1_element(#ethernet_pdu_session_information{
 		       ethi = M_ethi}, Acc) ->
     encode_tlv(142, <<0:7,
-		      M_ethi:1>>, Acc);
+		      M_ethi:1/integer>>, Acc);
 
 encode_v1_element(#ethernet_traffic_information{
 		       group = M_group}, Acc) ->
@@ -2486,15 +2486,15 @@ encode_v1_element(#ethernet_traffic_information{
 
 encode_v1_element(#mac_addresses_detected{
 		       macs = M_macs}, Acc) ->
-    encode_tlv(144, <<(length(M_macs)):8/integer, (<< <<X/binary>> || X <- M_macs>>)/binary>>, Acc);
+    encode_tlv(144, <<(length(M_macs)):8/integer, (<< <<X:6/bytes>> || X <- M_macs>>)/binary>>, Acc);
 
 encode_v1_element(#mac_addresses_removed{
 		       macs = M_macs}, Acc) ->
-    encode_tlv(145, <<(length(M_macs)):8/integer, (<< <<X/binary>> || X <- M_macs>>)/binary>>, Acc);
+    encode_tlv(145, <<(length(M_macs)):8/integer, (<< <<X:6/bytes>> || X <- M_macs>>)/binary>>, Acc);
 
 encode_v1_element(#ethernet_inactivity_timer{
 		       timer = M_timer}, Acc) ->
-    encode_tlv(146, <<M_timer:32>>, Acc);
+    encode_tlv(146, <<M_timer:32/integer>>, Acc);
 
 encode_v1_element(#tp_packet_measurement{} = IE, Acc) ->
     encode_tlv({18681,1}, encode_volume_threshold(IE), Acc);
