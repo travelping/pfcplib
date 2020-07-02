@@ -1055,7 +1055,7 @@ msgs() ->
     {array, array_def()} |
     tuple().
 
--record(ie, {id, name, type, min_field_count, fields}).
+-record(ie, {id, name, type, field_spec, fields}).
 -record(field, {rec, name, len, optional, type, spec}).
 
 -define('WildCard', #field{type = '_', len = 0}).
@@ -1077,7 +1077,11 @@ ies() ->
 		(Rec, {'_', Len}, Optional, F) when is_integer(Len) ->
 		     [#field{rec = Rec, len = Len, optional = Optional, type = '_'} | F]
 	     end,
-    SpecF = fun(Fields, #ie{name = Rec, min_field_count = MinLen} = IE) when is_list(Fields) ->
+    SpecF = fun(Fields, #ie{name = Rec, field_spec = FieldSpc} = IE) when is_list(Fields) ->
+		    MinLen = case FieldSpc of
+				 [H|_] -> H;
+				 _ -> undefined
+			     end,
 		    {FieldDef, _} =
 			lists:foldl(
 			  fun(Field, {F, Cnt}) ->
@@ -1090,8 +1094,11 @@ ies() ->
     lists:map(
       fun ({Id, Name, Spec}) ->
 	      SpecF(Spec, #ie{id = Id, name = s2a(Name)});
-	  ({Id, Name, MinLen, Spec}) ->
-	      SpecF(Spec, #ie{id = Id, name = s2a(Name), min_field_count = MinLen})
+	  ({Id, Name, MinLen, Spec}) when is_integer(MinLen), MinLen < length(Spec) ->
+	      SpecF(Spec, #ie{id = Id, name = s2a(Name),
+			      field_spec = lists:seq(MinLen, length(Spec))});
+	  ({Id, Name, FieldSpc, Spec}) when is_list(FieldSpc) ->
+	      SpecF(Spec, #ie{id = Id, name = s2a(Name), field_spec = FieldSpc})
       end, raw_ies()).
 
 
@@ -1367,9 +1374,9 @@ write_record(#ie{name = Name, type = undefined, fields = Fields}) ->
 write_record(_) ->
     [].
 
-write_decoder(#ie{min_field_count = Min, fields = Fields} = IE, Fns)
-  when is_integer(Min), length(Fields) > Min ->
-    SubIE = IE#ie{min_field_count = undefined},
+write_decoder(#ie{field_spec = FieldSpc, fields = Fields} = IE, Fns)
+  when is_list(FieldSpc) ->
+    SubIE = IE#ie{field_spec = undefined},
     lists:foldl(
       fun (Len, FnsSub) ->
 	      {H,T} = lists:split(Len, Fields),
@@ -1378,8 +1385,7 @@ write_decoder(#ie{min_field_count = Min, fields = Fields} = IE, Fns)
 		  _ ->
 		      write_decoder(SubIE#ie{fields = H ++ [?WildCard]}, FnsSub)
 	      end
-      end, Fns, lists:seq(Min, length(Fields)));
-
+      end, Fns, FieldSpc);
 
 write_decoder(#ie{id = Id, type = undefined, name = Name, fields = Fields}, Fns) ->
     MatchIdent = indent(?DecoderFunName, 3),
@@ -1396,20 +1402,19 @@ write_decoder(#ie{name = Name, id = Id, type = Helper}, Fns) ->
 		      [Name, ?DecoderFunName, Id, Helper, Name]),
     [F | Fns].
 
-write_encoder(#ie{min_field_count = Min, fields = Fields} = IE, Fns)
-  when is_integer(Min), length(Fields) > Min ->
-    SubIE = IE#ie{min_field_count = undefined},
-    lists:foldl(
+write_encoder(#ie{field_spec = FieldSpc, fields = Fields} = IE, Fns)
+  when is_list(FieldSpc) ->
+    SubIE = IE#ie{field_spec = undefined},
+    lists:foldr(
       fun (Len, FnsSub) ->
 	      {H,T} = lists:split(Len, Fields),
-	      case T of
+	      case lists:dropwhile(fun (#field{type = Type}) -> Type == '_' end, T) of
 		  [] ->
 		      write_encoder(SubIE#ie{fields = H}, FnsSub);
-		  [#field{type = '_'}|_] -> FnsSub;
 		  [M|_] ->
 		      write_encoder(SubIE#ie{fields = H ++ [M#field{type = undefined}]}, FnsSub)
 	      end
-      end, Fns, lists:seq(length(Fields), Min, -1));
+      end, Fns, FieldSpc);
 
 write_encoder(#ie{id = Id, name = Name, type = undefined, fields = Fields}, Fns) ->
     RecIdent = indent(?EncoderFunName ++ "(#", 4),
