@@ -2,7 +2,7 @@
 %% License, v. 2.0. If a copy of the MPL was not distributed with this
 %% file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-%% Copyright 2017-2019 Travelping GmbH <info@travelping.com>
+%% Copyright 2017-2020 Travelping GmbH <info@travelping.com>
 
 -module(pfcp_packet).
 
@@ -12,7 +12,7 @@
 -export([validate/2]).
 -export([pretty_print/1]).
 
--compile([{parse_transform, cut}, bin_opt_info]).
+-compile([{parse_transform, cut}]).
 -compile({inline,[decode_fqdn/1, maybe/4,
 		  decode_v1_grouped/1]}).
 
@@ -119,7 +119,7 @@ validate(API, Type, Key, {P, Grp} = Present, IEs) when is_map(IEs) ->
 validate_grp(API, Type, IEs, V)
   when is_list(IEs) ->
     lists:foreach(fun(IE) -> validate_grp(API, Type, IE, V) end, IEs);
-validate_grp(API, Type, IE, Atom)
+validate_grp(_, _, IE, Atom)
   when is_atom(Atom) andalso element(1, IE) =:= Atom ->
     ok;
 validate_grp(API, Type, {_, Group}, V)
@@ -3440,15 +3440,6 @@ encode_v1_element(#redirect_information{
     encode_tlv(38, <<0:4,
 		     (enum_v1_redirect_information_type(M_type)):4/integer,
 		     (byte_size(M_address)):16/integer, M_address/binary>>, Acc);
-
-encode_v1_element(#redirect_information{
-		       type = M_type,
-		       address = M_address,
-		       other_address = M_other_address}, Acc) ->
-    encode_tlv(38, <<0:4,
-		     (enum_v1_redirect_information_type(M_type)):4/integer,
-		     (byte_size(M_address)):16/integer, M_address/binary,
-		     (byte_size(M_other_address)):16/integer, M_other_address/binary>>, Acc);
 
 encode_v1_element(#redirect_information{
 		       type = M_type,

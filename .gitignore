@@ -4,4 +4,6 @@ ebin/
 .rebar3
 _build/
 _checkouts/
+rebar3
+rebar.lock
 *~
