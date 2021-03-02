@@ -259,6 +259,11 @@
 	  round_trip_packet_delay
 }).
 
+-record(number_of_ue_ip_addresses, {
+	  ipv4	:: 'undefined' | 0..16#ffffffff,
+	  ipv6	:: 'undefined' | 0..16#ffffffff
+	 }).
+
 -record(tp_packet_measurement, {
 	  total		:: 0..16#ffffffffffffffff,
 	  uplink	:: 0..16#ffffffffffffffff,
@@ -409,13 +414,15 @@
 	  time_threshold = 0,
 	  volume_threshold = 0,
 	  periodic_reporting = 0,
+	  quota_validity_time = 0,
 	  ip_multicast_join_leave = 0,
 	  event_quota = 0,
 	  event_threshold = 0,
 	  mac_addresses_reporting = 0,
 	  envelope_closure = 0,
 	  time_quota = 0,
-	  volume_quota = 0
+	  volume_quota = 0,
+	  report_the_end_marker_reception
 }).
 
 -record(redirect_information, {
@@ -479,12 +486,15 @@
 	  vtime,
 	  rttl,
 	  mpas,
+	  rds,
+	  ddds,
 	  ethar,
 	  ciot,
 	  mt_edt,
 	  gpqm,
 	  qfqm,
-	  atsss_ll
+	  atsss_ll,
+	  rttwp
 }).
 
 -record(apply_action, {
@@ -496,6 +506,8 @@
 	  buff = 0,
 	  forw = 0,
 	  drop = 0,
+	  ddpn,
+	  bdpn,
 	  edrt
 }).
 
@@ -574,6 +586,8 @@
 	  liusa = 0,
 	  timqu = 0,
 	  volqu = 0,
+	  emrre,
+	  quvti,
 	  ipmjl,
 	  tebur,
 	  evequ
@@ -660,6 +674,7 @@
 }).
 
 -record(cp_function_features, {
+	  uiaur = 0,
 	  ardr = 0,
 	  mpas = 0,
 	  bundl = 0,
@@ -1277,6 +1292,65 @@
 }).
 
 -record(updated_pdr, {
+	  group
+}).
+
+-record(s_nssai, {
+	  sst = 0,
+	  sd = 0
+}).
+
+-record(ip_version, {
+	  v6 = 0,
+	  v4 = 0
+}).
+
+-record(pfcpasreq_flags, {
+	  uupsi = 0
+}).
+
+-record(data_status, {
+	  buff = 0,
+	  drop = 0
+}).
+
+-record(provide_rds_configuration_information, {
+	  group
+}).
+
+-record(rds_configuration_information, {
+	  rds = 0
+}).
+
+-record(query_packet_rate_status_ie_smreq, {
+	  group
+}).
+
+-record(packet_rate_status_report_ie_smresp, {
+	  group
+}).
+
+-record(mptcp_applicable_indication, {
+	  mai = 0
+}).
+
+-record(bridge_management_information_container, {
+	  value = <<>>
+}).
+
+-record(ue_ip_address_usage_information, {
+	  group
+}).
+
+-record(validity_timer, {
+	  validity_timer = 0
+}).
+
+-record(redundant_transmission_forwarding, {
+	  group
+}).
+
+-record(transport_delay_reporting, {
 	  group
 }).
 
