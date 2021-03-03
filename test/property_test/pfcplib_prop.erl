@@ -346,7 +346,13 @@ grouped_ie() ->
      gen_packet_rate_status_report(),
      gen_ethernet_context_information(),
      gen_redundant_transmission_parameters(),
-     gen_updated_pdr()
+     gen_updated_pdr(),
+     gen_provide_rds_configuration_information(),
+     gen_query_packet_rate_status_ie_smreq(),
+     gen_packet_rate_status_report_ie_smresp(),
+     gen_ue_ip_address_usage_information(),
+     gen_redundant_transmission_forwarding(),
+     gen_transport_delay_reporting()
     ].
 
 simple_ie() ->
@@ -526,6 +532,15 @@ simple_ie() ->
      gen_dl_data_packets_size(),
      gen_qer_control_indications(),
      gen_nf_instance_id(),
+     gen_s_nssai(),
+     gen_ip_version(),
+     gen_pfcpasreq_flags(),
+     gen_data_status(),
+     gen_rds_configuration_information(),
+     gen_mptcp_applicable_indication(),
+     gen_bridge_management_information_container(),
+     gen_number_of_ue_ip_addresses(),
+     gen_validity_timer(),
      gen_tp_packet_measurement(),
      gen_tp_build_identifier(),
      gen_tp_now(),
@@ -637,7 +652,8 @@ gen_pfcp_cause() ->
 		  'No resources available',
 		  'Service not supported',
 		  'System failure',
-		  'Redirection Requested'])
+		  'Redirection Requested',
+		  'All dynamic addresses are occupied'])
       }.
 
 gen_source_interface() ->
@@ -757,13 +773,15 @@ gen_reporting_triggers() ->
        time_threshold = flag(),
        volume_threshold = flag(),
        periodic_reporting = flag(),
+       quota_validity_time = flag(),
        ip_multicast_join_leave = flag(),
        event_quota = flag(),
        event_threshold = flag(),
        mac_addresses_reporting = flag(),
        envelope_closure = flag(),
        time_quota = flag(),
-       volume_quota = flag()
+       volume_quota = flag(),
+       report_the_end_marker_reception = flag()
       }.
 
 gen_redirect_information() ->
@@ -934,12 +952,16 @@ gen_up_function_features() ->
 	      rttl = flag(),    % 8/2
 	      mpas = flag(),    % 8/1
 
+	      rds = flag(),     % 9/8
+	      ddds = flag(),    % 9/7
 	      ethar = flag(),   % 9/6
 	      ciot = flag(),    % 9/5
 	      mt_edt = flag(),  % 9/4
 	      gpqm = flag(),    % 9/3
 	      qfqm = flag(),    % 9/2
-	      atsss_ll = flag() % 9/1
+	      atsss_ll = flag(),% 9/1
+
+	      rttwp = flag()    % 10/1
 	     }]).
 
 gen_apply_action() ->
@@ -962,7 +984,9 @@ gen_apply_action() ->
 	      buff = flag(),
 	      forw = flag(),
 	      drop = flag(),
-	      edrt = flag()
+	      edrt = flag(),
+	      bdpn = flag(),
+	      ddpn = flag()
 	     }]).
 
 gen_downlink_data_service_information() ->
@@ -1118,6 +1142,8 @@ gen_usage_report_trigger() ->
 	      timqu = flag(),
 	      volqu = flag(),
 
+	      emrre = flag(),
+	      quvti = flag(),
 	      ipmjl = flag(),
 	      tebur = flag(),
 	      evequ = flag()
@@ -1266,6 +1292,7 @@ gen_bar_id() ->
 
 gen_cp_function_features() ->
     #cp_function_features{
+       uiaur = flag(),
        ardr = flag(),
        mpas = flag(),
        bundl = flag(),
@@ -2260,3 +2287,76 @@ gen_redundant_transmission_parameters() ->
 
 gen_updated_pdr() ->
     #updated_pdr{group = ie_group()}.
+
+gen_s_nssai() ->
+    #s_nssai{
+       sst = uint8(),
+       sd = uint24()
+      }.
+
+gen_ip_version() ->
+    #ip_version{
+       v6 = flag(),
+       v4 = flag()
+      }.
+
+gen_pfcpasreq_flags() ->
+    #pfcpasreq_flags{
+       uupsi = flag()
+      }.
+
+gen_data_status() ->
+    #data_status{
+       buff = flag(),
+       drop = flag()
+      }.
+
+gen_provide_rds_configuration_information() ->
+    #provide_rds_configuration_information{group = ie_group()}.
+
+gen_rds_configuration_information() ->
+    #rds_configuration_information{
+       rds = flag()
+      }.
+
+gen_query_packet_rate_status_ie_smreq() ->
+    #query_packet_rate_status_ie_smreq{group = ie_group()}.
+
+gen_packet_rate_status_report_ie_smresp() ->
+    #packet_rate_status_report_ie_smresp{group = ie_group()}.
+
+gen_mptcp_applicable_indication() ->
+    #mptcp_applicable_indication{
+       mai = flag()
+      }.
+
+gen_bridge_management_information_container() ->
+    #bridge_management_information_container{
+       value = binary()
+      }.
+
+gen_ue_ip_address_usage_information() ->
+    #ue_ip_address_usage_information{group = ie_group()}.
+
+gen_number_of_ue_ip_addresses() ->
+    oneof([#number_of_ue_ip_addresses{
+	      ipv6 = uint32(),
+	      ipv4 = undefined},
+	   #number_of_ue_ip_addresses{
+	      ipv6 = undefined,
+	      ipv4 = uint32()},
+	   #number_of_ue_ip_addresses{
+	      ipv6 = uint32(),
+	      ipv4 = uint32()}
+	  ]).
+
+gen_validity_timer() ->
+    #validity_timer{
+       validity_timer = uint16()
+      }.
+
+gen_redundant_transmission_forwarding() ->
+    #redundant_transmission_forwarding{group = ie_group()}.
+
+gen_transport_delay_reporting() ->
+    #transport_delay_reporting{group = ie_group()}.

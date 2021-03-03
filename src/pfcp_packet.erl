@@ -1183,6 +1183,20 @@ encode_qos_monitoring_measurement(#qos_monitoring_measurement{
     IE2 = maybe(FlagUL, int(UL, 32, _), IE1),
     _IE = maybe(FlagRP, int(RP, 32, _), IE2).
 
+decode_number_of_ue_ip_addresses(<<_:6, IPv6:1, IPv4:1, Rest0/binary>>, _Type) ->
+    IE0 = #number_of_ue_ip_addresses{},
+    {IE1, Rest1} = maybe_unsigned_integer(Rest0, IPv4, 32, #number_of_ue_ip_addresses.ipv4, IE0),
+    {IE2, _Rest} = maybe_unsigned_integer(Rest1, IPv6, 32, #number_of_ue_ip_addresses.ipv6, IE1),
+    IE2.
+
+encode_number_of_ue_ip_addresses(#number_of_ue_ip_addresses{ipv6 = IPv6, ipv4 = IPv4} = IE) ->
+    FlagIPv6 = is_integer(IPv6),
+    FlagIPv4 = is_integer(IPv4),
+
+    IE0 = <<0:6, (bool2int(FlagIPv6)):1, (bool2int(FlagIPv4)):1>>,
+    IE1 = maybe(FlagIPv4, int(IPv4, 32, _), IE0),
+    _IE = maybe(FlagIPv6, int(IPv6, 32, _), IE1).
+
 %% The following code is auto-generated. DO NOT EDIT
 
 %% -include("pfcp_packet_v1_gen.hrl").
@@ -1390,6 +1404,7 @@ enum_v1_pfcp_cause_cause('No resources available') -> 75;
 enum_v1_pfcp_cause_cause('Service not supported') -> 76;
 enum_v1_pfcp_cause_cause('System failure') -> 77;
 enum_v1_pfcp_cause_cause('Redirection Requested') -> 78;
+enum_v1_pfcp_cause_cause('All dynamic addresses are occupied') -> 79;
 enum_v1_pfcp_cause_cause(0) -> 'Reserved';
 enum_v1_pfcp_cause_cause(1) -> 'Request accepted';
 enum_v1_pfcp_cause_cause(2) -> 'More Usage Report to send';
@@ -1408,6 +1423,7 @@ enum_v1_pfcp_cause_cause(75) -> 'No resources available';
 enum_v1_pfcp_cause_cause(76) -> 'Service not supported';
 enum_v1_pfcp_cause_cause(77) -> 'System failure';
 enum_v1_pfcp_cause_cause(78) -> 'Redirection Requested';
+enum_v1_pfcp_cause_cause(79) -> 'All dynamic addresses are occupied';
 enum_v1_pfcp_cause_cause(X) when is_integer(X) -> X.
 
 enum_v1_redirect_information_type('IPv4') -> 0;
@@ -1686,7 +1702,51 @@ decode_v1_element(<<M_linked_usage_reporting:1/integer,
 		    M_time_threshold:1/integer,
 		    M_volume_threshold:1/integer,
 		    M_periodic_reporting:1/integer,
+		    M_quota_validity_time:1/integer,
+		    M_ip_multicast_join_leave:1/integer,
+		    M_event_quota:1/integer,
+		    M_event_threshold:1/integer,
+		    M_mac_addresses_reporting:1/integer,
+		    M_envelope_closure:1/integer,
+		    M_time_quota:1/integer,
+		    M_volume_quota:1/integer,
 		    _:1,
+		    _:1,
+		    _:1,
+		    _:1,
+		    _:1,
+		    _:1,
+		    _:1,
+		    M_report_the_end_marker_reception:1/integer,
+		    _/binary>>, 37) ->
+    #reporting_triggers{linked_usage_reporting = M_linked_usage_reporting,
+			dropped_dl_traffic_threshold = M_dropped_dl_traffic_threshold,
+			stop_of_traffic = M_stop_of_traffic,
+			start_of_traffic = M_start_of_traffic,
+			quota_holding_time = M_quota_holding_time,
+			time_threshold = M_time_threshold,
+			volume_threshold = M_volume_threshold,
+			periodic_reporting = M_periodic_reporting,
+			quota_validity_time = M_quota_validity_time,
+			ip_multicast_join_leave = M_ip_multicast_join_leave,
+			event_quota = M_event_quota,
+			event_threshold = M_event_threshold,
+			mac_addresses_reporting = M_mac_addresses_reporting,
+			envelope_closure = M_envelope_closure,
+			time_quota = M_time_quota,
+			volume_quota = M_volume_quota,
+			report_the_end_marker_reception = M_report_the_end_marker_reception};
+
+%% decode reporting_triggers
+decode_v1_element(<<M_linked_usage_reporting:1/integer,
+		    M_dropped_dl_traffic_threshold:1/integer,
+		    M_stop_of_traffic:1/integer,
+		    M_start_of_traffic:1/integer,
+		    M_quota_holding_time:1/integer,
+		    M_time_threshold:1/integer,
+		    M_volume_threshold:1/integer,
+		    M_periodic_reporting:1/integer,
+		    M_quota_validity_time:1/integer,
 		    M_ip_multicast_join_leave:1/integer,
 		    M_event_quota:1/integer,
 		    M_event_threshold:1/integer,
@@ -1703,6 +1763,7 @@ decode_v1_element(<<M_linked_usage_reporting:1/integer,
 			time_threshold = M_time_threshold,
 			volume_threshold = M_volume_threshold,
 			periodic_reporting = M_periodic_reporting,
+			quota_validity_time = M_quota_validity_time,
 			ip_multicast_join_leave = M_ip_multicast_join_leave,
 			event_quota = M_event_quota,
 			event_threshold = M_event_threshold,
@@ -1795,8 +1856,100 @@ decode_v1_element(<<M_treu:1/integer,
 		    M_vtime:1/integer,
 		    M_rttl:1/integer,
 		    M_mpas:1/integer,
+		    M_rds:1/integer,
+		    M_ddds:1/integer,
+		    M_ethar:1/integer,
+		    M_ciot:1/integer,
+		    M_mt_edt:1/integer,
+		    M_gpqm:1/integer,
+		    M_qfqm:1/integer,
+		    M_atsss_ll:1/integer,
 		    _:1,
 		    _:1,
+		    _:1,
+		    _:1,
+		    _:1,
+		    _:1,
+		    _:1,
+		    M_rttwp:1/integer,
+		    _/binary>>, 43) ->
+    #up_function_features{treu = M_treu,
+			  heeu = M_heeu,
+			  pfdm = M_pfdm,
+			  ftup = M_ftup,
+			  trst = M_trst,
+			  dlbd = M_dlbd,
+			  ddnd = M_ddnd,
+			  bucp = M_bucp,
+			  epfar = M_epfar,
+			  pfde = M_pfde,
+			  frrt = M_frrt,
+			  trace = M_trace,
+			  quoac = M_quoac,
+			  udbc = M_udbc,
+			  pdiu = M_pdiu,
+			  empu = M_empu,
+			  gcom = M_gcom,
+			  bundl = M_bundl,
+			  mte = M_mte,
+			  mnop = M_mnop,
+			  sset = M_sset,
+			  ueip = M_ueip,
+			  adpdp = M_adpdp,
+			  dpdra = M_dpdra,
+			  mptcp = M_mptcp,
+			  tscu = M_tscu,
+			  ip6pl = M_ip6pl,
+			  iptv = M_iptv,
+			  norp = M_norp,
+			  vtime = M_vtime,
+			  rttl = M_rttl,
+			  mpas = M_mpas,
+			  rds = M_rds,
+			  ddds = M_ddds,
+			  ethar = M_ethar,
+			  ciot = M_ciot,
+			  mt_edt = M_mt_edt,
+			  gpqm = M_gpqm,
+			  qfqm = M_qfqm,
+			  atsss_ll = M_atsss_ll,
+			  rttwp = M_rttwp};
+
+%% decode up_function_features
+decode_v1_element(<<M_treu:1/integer,
+		    M_heeu:1/integer,
+		    M_pfdm:1/integer,
+		    M_ftup:1/integer,
+		    M_trst:1/integer,
+		    M_dlbd:1/integer,
+		    M_ddnd:1/integer,
+		    M_bucp:1/integer,
+		    M_epfar:1/integer,
+		    M_pfde:1/integer,
+		    M_frrt:1/integer,
+		    M_trace:1/integer,
+		    M_quoac:1/integer,
+		    M_udbc:1/integer,
+		    M_pdiu:1/integer,
+		    M_empu:1/integer,
+		    M_gcom:1/integer,
+		    M_bundl:1/integer,
+		    M_mte:1/integer,
+		    M_mnop:1/integer,
+		    M_sset:1/integer,
+		    M_ueip:1/integer,
+		    M_adpdp:1/integer,
+		    M_dpdra:1/integer,
+		    M_mptcp:1/integer,
+		    M_tscu:1/integer,
+		    M_ip6pl:1/integer,
+		    M_iptv:1/integer,
+		    M_norp:1/integer,
+		    M_vtime:1/integer,
+		    M_rttl:1/integer,
+		    M_mpas:1/integer,
+		    M_rds:1/integer,
+		    M_ddds:1/integer,
 		    M_ethar:1/integer,
 		    M_ciot:1/integer,
 		    M_mt_edt:1/integer,
@@ -1836,6 +1989,8 @@ decode_v1_element(<<M_treu:1/integer,
 			  vtime = M_vtime,
 			  rttl = M_rttl,
 			  mpas = M_mpas,
+			  rds = M_rds,
+			  ddds = M_ddds,
 			  ethar = M_ethar,
 			  ciot = M_ciot,
 			  mt_edt = M_mt_edt,
@@ -2029,8 +2184,8 @@ decode_v1_element(<<M_dfrt:1/integer,
 		    _:1,
 		    _:1,
 		    _:1,
-		    _:1,
-		    _:1,
+		    M_ddpn:1/integer,
+		    M_bdpn:1/integer,
 		    M_edrt:1/integer,
 		    _/binary>>, 44) ->
     #apply_action{dfrt = M_dfrt,
@@ -2041,6 +2196,8 @@ decode_v1_element(<<M_dfrt:1/integer,
 		  buff = M_buff,
 		  forw = M_forw,
 		  drop = M_drop,
+		  ddpn = M_ddpn,
+		  bdpn = M_bdpn,
 		  edrt = M_edrt};
 
 %% decode apply_action
@@ -2176,8 +2333,8 @@ decode_v1_element(<<M_immer:1/integer,
 		    _:1,
 		    _:1,
 		    _:1,
-		    _:1,
-		    _:1,
+		    M_emrre:1/integer,
+		    M_quvti:1/integer,
 		    M_ipmjl:1/integer,
 		    M_tebur:1/integer,
 		    M_evequ:1/integer,
@@ -2198,6 +2355,8 @@ decode_v1_element(<<M_immer:1/integer,
 			  liusa = M_liusa,
 			  timqu = M_timqu,
 			  volqu = M_volqu,
+			  emrre = M_emrre,
+			  quvti = M_quvti,
 			  ipmjl = M_ipmjl,
 			  tebur = M_tebur,
 			  evequ = M_evequ};
@@ -2349,7 +2508,7 @@ decode_v1_element(<<M_id:8/integer,
     #bar_id{id = M_id};
 
 %% decode cp_function_features
-decode_v1_element(<<_:1,
+decode_v1_element(<<M_uiaur:1/integer,
 		    M_ardr:1/integer,
 		    M_mpas:1/integer,
 		    M_bundl:1/integer,
@@ -2358,7 +2517,8 @@ decode_v1_element(<<_:1,
 		    M_ovrl:1/integer,
 		    M_load:1/integer,
 		    _/binary>>, 89) ->
-    #cp_function_features{ardr = M_ardr,
+    #cp_function_features{uiaur = M_uiaur,
+			  ardr = M_ardr,
 			  mpas = M_mpas,
 			  bundl = M_bundl,
 			  sset = M_sset,
@@ -3226,6 +3386,83 @@ decode_v1_element(<<M_group/binary>>, 255) ->
 decode_v1_element(<<M_group/binary>>, 256) ->
     #updated_pdr{group = decode_v1_grouped(M_group)};
 
+%% decode s_nssai
+decode_v1_element(<<M_sst:8/integer,
+		    M_sd:24/integer>>, 257) ->
+    #s_nssai{sst = M_sst,
+	     sd = M_sd};
+
+%% decode ip_version
+decode_v1_element(<<_:6,
+		    M_v6:1/integer,
+		    M_v4:1/integer,
+		    _/binary>>, 258) ->
+    #ip_version{v6 = M_v6,
+		v4 = M_v4};
+
+%% decode pfcpasreq_flags
+decode_v1_element(<<_:7,
+		    M_uupsi:1/integer,
+		    _/binary>>, 259) ->
+    #pfcpasreq_flags{uupsi = M_uupsi};
+
+%% decode data_status
+decode_v1_element(<<_:6,
+		    M_buff:1/integer,
+		    M_drop:1/integer,
+		    _/binary>>, 260) ->
+    #data_status{buff = M_buff,
+		 drop = M_drop};
+
+%% decode provide_rds_configuration_information
+decode_v1_element(<<M_group/binary>>, 261) ->
+    #provide_rds_configuration_information{group = decode_v1_grouped(M_group)};
+
+%% decode rds_configuration_information
+decode_v1_element(<<_:7,
+		    M_rds:1/integer,
+		    _/binary>>, 262) ->
+    #rds_configuration_information{rds = M_rds};
+
+%% decode query_packet_rate_status_ie_smreq
+decode_v1_element(<<M_group/binary>>, 263) ->
+    #query_packet_rate_status_ie_smreq{group = decode_v1_grouped(M_group)};
+
+%% decode packet_rate_status_report_ie_smresp
+decode_v1_element(<<M_group/binary>>, 264) ->
+    #packet_rate_status_report_ie_smresp{group = decode_v1_grouped(M_group)};
+
+%% decode mptcp_applicable_indication
+decode_v1_element(<<_:7,
+		    M_mai:1/integer,
+		    _/binary>>, 265) ->
+    #mptcp_applicable_indication{mai = M_mai};
+
+%% decode bridge_management_information_container
+decode_v1_element(<<M_value/binary>>, 266) ->
+    #bridge_management_information_container{value = M_value};
+
+%% decode ue_ip_address_usage_information
+decode_v1_element(<<M_group/binary>>, 267) ->
+    #ue_ip_address_usage_information{group = decode_v1_grouped(M_group)};
+
+%% decode number_of_ue_ip_addresses
+decode_v1_element(<<Data/binary>>, 268) ->
+    decode_number_of_ue_ip_addresses(Data, number_of_ue_ip_addresses);
+
+%% decode validity_timer
+decode_v1_element(<<M_validity_timer:16/integer,
+		    _/binary>>, 269) ->
+    #validity_timer{validity_timer = M_validity_timer};
+
+%% decode redundant_transmission_forwarding
+decode_v1_element(<<M_group/binary>>, 270) ->
+    #redundant_transmission_forwarding{group = decode_v1_grouped(M_group)};
+
+%% decode transport_delay_reporting
+decode_v1_element(<<M_group/binary>>, 271) ->
+    #transport_delay_reporting{group = decode_v1_grouped(M_group)};
+
 %% decode tp_packet_measurement
 decode_v1_element(<<Data/binary>>, {18681,1}) ->
     decode_volume_threshold(Data, tp_packet_measurement);
@@ -3409,13 +3646,15 @@ encode_v1_element(#reporting_triggers{
 		       time_threshold = M_time_threshold,
 		       volume_threshold = M_volume_threshold,
 		       periodic_reporting = M_periodic_reporting,
+		       quota_validity_time = M_quota_validity_time,
 		       ip_multicast_join_leave = M_ip_multicast_join_leave,
 		       event_quota = M_event_quota,
 		       event_threshold = M_event_threshold,
 		       mac_addresses_reporting = M_mac_addresses_reporting,
 		       envelope_closure = M_envelope_closure,
 		       time_quota = M_time_quota,
-		       volume_quota = M_volume_quota}, Acc) ->
+		       volume_quota = M_volume_quota,
+		       report_the_end_marker_reception = undefined}, Acc) ->
     encode_tlv(37, <<M_linked_usage_reporting:1/integer,
 		     M_dropped_dl_traffic_threshold:1/integer,
 		     M_stop_of_traffic:1/integer,
@@ -3424,7 +3663,7 @@ encode_v1_element(#reporting_triggers{
 		     M_time_threshold:1/integer,
 		     M_volume_threshold:1/integer,
 		     M_periodic_reporting:1/integer,
-		     0:1,
+		     M_quota_validity_time:1/integer,
 		     M_ip_multicast_join_leave:1/integer,
 		     M_event_quota:1/integer,
 		     M_event_threshold:1/integer,
@@ -3432,6 +3671,49 @@ encode_v1_element(#reporting_triggers{
 		     M_envelope_closure:1/integer,
 		     M_time_quota:1/integer,
 		     M_volume_quota:1/integer>>, Acc);
+
+encode_v1_element(#reporting_triggers{
+		       linked_usage_reporting = M_linked_usage_reporting,
+		       dropped_dl_traffic_threshold = M_dropped_dl_traffic_threshold,
+		       stop_of_traffic = M_stop_of_traffic,
+		       start_of_traffic = M_start_of_traffic,
+		       quota_holding_time = M_quota_holding_time,
+		       time_threshold = M_time_threshold,
+		       volume_threshold = M_volume_threshold,
+		       periodic_reporting = M_periodic_reporting,
+		       quota_validity_time = M_quota_validity_time,
+		       ip_multicast_join_leave = M_ip_multicast_join_leave,
+		       event_quota = M_event_quota,
+		       event_threshold = M_event_threshold,
+		       mac_addresses_reporting = M_mac_addresses_reporting,
+		       envelope_closure = M_envelope_closure,
+		       time_quota = M_time_quota,
+		       volume_quota = M_volume_quota,
+		       report_the_end_marker_reception = M_report_the_end_marker_reception}, Acc) ->
+    encode_tlv(37, <<M_linked_usage_reporting:1/integer,
+		     M_dropped_dl_traffic_threshold:1/integer,
+		     M_stop_of_traffic:1/integer,
+		     M_start_of_traffic:1/integer,
+		     M_quota_holding_time:1/integer,
+		     M_time_threshold:1/integer,
+		     M_volume_threshold:1/integer,
+		     M_periodic_reporting:1/integer,
+		     M_quota_validity_time:1/integer,
+		     M_ip_multicast_join_leave:1/integer,
+		     M_event_quota:1/integer,
+		     M_event_threshold:1/integer,
+		     M_mac_addresses_reporting:1/integer,
+		     M_envelope_closure:1/integer,
+		     M_time_quota:1/integer,
+		     M_volume_quota:1/integer,
+		     0:1,
+		     0:1,
+		     0:1,
+		     0:1,
+		     0:1,
+		     0:1,
+		     0:1,
+		     M_report_the_end_marker_reception:1/integer>>, Acc);
 
 encode_v1_element(#redirect_information{
 		       type = M_type,
@@ -3627,7 +3909,7 @@ encode_v1_element(#up_function_features{
 		       vtime = M_vtime,
 		       rttl = M_rttl,
 		       mpas = M_mpas,
-		       ethar = undefined}, Acc) ->
+		       rds = undefined}, Acc) ->
     encode_tlv(43, <<M_treu:1/integer,
 		     M_heeu:1/integer,
 		     M_pfdm:1/integer,
@@ -3694,12 +3976,15 @@ encode_v1_element(#up_function_features{
 		       vtime = M_vtime,
 		       rttl = M_rttl,
 		       mpas = M_mpas,
+		       rds = M_rds,
+		       ddds = M_ddds,
 		       ethar = M_ethar,
 		       ciot = M_ciot,
 		       mt_edt = M_mt_edt,
 		       gpqm = M_gpqm,
 		       qfqm = M_qfqm,
-		       atsss_ll = M_atsss_ll}, Acc) ->
+		       atsss_ll = M_atsss_ll,
+		       rttwp = undefined}, Acc) ->
     encode_tlv(43, <<M_treu:1/integer,
 		     M_heeu:1/integer,
 		     M_pfdm:1/integer,
@@ -3732,14 +4017,105 @@ encode_v1_element(#up_function_features{
 		     M_vtime:1/integer,
 		     M_rttl:1/integer,
 		     M_mpas:1/integer,
-		     0:1,
-		     0:1,
+		     M_rds:1/integer,
+		     M_ddds:1/integer,
 		     M_ethar:1/integer,
 		     M_ciot:1/integer,
 		     M_mt_edt:1/integer,
 		     M_gpqm:1/integer,
 		     M_qfqm:1/integer,
 		     M_atsss_ll:1/integer>>, Acc);
+
+encode_v1_element(#up_function_features{
+		       treu = M_treu,
+		       heeu = M_heeu,
+		       pfdm = M_pfdm,
+		       ftup = M_ftup,
+		       trst = M_trst,
+		       dlbd = M_dlbd,
+		       ddnd = M_ddnd,
+		       bucp = M_bucp,
+		       epfar = M_epfar,
+		       pfde = M_pfde,
+		       frrt = M_frrt,
+		       trace = M_trace,
+		       quoac = M_quoac,
+		       udbc = M_udbc,
+		       pdiu = M_pdiu,
+		       empu = M_empu,
+		       gcom = M_gcom,
+		       bundl = M_bundl,
+		       mte = M_mte,
+		       mnop = M_mnop,
+		       sset = M_sset,
+		       ueip = M_ueip,
+		       adpdp = M_adpdp,
+		       dpdra = M_dpdra,
+		       mptcp = M_mptcp,
+		       tscu = M_tscu,
+		       ip6pl = M_ip6pl,
+		       iptv = M_iptv,
+		       norp = M_norp,
+		       vtime = M_vtime,
+		       rttl = M_rttl,
+		       mpas = M_mpas,
+		       rds = M_rds,
+		       ddds = M_ddds,
+		       ethar = M_ethar,
+		       ciot = M_ciot,
+		       mt_edt = M_mt_edt,
+		       gpqm = M_gpqm,
+		       qfqm = M_qfqm,
+		       atsss_ll = M_atsss_ll,
+		       rttwp = M_rttwp}, Acc) ->
+    encode_tlv(43, <<M_treu:1/integer,
+		     M_heeu:1/integer,
+		     M_pfdm:1/integer,
+		     M_ftup:1/integer,
+		     M_trst:1/integer,
+		     M_dlbd:1/integer,
+		     M_ddnd:1/integer,
+		     M_bucp:1/integer,
+		     M_epfar:1/integer,
+		     M_pfde:1/integer,
+		     M_frrt:1/integer,
+		     M_trace:1/integer,
+		     M_quoac:1/integer,
+		     M_udbc:1/integer,
+		     M_pdiu:1/integer,
+		     M_empu:1/integer,
+		     M_gcom:1/integer,
+		     M_bundl:1/integer,
+		     M_mte:1/integer,
+		     M_mnop:1/integer,
+		     M_sset:1/integer,
+		     M_ueip:1/integer,
+		     M_adpdp:1/integer,
+		     M_dpdra:1/integer,
+		     M_mptcp:1/integer,
+		     M_tscu:1/integer,
+		     M_ip6pl:1/integer,
+		     M_iptv:1/integer,
+		     M_norp:1/integer,
+		     M_vtime:1/integer,
+		     M_rttl:1/integer,
+		     M_mpas:1/integer,
+		     M_rds:1/integer,
+		     M_ddds:1/integer,
+		     M_ethar:1/integer,
+		     M_ciot:1/integer,
+		     M_mt_edt:1/integer,
+		     M_gpqm:1/integer,
+		     M_qfqm:1/integer,
+		     M_atsss_ll:1/integer,
+		     0:1,
+		     0:1,
+		     0:1,
+		     0:1,
+		     0:1,
+		     0:1,
+		     0:1,
+		     M_rttwp:1/integer>>, Acc);
 
 encode_v1_element(#apply_action{
 		       dfrt = M_dfrt,
@@ -3750,7 +4126,7 @@ encode_v1_element(#apply_action{
 		       buff = M_buff,
 		       forw = M_forw,
 		       drop = M_drop,
-		       edrt = undefined}, Acc) ->
+		       ddpn = undefined}, Acc) ->
     encode_tlv(44, <<M_dfrt:1/integer,
 		     M_ipmd:1/integer,
 		     M_ipma:1/integer,
@@ -3769,6 +4145,8 @@ encode_v1_element(#apply_action{
 		       buff = M_buff,
 		       forw = M_forw,
 		       drop = M_drop,
+		       ddpn = M_ddpn,
+		       bdpn = M_bdpn,
 		       edrt = M_edrt}, Acc) ->
     encode_tlv(44, <<M_dfrt:1/integer,
 		     M_ipmd:1/integer,
@@ -3783,8 +4161,8 @@ encode_v1_element(#apply_action{
 		     0:1,
 		     0:1,
 		     0:1,
-		     0:1,
-		     0:1,
+		     M_ddpn:1/integer,
+		     M_bdpn:1/integer,
 		     M_edrt:1/integer>>, Acc);
 
 encode_v1_element(#downlink_data_service_information{} = IE, Acc) ->
@@ -3886,7 +4264,7 @@ encode_v1_element(#usage_report_trigger{
 		       liusa = M_liusa,
 		       timqu = M_timqu,
 		       volqu = M_volqu,
-		       ipmjl = undefined}, Acc) ->
+		       emrre = undefined}, Acc) ->
     encode_tlv(63, <<M_immer:1/integer,
 		     M_droth:1/integer,
 		     M_stopt:1/integer,
@@ -3921,6 +4299,8 @@ encode_v1_element(#usage_report_trigger{
 		       liusa = M_liusa,
 		       timqu = M_timqu,
 		       volqu = M_volqu,
+		       emrre = M_emrre,
+		       quvti = M_quvti,
 		       ipmjl = M_ipmjl,
 		       tebur = M_tebur,
 		       evequ = M_evequ}, Acc) ->
@@ -3943,8 +4323,8 @@ encode_v1_element(#usage_report_trigger{
 		     0:1,
 		     0:1,
 		     0:1,
-		     0:1,
-		     0:1,
+		     M_emrre:1/integer,
+		     M_quvti:1/integer,
 		     M_ipmjl:1/integer,
 		     M_tebur:1/integer,
 		     M_evequ:1/integer>>, Acc);
@@ -4045,6 +4425,7 @@ encode_v1_element(#bar_id{
     encode_tlv(88, <<M_id:8/integer>>, Acc);
 
 encode_v1_element(#cp_function_features{
+		       uiaur = M_uiaur,
 		       ardr = M_ardr,
 		       mpas = M_mpas,
 		       bundl = M_bundl,
@@ -4052,7 +4433,7 @@ encode_v1_element(#cp_function_features{
 		       epfar = M_epfar,
 		       ovrl = M_ovrl,
 		       load = M_load}, Acc) ->
-    encode_tlv(89, <<0:1,
+    encode_tlv(89, <<M_uiaur:1/integer,
 		     M_ardr:1/integer,
 		     M_mpas:1/integer,
 		     M_bundl:1/integer,
@@ -4821,6 +5202,76 @@ encode_v1_element(#updated_pdr{
 		       group = M_group}, Acc) ->
     encode_tlv(256, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
+encode_v1_element(#s_nssai{
+		       sst = M_sst,
+		       sd = M_sd}, Acc) ->
+    encode_tlv(257, <<M_sst:8/integer,
+		      M_sd:24/integer>>, Acc);
+
+encode_v1_element(#ip_version{
+		       v6 = M_v6,
+		       v4 = M_v4}, Acc) ->
+    encode_tlv(258, <<0:6,
+		      M_v6:1/integer,
+		      M_v4:1/integer>>, Acc);
+
+encode_v1_element(#pfcpasreq_flags{
+		       uupsi = M_uupsi}, Acc) ->
+    encode_tlv(259, <<0:7,
+		      M_uupsi:1/integer>>, Acc);
+
+encode_v1_element(#data_status{
+		       buff = M_buff,
+		       drop = M_drop}, Acc) ->
+    encode_tlv(260, <<0:6,
+		      M_buff:1/integer,
+		      M_drop:1/integer>>, Acc);
+
+encode_v1_element(#provide_rds_configuration_information{
+		       group = M_group}, Acc) ->
+    encode_tlv(261, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#rds_configuration_information{
+		       rds = M_rds}, Acc) ->
+    encode_tlv(262, <<0:7,
+		      M_rds:1/integer>>, Acc);
+
+encode_v1_element(#query_packet_rate_status_ie_smreq{
+		       group = M_group}, Acc) ->
+    encode_tlv(263, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#packet_rate_status_report_ie_smresp{
+		       group = M_group}, Acc) ->
+    encode_tlv(264, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#mptcp_applicable_indication{
+		       mai = M_mai}, Acc) ->
+    encode_tlv(265, <<0:7,
+		      M_mai:1/integer>>, Acc);
+
+encode_v1_element(#bridge_management_information_container{
+		       value = M_value}, Acc) ->
+    encode_tlv(266, <<M_value/binary>>, Acc);
+
+encode_v1_element(#ue_ip_address_usage_information{
+		       group = M_group}, Acc) ->
+    encode_tlv(267, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#number_of_ue_ip_addresses{} = IE, Acc) ->
+    encode_tlv(268, encode_number_of_ue_ip_addresses(IE), Acc);
+
+encode_v1_element(#validity_timer{
+		       validity_timer = M_validity_timer}, Acc) ->
+    encode_tlv(269, <<M_validity_timer:16/integer>>, Acc);
+
+encode_v1_element(#redundant_transmission_forwarding{
+		       group = M_group}, Acc) ->
+    encode_tlv(270, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#transport_delay_reporting{
+		       group = M_group}, Acc) ->
+    encode_tlv(271, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
 encode_v1_element(#tp_packet_measurement{} = IE, Acc) ->
     encode_tlv({18681,1}, encode_volume_threshold(IE), Acc);
 
@@ -5102,6 +5553,21 @@ encode_v1_element({Tag, Value}, Acc) when is_binary(Value) ->
 ?PRETTY_PRINT(pretty_print_v1, ethernet_context_information);
 ?PRETTY_PRINT(pretty_print_v1, redundant_transmission_parameters);
 ?PRETTY_PRINT(pretty_print_v1, updated_pdr);
+?PRETTY_PRINT(pretty_print_v1, s_nssai);
+?PRETTY_PRINT(pretty_print_v1, ip_version);
+?PRETTY_PRINT(pretty_print_v1, pfcpasreq_flags);
+?PRETTY_PRINT(pretty_print_v1, data_status);
+?PRETTY_PRINT(pretty_print_v1, provide_rds_configuration_information);
+?PRETTY_PRINT(pretty_print_v1, rds_configuration_information);
+?PRETTY_PRINT(pretty_print_v1, query_packet_rate_status_ie_smreq);
+?PRETTY_PRINT(pretty_print_v1, packet_rate_status_report_ie_smresp);
+?PRETTY_PRINT(pretty_print_v1, mptcp_applicable_indication);
+?PRETTY_PRINT(pretty_print_v1, bridge_management_information_container);
+?PRETTY_PRINT(pretty_print_v1, ue_ip_address_usage_information);
+?PRETTY_PRINT(pretty_print_v1, number_of_ue_ip_addresses);
+?PRETTY_PRINT(pretty_print_v1, validity_timer);
+?PRETTY_PRINT(pretty_print_v1, redundant_transmission_forwarding);
+?PRETTY_PRINT(pretty_print_v1, transport_delay_reporting);
 ?PRETTY_PRINT(pretty_print_v1, tp_packet_measurement);
 ?PRETTY_PRINT(pretty_print_v1, tp_build_identifier);
 ?PRETTY_PRINT(pretty_print_v1, tp_now);
@@ -5144,12 +5610,15 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_session_retention_information =>
 		      {'O',#{cp_pfcp_entity_ip_address => {'O',cp_pfcp_entity_ip_address}}},
+		  pfcpasreq_flags => {'O',pfcpasreq_flags},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
 		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
 		  ue_ip_address_pool_information =>
 		      {'O',
-			  #{network_instance => {'O',network_instance},
+			  #{ip_version => {'O',ip_version},
+			    network_instance => {'O',network_instance},
+			    s_nssai => {'O',s_nssai},
 			    ue_ip_address_pool_identity =>
 				{'M',ue_ip_address_pool_identity}}},
 		  up_function_features => {'C',up_function_features},
@@ -5182,10 +5651,13 @@ v1_msg_defs() ->
 		  pfcp_cause => {'M',pfcp_cause},
 		  pfcpasrsp_flags => {'O',pfcpasrsp_flags},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
 		  ue_ip_address_pool_information =>
 		      {'O',
-			  #{network_instance => {'O',network_instance},
+			  #{ip_version => {'O',ip_version},
+			    network_instance => {'O',network_instance},
+			    s_nssai => {'O',s_nssai},
 			    ue_ip_address_pool_identity =>
 				{'M',ue_ip_address_pool_identity}}},
 		  up_function_features => {'C',up_function_features},
@@ -5217,11 +5689,22 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_association_release_request => {'C',pfcp_association_release_request},
 		  pfcpaureq_flags => {'O',pfcpaureq_flags},
+		  smf_set_id => {'C',smf_set_id},
 		  ue_ip_address_pool_information =>
 		      {'O',
-			  #{network_instance => {'O',network_instance},
+			  #{ip_version => {'O',ip_version},
+			    network_instance => {'O',network_instance},
+			    s_nssai => {'O',s_nssai},
 			    ue_ip_address_pool_identity =>
 				{'M',ue_ip_address_pool_identity}}},
+		  ue_ip_address_usage_information =>
+		      {'O',
+			  #{metric => {'M',metric},
+			    network_instance => {'M',network_instance},
+			    number_of_ue_ip_addresses => {'M',number_of_ue_ip_addresses},
+			    sequence_number => {'M',sequence_number},
+			    ue_ip_address_pool_identity => {'O',ue_ip_address_pool_identity},
+			    validity_timer => {'M',validity_timer}}},
 		  up_function_features => {'O',up_function_features},
 		  user_plane_ip_resource_information =>
 		      {'O',user_plane_ip_resource_information}},
@@ -5230,6 +5713,14 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  ue_ip_address_usage_information =>
+		      {'O',
+			  #{metric => {'M',metric},
+			    network_instance => {'M',network_instance},
+			    number_of_ue_ip_addresses => {'M',number_of_ue_ip_addresses},
+			    sequence_number => {'M',sequence_number},
+			    ue_ip_address_pool_identity => {'O',ue_ip_address_pool_identity},
+			    validity_timer => {'M',validity_timer}}},
 		  up_function_features => {'O',up_function_features}},
 	    heartbeat_request =>
 		#{recovery_time_stamp => {'M',recovery_time_stamp},
@@ -5386,6 +5877,7 @@ v1_msg_defs() ->
 				    #{ip_multicast_address => {'M',ip_multicast_address},
 				      source_ip_address => {'O',source_ip_address}}},
 			    mar_id => {'C',mar_id},
+			    mptcp_applicable_indication => {'C',mptcp_applicable_indication},
 			    outer_header_removal => {'C',outer_header_removal},
 			    packet_replication_and_detection_carry_on_information =>
 				{'C',packet_replication_and_detection_carry_on_information},
@@ -5429,6 +5921,11 @@ v1_msg_defs() ->
 			    pdr_id => {'M',pdr_id},
 			    precedence => {'M',precedence},
 			    qer_id => {'C',qer_id},
+			    transport_delay_reporting =>
+				{'C',
+				    #{remote_gtp_u_peer => {'M',remote_gtp_u_peer},
+				      transport_level_marking =>
+					  {'O',transport_level_marking}}},
 			    ue_ip_address_pool_identity => {'O',ue_ip_address_pool_identity},
 			    urr_id => {'C',urr_id}}},
 		  create_qer =>
@@ -5475,6 +5972,7 @@ v1_msg_defs() ->
 				{'O',
 				    #{f_teid => {'M',f_teid},
 				      network_instance => {'C',network_instance}}},
+			    tgpp_interface_type => {'O',tgpp_interface_type},
 			    traffic_endpoint_id => {'M',traffic_endpoint_id},
 			    ue_ip_address => {'O',ue_ip_address}}},
 		  create_urr =>
@@ -5528,7 +6026,10 @@ v1_msg_defs() ->
 				{'C',atsss_ll_control_information},
 			    mptcp_control_information => {'C',mptcp_control_information},
 			    pmf_control_information => {'C',pmf_control_information}}},
+		  provide_rds_configuration_information =>
+		      {'O',provide_rds_configuration_information},
 		  recovery_time_stamp => {'O',recovery_time_stamp},
+		  s_nssai => {'O',s_nssai},
 		  tp_build_identifier => {'O',tp_build_identifier},
 		  trace_information => {'O',trace_information},
 		  user_id => {'O',user_id},
@@ -5577,64 +6078,86 @@ v1_msg_defs() ->
 			    sequence_number => {'M',sequence_number},
 			    timer => {'M',timer}}},
 		  pfcp_cause => {'M',pfcp_cause},
+		  rds_configuration_information => {'O',rds_configuration_information},
 		  tp_build_identifier => {'O',tp_build_identifier}},
 	    session_modification_request =>
-		#{user_plane_inactivity_timer => {'C',user_plane_inactivity_timer},
+		#{remove_bar => {'C',#{bar_id => {'M',bar_id}}},
+		  update_pdr =>
+		      {'C',
+			  #{activate_predefined_rules => {'C',activate_predefined_rules},
+			    activation_time => {'O',activation_time},
+			    deactivate_predefined_rules => {'C',deactivate_predefined_rules},
+			    deactivation_time => {'O',deactivation_time},
+			    far_id => {'C',far_id},
+			    ip_multicast_addressing_info =>
+				{'O',
+				    #{ip_multicast_address => {'M',ip_multicast_address},
+				      source_ip_address => {'O',source_ip_address}}},
+			    outer_header_removal => {'C',outer_header_removal},
+			    pdi =>
+				{'C',
+				    #{application_id => {'O',application_id},
+				      ethernet_packet_filter =>
+					  {'O',
+					      #{c_tag => {'O',c_tag},
+						ethernet_filter_id =>
+						    {'C',ethernet_filter_id},
+						ethernet_filter_properties =>
+						    {'C',ethernet_filter_properties},
+						ethertype => {'O',ethertype},
+						mac_address => {'O',mac_address},
+						s_tag => {'O',s_tag},
+						sdf_filter => {'O',sdf_filter}}},
+				      ethernet_pdu_session_information =>
+					  {'O',ethernet_pdu_session_information},
+				      f_teid => {'O',f_teid},
+				      framed_ipv6_route => {'O',framed_ipv6_route},
+				      framed_route => {'O',framed_route},
+				      framed_routing => {'O',framed_routing},
+				      network_instance => {'O',network_instance},
+				      qfi => {'O',qfi},
+				      sdf_filter => {'O',sdf_filter},
+				      source_interface => {'M',source_interface},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      ue_ip_address => {'O',ue_ip_address}}},
+			    pdr_id => {'M',pdr_id},
+			    precedence => {'C',precedence},
+			    qer_id => {'C',qer_id},
+			    urr_id => {'C',urr_id}}},
+		  create_srr =>
+		      {'C',
+			  #{access_availability_control_information =>
+				{'C',
+				    #{requested_access_availability_information =>
+					  {'M',requested_access_availability_information}}},
+			    qos_monitoring_per_qos_flow_control_information =>
+				{'C',
+				    #{measurement_period => {'C',measurement_period},
+				      minimum_wait_time => {'C',minimum_wait_time},
+				      packet_delay_thresholds =>
+					  {'C',packet_delay_thresholds},
+				      qfi => {'M',qfi},
+				      reporting_frequency => {'M',reporting_frequency},
+				      requested_qos_monitoring =>
+					  {'M',requested_qos_monitoring}}},
+			    srr_id => {'M',srr_id}}},
+		  remove_srr => {'C',#{srr_id => {'M',srr_id}}},
+		  remove_pdr => {'C',#{pdr_id => {'M',pdr_id}}},
 		  provide_atsss_control_information =>
 		      {'C',
 			  #{atsss_ll_control_information =>
 				{'C',atsss_ll_control_information},
 			    mptcp_control_information => {'C',mptcp_control_information},
 			    pmf_control_information => {'C',pmf_control_information}}},
-		  remove_pdr => {'C',#{pdr_id => {'M',pdr_id}}},
-		  create_urr =>
+		  remove_far => {'C',#{far_id => {'M',far_id}}},
+		  create_traffic_endpoint =>
 		      {'C',
-			  #{additional_monitoring_time =>
-				{'O',
-				    #{event_quota => {'O',event_quota},
-				      event_threshold => {'O',event_threshold},
-				      monitoring_time => {'M',monitoring_time},
-				      subsequent_time_quota => {'O',subsequent_time_quota},
-				      subsequent_time_threshold =>
-					  {'O',subsequent_time_threshold},
-				      subsequent_volume_quota =>
-					  {'O',subsequent_volume_quota},
-				      subsequent_volume_threshold =>
-					  {'O',subsequent_volume_threshold}}},
-			    dropped_dl_traffic_threshold =>
-				{'C',dropped_dl_traffic_threshold},
-			    ethernet_inactivity_timer => {'C',ethernet_inactivity_timer},
-			    event_quota => {'C',event_quota},
-			    event_threshold => {'C',event_threshold},
-			    far_id => {'C',far_id},
-			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id => {'C',linked_urr_id},
-			    measurement_information => {'C',measurement_information},
-			    measurement_method => {'M',measurement_method},
-			    measurement_period => {'C',measurement_period},
-			    monitoring_time => {'O',monitoring_time},
-			    number_of_reports => {'O',number_of_reports},
-			    quota_holding_time => {'C',quota_holding_time},
-			    quota_validity_time => {'C',quota_validity_time},
-			    reporting_triggers => {'M',reporting_triggers},
-			    subsequent_event_quota => {'O',subsequent_event_quota},
-			    subsequent_event_threshold => {'O',subsequent_event_threshold},
-			    subsequent_time_quota => {'O',subsequent_time_quota},
-			    subsequent_time_threshold => {'O',subsequent_time_threshold},
-			    subsequent_volume_quota => {'O',subsequent_volume_quota},
-			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
-			    time_quota => {'C',time_quota},
-			    time_threshold => {'C',time_threshold},
-			    urr_id => {'M',urr_id},
-			    volume_quota => {'C',volume_quota},
-			    volume_threshold => {'C',volume_threshold}}},
-		  trace_information => {'O',trace_information},
-		  update_traffic_endpoint =>
-		      {'C',
-			  #{f_teid => {'C',f_teid},
-			    framed_ipv6_route => {'C',framed_ipv6_route},
-			    framed_route => {'C',framed_route},
-			    framed_routing => {'C',framed_routing},
+			  #{ethernet_pdu_session_information =>
+				{'O',ethernet_pdu_session_information},
+			    f_teid => {'O',f_teid},
+			    framed_ipv6_route => {'O',framed_ipv6_route},
+			    framed_route => {'O',framed_route},
+			    framed_routing => {'O',framed_routing},
 			    network_instance => {'O',network_instance},
 			    qfi => {'C',qfi},
 			    redundant_transmission_parameters =>
@@ -5642,14 +6165,30 @@ v1_msg_defs() ->
 				    #{f_teid => {'M',f_teid},
 				      network_instance => {'C',network_instance}}},
 			    traffic_endpoint_id => {'M',traffic_endpoint_id},
-			    ue_ip_address => {'C',ue_ip_address}}},
-		  ethernet_context_information =>
-		      {'C',#{mac_addressed_detected => {'M',mac_addressed_detected}}},
+			    ue_ip_address => {'O',ue_ip_address}}},
 		  create_bar =>
 		      {'C',
 			  #{bar_id => {'M',bar_id},
 			    suggested_buffering_packets_count =>
 				{'C',suggested_buffering_packets_count}}},
+		  user_plane_inactivity_timer => {'C',user_plane_inactivity_timer},
+		  create_mar =>
+		      {'C',
+			  #{mar_id => {'M',mar_id},
+			    non_tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'M',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}},
+			    steering_functionality => {'M',steering_functionality},
+			    steering_mode => {'M',steering_mode},
+			    tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'M',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}}}},
 		  update_urr =>
 		      {'C',
 			  #{additional_monitoring_time =>
@@ -5691,6 +6230,43 @@ v1_msg_defs() ->
 			    urr_id => {'M',urr_id},
 			    volume_quota => {'C',volume_quota},
 			    volume_threshold => {'C',volume_threshold}}},
+		  update_qer =>
+		      {'C',
+			  #{averaging_window => {'O',averaging_window},
+			    gate_status => {'C',gate_status},
+			    gbr => {'C',gbr},
+			    mbr => {'C',mbr},
+			    paging_policy_indicator => {'C',paging_policy_indicator},
+			    qer_control_indications => {'C',qer_control_indications},
+			    qer_correlation_id => {'C',qer_correlation_id},
+			    qer_id => {'M',qer_id},
+			    qfi => {'C',qfi},
+			    rqi => {'C',rqi}}},
+		  ethernet_context_information =>
+		      {'C',#{mac_addressed_detected => {'M',mac_addressed_detected}}},
+		  query_urr => {'C',#{urr_id => {'M',urr_id}}},
+		  update_srr =>
+		      {'C',
+			  #{access_availability_control_information =>
+				{'C',
+				    #{requested_access_availability_information =>
+					  {'M',requested_access_availability_information}}},
+			    qos_monitoring_per_qos_flow_control_information =>
+				{'C',
+				    #{measurement_period => {'C',measurement_period},
+				      minimum_wait_time => {'C',minimum_wait_time},
+				      packet_delay_thresholds =>
+					  {'C',packet_delay_thresholds},
+				      qfi => {'M',qfi},
+				      reporting_frequency => {'M',reporting_frequency},
+				      requested_qos_monitoring =>
+					  {'M',requested_qos_monitoring}}},
+			    srr_id => {'M',srr_id}}},
+		  node_id => {'C',node_id},
+		  query_packet_rate_status_ie_smreq => {'C',#{qer_id => {'M',qer_id}}},
+		  f_seid => {'C',f_seid},
+		  remove_traffic_endpoint =>
+		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
 		  update_far =>
 		      {'C',
 			  #{apply_action => {'C',apply_action},
@@ -5720,8 +6296,26 @@ v1_msg_defs() ->
 				      traffic_endpoint_id => {'C',traffic_endpoint_id},
 				      transport_level_marking =>
 					  {'C',transport_level_marking}}}}},
-		  remove_far => {'C',#{far_id => {'M',far_id}}},
-		  node_id => {'C',node_id},
+		  remove_mar => {'C',#{mar_id => {'M',mar_id}}},
+		  port_management_information_for_tsc =>
+		      {'C',
+			  #{port_management_information_containerd =>
+				{'M',port_management_information_containerd}}},
+		  remove_qer => {'C',#{qer_id => {'M',qer_id}}},
+		  create_qer =>
+		      {'C',
+			  #{averaging_window => {'O',averaging_window},
+			    gate_status => {'M',gate_status},
+			    gbr => {'C',gbr},
+			    mbr => {'C',mbr},
+			    packet_rate_status => {'C',packet_rate_status},
+			    paging_policy_indicator => {'C',paging_policy_indicator},
+			    qer_control_indications => {'C',qer_control_indications},
+			    qer_correlation_id => {'C',qer_correlation_id},
+			    qer_id => {'M',qer_id},
+			    qfi => {'C',qfi},
+			    rqi => {'C',rqi}}},
+		  query_urr_reference => {'O',query_urr_reference},
 		  create_pdr =>
 		      {'C',
 			  #{activate_predefined_rules => {'C',activate_predefined_rules},
@@ -5778,171 +6372,6 @@ v1_msg_defs() ->
 			    qer_id => {'C',qer_id},
 			    ue_ip_address_pool_identity => {'O',ue_ip_address_pool_identity},
 			    urr_id => {'C',urr_id}}},
-		  remove_srr => {'C',#{srr_id => {'M',srr_id}}},
-		  create_srr =>
-		      {'C',
-			  #{access_availability_control_information =>
-				{'C',
-				    #{requested_access_availability_information =>
-					  {'M',requested_access_availability_information}}},
-			    qos_monitoring_per_qos_flow_control_information =>
-				{'C',
-				    #{measurement_period => {'C',measurement_period},
-				      minimum_wait_time => {'C',minimum_wait_time},
-				      packet_delay_thresholds =>
-					  {'C',packet_delay_thresholds},
-				      qfi => {'M',qfi},
-				      reporting_frequency => {'M',reporting_frequency},
-				      requested_qos_monitoring =>
-					  {'M',requested_qos_monitoring}}},
-			    srr_id => {'M',srr_id}}},
-		  update_qer =>
-		      {'C',
-			  #{averaging_window => {'O',averaging_window},
-			    gate_status => {'C',gate_status},
-			    gbr => {'C',gbr},
-			    mbr => {'C',mbr},
-			    paging_policy_indicator => {'C',paging_policy_indicator},
-			    qer_control_indications => {'C',qer_control_indications},
-			    qer_correlation_id => {'C',qer_correlation_id},
-			    qer_id => {'M',qer_id},
-			    qfi => {'C',qfi},
-			    rqi => {'C',rqi}}},
-		  remove_bar => {'C',#{bar_id => {'M',bar_id}}},
-		  update_pdr =>
-		      {'C',
-			  #{activate_predefined_rules => {'C',activate_predefined_rules},
-			    activation_time => {'O',activation_time},
-			    deactivate_predefined_rules => {'C',deactivate_predefined_rules},
-			    deactivation_time => {'O',deactivation_time},
-			    far_id => {'C',far_id},
-			    ip_multicast_addressing_info =>
-				{'O',
-				    #{ip_multicast_address => {'M',ip_multicast_address},
-				      source_ip_address => {'O',source_ip_address}}},
-			    outer_header_removal => {'C',outer_header_removal},
-			    pdi =>
-				{'C',
-				    #{application_id => {'O',application_id},
-				      ethernet_packet_filter =>
-					  {'O',
-					      #{c_tag => {'O',c_tag},
-						ethernet_filter_id =>
-						    {'C',ethernet_filter_id},
-						ethernet_filter_properties =>
-						    {'C',ethernet_filter_properties},
-						ethertype => {'O',ethertype},
-						mac_address => {'O',mac_address},
-						s_tag => {'O',s_tag},
-						sdf_filter => {'O',sdf_filter}}},
-				      ethernet_pdu_session_information =>
-					  {'O',ethernet_pdu_session_information},
-				      f_teid => {'O',f_teid},
-				      framed_ipv6_route => {'O',framed_ipv6_route},
-				      framed_route => {'O',framed_route},
-				      framed_routing => {'O',framed_routing},
-				      network_instance => {'O',network_instance},
-				      qfi => {'O',qfi},
-				      sdf_filter => {'O',sdf_filter},
-				      source_interface => {'M',source_interface},
-				      traffic_endpoint_id => {'C',traffic_endpoint_id},
-				      ue_ip_address => {'O',ue_ip_address}}},
-			    pdr_id => {'M',pdr_id},
-			    precedence => {'C',precedence},
-			    qer_id => {'C',qer_id},
-			    urr_id => {'C',urr_id}}},
-		  sxsmreq_flags => {'C',sxsmreq_flags},
-		  remove_traffic_endpoint =>
-		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
-		  remove_qer => {'C',#{qer_id => {'M',qer_id}}},
-		  query_urr_reference => {'O',query_urr_reference},
-		  remove_urr => {'C',#{urr_id => {'M',urr_id}}},
-		  f_seid => {'C',f_seid},
-		  access_availability_information => {'O',access_availability_information},
-		  create_traffic_endpoint =>
-		      {'C',
-			  #{ethernet_pdu_session_information =>
-				{'O',ethernet_pdu_session_information},
-			    f_teid => {'O',f_teid},
-			    framed_ipv6_route => {'O',framed_ipv6_route},
-			    framed_route => {'O',framed_route},
-			    framed_routing => {'O',framed_routing},
-			    network_instance => {'O',network_instance},
-			    qfi => {'C',qfi},
-			    redundant_transmission_parameters =>
-				{'O',
-				    #{f_teid => {'M',f_teid},
-				      network_instance => {'C',network_instance}}},
-			    traffic_endpoint_id => {'M',traffic_endpoint_id},
-			    ue_ip_address => {'O',ue_ip_address}}},
-		  query_urr => {'C',#{urr_id => {'M',urr_id}}},
-		  create_mar =>
-		      {'C',
-			  #{mar_id => {'M',mar_id},
-			    non_tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'M',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}},
-			    steering_functionality => {'M',steering_functionality},
-			    steering_mode => {'M',steering_mode},
-			    tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'M',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}}}},
-		  update_srr =>
-		      {'C',
-			  #{access_availability_control_information =>
-				{'C',
-				    #{requested_access_availability_information =>
-					  {'M',requested_access_availability_information}}},
-			    qos_monitoring_per_qos_flow_control_information =>
-				{'C',
-				    #{measurement_period => {'C',measurement_period},
-				      minimum_wait_time => {'C',minimum_wait_time},
-				      packet_delay_thresholds =>
-					  {'C',packet_delay_thresholds},
-				      qfi => {'M',qfi},
-				      reporting_frequency => {'M',reporting_frequency},
-				      requested_qos_monitoring =>
-					  {'M',requested_qos_monitoring}}},
-			    srr_id => {'M',srr_id}}},
-		  port_management_information_for_tsc =>
-		      {'C',
-			  #{port_management_information_containerd =>
-				{'M',port_management_information_containerd}}},
-		  create_far =>
-		      {'C',
-			  #{apply_action => {'M',apply_action},
-			    bar_id => {'O',bar_id},
-			    duplicating_parameters =>
-				{'C',
-				    #{destination_interface => {'M',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      outer_header_creation => {'C',outer_header_creation},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}},
-			    far_id => {'M',far_id},
-			    forwarding_parameters =>
-				{'C',
-				    #{destination_interface => {'M',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      header_enrichment => {'O',header_enrichment},
-				      network_instance => {'O',network_instance},
-				      outer_header_creation => {'C',outer_header_creation},
-				      proxying => {'C',proxying},
-				      redirect_information => {'C',redirect_information},
-				      tgpp_interface_type => {'O',tgpp_interface_type},
-				      traffic_endpoint_id => {'C',traffic_endpoint_id},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}},
-			    redundant_transmission_parameters =>
-				{'C',
-				    #{f_teid => {'M',f_teid},
-				      network_instance => {'C',network_instance}}}}},
 		  update_bar =>
 		      {'C',
 			  #{bar_id => {'M',bar_id},
@@ -5950,6 +6379,48 @@ v1_msg_defs() ->
 				{'C',downlink_data_notification_delay},
 			    suggested_buffering_packets_count =>
 				{'C',suggested_buffering_packets_count}}},
+		  trace_information => {'O',trace_information},
+		  create_urr =>
+		      {'C',
+			  #{additional_monitoring_time =>
+				{'O',
+				    #{event_quota => {'O',event_quota},
+				      event_threshold => {'O',event_threshold},
+				      monitoring_time => {'M',monitoring_time},
+				      subsequent_time_quota => {'O',subsequent_time_quota},
+				      subsequent_time_threshold =>
+					  {'O',subsequent_time_threshold},
+				      subsequent_volume_quota =>
+					  {'O',subsequent_volume_quota},
+				      subsequent_volume_threshold =>
+					  {'O',subsequent_volume_threshold}}},
+			    dropped_dl_traffic_threshold =>
+				{'C',dropped_dl_traffic_threshold},
+			    ethernet_inactivity_timer => {'C',ethernet_inactivity_timer},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id => {'C',linked_urr_id},
+			    measurement_information => {'C',measurement_information},
+			    measurement_method => {'M',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'O',monitoring_time},
+			    number_of_reports => {'O',number_of_reports},
+			    quota_holding_time => {'C',quota_holding_time},
+			    quota_validity_time => {'C',quota_validity_time},
+			    reporting_triggers => {'M',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'O',subsequent_time_quota},
+			    subsequent_time_threshold => {'O',subsequent_time_threshold},
+			    subsequent_volume_quota => {'O',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
 		  update_mar =>
 		      {'C',
 			  #{mar_id => {'M',mar_id},
@@ -5979,20 +6450,53 @@ v1_msg_defs() ->
 				      priority => {'C',priority},
 				      urr_id => {'C',urr_id},
 				      weight => {'C',weight}}}}},
-		  create_qer =>
+		  sxsmreq_flags => {'C',sxsmreq_flags},
+		  update_traffic_endpoint =>
 		      {'C',
-			  #{averaging_window => {'O',averaging_window},
-			    gate_status => {'M',gate_status},
-			    gbr => {'C',gbr},
-			    mbr => {'C',mbr},
-			    packet_rate_status => {'C',packet_rate_status},
-			    paging_policy_indicator => {'C',paging_policy_indicator},
-			    qer_control_indications => {'C',qer_control_indications},
-			    qer_correlation_id => {'C',qer_correlation_id},
-			    qer_id => {'M',qer_id},
+			  #{f_teid => {'C',f_teid},
+			    framed_ipv6_route => {'C',framed_ipv6_route},
+			    framed_route => {'C',framed_route},
+			    framed_routing => {'C',framed_routing},
+			    network_instance => {'O',network_instance},
 			    qfi => {'C',qfi},
-			    rqi => {'C',rqi}}},
-		  remove_mar => {'C',#{mar_id => {'M',mar_id}}}},
+			    redundant_transmission_parameters =>
+				{'O',
+				    #{f_teid => {'M',f_teid},
+				      network_instance => {'C',network_instance}}},
+			    tgpp_interface_type => {'C',tgpp_interface_type},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'C',ue_ip_address}}},
+		  access_availability_information => {'O',access_availability_information},
+		  create_far =>
+		      {'C',
+			  #{apply_action => {'M',apply_action},
+			    bar_id => {'O',bar_id},
+			    duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    far_id => {'M',far_id},
+			    forwarding_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'O',header_enrichment},
+				      network_instance => {'O',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      proxying => {'C',proxying},
+				      redirect_information => {'C',redirect_information},
+				      tgpp_interface_type => {'O',tgpp_interface_type},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    redundant_transmission_parameters =>
+				{'C',
+				    #{f_teid => {'M',f_teid},
+				      network_instance => {'C',network_instance}}}}},
+		  remove_urr => {'C',#{urr_id => {'M',urr_id}}}},
 	    session_modification_response =>
 		#{additional_usage_reports_information =>
 		      {'C',additional_usage_reports_information},
@@ -6020,6 +6524,10 @@ v1_msg_defs() ->
 		  load_control_information => {'O',load_control_information},
 		  offending_ie => {'C',offending_ie},
 		  overload_control_information => {'O',overload_control_information},
+		  packet_rate_status_report_ie_smresp =>
+		      {'C',
+			  #{packet_rate_status => {'M',packet_rate_status},
+			    qer_id => {'M',qer_id}}},
 		  pfcp_cause => {'M',pfcp_cause},
 		  port_management_information_for_tsc_smr =>
 		      {'C',
@@ -6154,6 +6662,7 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_session_retention_information =>
 		      {'O',#{cp_pfcp_entity_ip_address => {'O',cp_pfcp_entity_ip_address}}},
+		  pfcpasreq_flags => {'O',pfcpasreq_flags},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
 		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
@@ -6171,6 +6680,7 @@ v1_msg_defs() ->
 		  pfcp_cause => {'M',pfcp_cause},
 		  pfcpasrsp_flags => {'O',pfcpasrsp_flags},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  up_function_features => {'C',up_function_features},
@@ -6185,7 +6695,9 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_association_release_request => {'C',pfcp_association_release_request},
 		  pfcpaureq_flags => {'O',pfcpaureq_flags},
+		  smf_set_id => {'C',smf_set_id},
 		  ue_ip_address_pool_information => {'O',#{}},
+		  ue_ip_address_usage_information => {'O',#{}},
 		  up_function_features => {'O',up_function_features},
 		  user_plane_ip_resource_information =>
 		      {'O',user_plane_ip_resource_information}},
@@ -6194,6 +6706,7 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  ue_ip_address_usage_information => {'O',#{}},
 		  up_function_features => {'O',up_function_features}},
 	    heartbeat_request =>
 		#{recovery_time_stamp => {'M',recovery_time_stamp},
@@ -6279,6 +6792,7 @@ v1_msg_defs() ->
 		      {'C',
 			  #{f_teid => {'O',f_teid},
 			    network_instance => {'O',network_instance},
+			    tgpp_interface_type => {'O',tgpp_interface_type},
 			    traffic_endpoint_id => {'M',traffic_endpoint_id}}},
 		  create_urr =>
 		      {'C',
@@ -6455,6 +6969,7 @@ v1_msg_defs() ->
 		      {'C',
 			  #{f_teid => {'C',f_teid},
 			    network_instance => {'O',network_instance},
+			    tgpp_interface_type => {'C',tgpp_interface_type},
 			    traffic_endpoint_id => {'M',traffic_endpoint_id}}},
 		  update_urr =>
 		      {'C',
@@ -6570,6 +7085,7 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_session_retention_information =>
 		      {'O',#{cp_pfcp_entity_ip_address => {'O',cp_pfcp_entity_ip_address}}},
+		  pfcpasreq_flags => {'O',pfcpasreq_flags},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
 		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
@@ -6591,6 +7107,7 @@ v1_msg_defs() ->
 		  pfcp_cause => {'M',pfcp_cause},
 		  pfcpasrsp_flags => {'O',pfcpasrsp_flags},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
 		  ue_ip_address_pool_information =>
 		      {'O',
@@ -6609,11 +7126,20 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_association_release_request => {'C',pfcp_association_release_request},
 		  pfcpaureq_flags => {'O',pfcpaureq_flags},
+		  smf_set_id => {'C',smf_set_id},
 		  ue_ip_address_pool_information =>
 		      {'O',
 			  #{network_instance => {'O',network_instance},
 			    ue_ip_address_pool_identity =>
 				{'M',ue_ip_address_pool_identity}}},
+		  ue_ip_address_usage_information =>
+		      {'O',
+			  #{metric => {'M',metric},
+			    network_instance => {'M',network_instance},
+			    number_of_ue_ip_addresses => {'M',number_of_ue_ip_addresses},
+			    sequence_number => {'M',sequence_number},
+			    ue_ip_address_pool_identity => {'O',ue_ip_address_pool_identity},
+			    validity_timer => {'M',validity_timer}}},
 		  up_function_features => {'O',up_function_features},
 		  user_plane_ip_resource_information =>
 		      {'O',user_plane_ip_resource_information}},
@@ -6622,6 +7148,14 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  ue_ip_address_usage_information =>
+		      {'O',
+			  #{metric => {'M',metric},
+			    network_instance => {'M',network_instance},
+			    number_of_ue_ip_addresses => {'M',number_of_ue_ip_addresses},
+			    sequence_number => {'M',sequence_number},
+			    ue_ip_address_pool_identity => {'O',ue_ip_address_pool_identity},
+			    validity_timer => {'M',validity_timer}}},
 		  up_function_features => {'O',up_function_features}},
 	    heartbeat_request =>
 		#{recovery_time_stamp => {'M',recovery_time_stamp},
@@ -6742,6 +7276,7 @@ v1_msg_defs() ->
 			    framed_route => {'O',framed_route},
 			    framed_routing => {'O',framed_routing},
 			    network_instance => {'O',network_instance},
+			    tgpp_interface_type => {'O',tgpp_interface_type},
 			    traffic_endpoint_id => {'M',traffic_endpoint_id},
 			    ue_ip_address => {'O',ue_ip_address}}},
 		  create_urr =>
@@ -6792,6 +7327,8 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pdn_type => {'C',pdn_type},
 		  pfcpsereq_flags => {'C',pfcpsereq_flags},
+		  provide_rds_configuration_information =>
+		      {'O',provide_rds_configuration_information},
 		  recovery_time_stamp => {'O',recovery_time_stamp},
 		  tp_build_identifier => {'O',tp_build_identifier},
 		  trace_information => {'O',trace_information},
@@ -6823,6 +7360,7 @@ v1_msg_defs() ->
 			    sequence_number => {'M',sequence_number},
 			    timer => {'M',timer}}},
 		  pfcp_cause => {'M',pfcp_cause},
+		  rds_configuration_information => {'O',rds_configuration_information},
 		  tp_build_identifier => {'O',tp_build_identifier}},
 	    session_modification_request =>
 		#{create_far =>
@@ -6938,6 +7476,7 @@ v1_msg_defs() ->
 			    volume_threshold => {'C',volume_threshold}}},
 		  f_seid => {'C',f_seid},
 		  fq_csid => {'C',fq_csid},
+		  query_packet_rate_status_ie_smreq => {'C',#{qer_id => {'M',qer_id}}},
 		  query_urr => {'C',#{urr_id => {'M',urr_id}}},
 		  query_urr_reference => {'O',query_urr_reference},
 		  remove_far => {'C',#{far_id => {'M',far_id}}},
@@ -7012,6 +7551,7 @@ v1_msg_defs() ->
 			    framed_route => {'C',framed_route},
 			    framed_routing => {'C',framed_routing},
 			    network_instance => {'O',network_instance},
+			    tgpp_interface_type => {'C',tgpp_interface_type},
 			    traffic_endpoint_id => {'M',traffic_endpoint_id},
 			    ue_ip_address => {'C',ue_ip_address}}},
 		  update_urr =>
@@ -7068,6 +7608,10 @@ v1_msg_defs() ->
 		  load_control_information => {'O',load_control_information},
 		  offending_ie => {'C',offending_ie},
 		  overload_control_information => {'O',overload_control_information},
+		  packet_rate_status_report_ie_smresp =>
+		      {'C',
+			  #{packet_rate_status => {'M',packet_rate_status},
+			    qer_id => {'M',qer_id}}},
 		  pfcp_cause => {'M',pfcp_cause},
 		  usage_report_smr =>
 		      {'C',
@@ -7149,6 +7693,7 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_session_retention_information =>
 		      {'O',#{cp_pfcp_entity_ip_address => {'O',cp_pfcp_entity_ip_address}}},
+		  pfcpasreq_flags => {'O',pfcpasreq_flags},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
 		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
@@ -7166,6 +7711,7 @@ v1_msg_defs() ->
 		  pfcp_cause => {'M',pfcp_cause},
 		  pfcpasrsp_flags => {'O',pfcpasrsp_flags},
 		  recovery_time_stamp => {'M',recovery_time_stamp},
+		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  up_function_features => {'C',up_function_features},
@@ -7180,7 +7726,9 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_association_release_request => {'C',pfcp_association_release_request},
 		  pfcpaureq_flags => {'O',pfcpaureq_flags},
+		  smf_set_id => {'C',smf_set_id},
 		  ue_ip_address_pool_information => {'O',#{}},
+		  ue_ip_address_usage_information => {'O',#{}},
 		  up_function_features => {'O',up_function_features},
 		  user_plane_ip_resource_information =>
 		      {'O',user_plane_ip_resource_information}},
@@ -7189,6 +7737,7 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  ue_ip_address_usage_information => {'O',#{}},
 		  up_function_features => {'O',up_function_features}},
 	    heartbeat_request =>
 		#{recovery_time_stamp => {'M',recovery_time_stamp},
