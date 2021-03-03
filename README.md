@@ -1,5 +1,7 @@
 pfcplib
 =======
+[![Hex.pm Version][hexpm version]][hexpm]
+[![Hex.pm Downloads][hexpm downloads]][hexpm]
 [![Build Status][gh badge]][gh]
 [![Coverage Status][coveralls badge]][coveralls]
 [![Erlang Versions][erlang version badge]][gh]
@@ -28,6 +30,9 @@ not be meet.
     > q().
 
 <!-- Badges -->
+[hexpm]: https://hex.pm/packages/pfcplib
+[hexpm version]: https://img.shields.io/hexpm/v/pfcplib.svg?style=flat
+[hexpm downloads]: https://img.shields.io/hexpm/dt/pfcplib.svg?style=flat
 [gh]: https://github.com/travelping/pfcplib/actions/workflows/main.yml
 [gh badge]: https://img.shields.io/github/workflow/status/travelping/pfcplib/CI?style=flat-square
 [coveralls]: https://coveralls.io/github/travelping/pfcplib
