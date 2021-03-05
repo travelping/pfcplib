@@ -12,7 +12,7 @@
 -export([validate/2]).
 -export([pretty_print/1]).
 
--compile([{parse_transform, cut}, bin_opt_info]).
+-compile([bin_opt_info]).
 -compile({inline,[decode_fqdn/1, maybe/4,
 		  decode_v1_grouped/1]}).
 
@@ -119,7 +119,7 @@ validate(API, Type, Key, {P, Grp} = Present, IEs) when is_map(IEs) ->
 validate_grp(API, Type, IEs, V)
   when is_list(IEs) ->
     lists:foreach(fun(IE) -> validate_grp(API, Type, IE, V) end, IEs);
-validate_grp(API, Type, IE, Atom)
+validate_grp(_, _, IE, Atom)
   when is_atom(Atom) andalso element(1, IE) =:= Atom ->
     ok;
 validate_grp(API, Type, {_, Group}, V)
@@ -129,7 +129,7 @@ validate_grp(API, Type, IE, V) ->
     error(badarg, [API, Type, IE, V]).
 
 validate(API, Type, IEs, V) ->
-    Rest = maps:fold(validate(API, Type, _, _, _), IEs, V),
+    Rest = maps:fold(fun(A, B, C) -> validate(API, Type, A, B, C) end, IEs, V),
     if is_map(Rest) ->
 	    RRest = maps:filter(fun(_, Value) -> Value =/= [] end, Rest),
 	    maps:size(RRest) /= 0 andalso error(badarg, [API, Type, RRest]),
@@ -652,12 +652,12 @@ decode_outer_header_creation(<<S_TAG:1, C_TAG:1, IPv6:1, IPv4:1,
     IsIP4 = IPv4 bor UDPv4 bor GTPv4,
     IsIP6 = IPv6 bor UDPv6 bor GTPv6,
 
-    {IE2, Rest1} = maybe(Rest0, IsGTP, int(_, 32, #outer_header_creation.teid, _), IE1),
-    {IE3, Rest2} = maybe(Rest1, IsIP4, bin(_,  4, #outer_header_creation.ipv4, _), IE2),
-    {IE4, Rest3} = maybe(Rest2, IsIP6, bin(_, 16, #outer_header_creation.ipv6, _), IE3),
-    {IE5, Rest4} = maybe(Rest3, IsUDP, int(_, 16, #outer_header_creation.port, _), IE4),
-    {IE6, Rest5} = maybe(Rest4, C_TAG, bin(_,  3, #outer_header_creation.c_tag, _), IE5),
-    {IE7, _Rest} = maybe(Rest5, S_TAG, bin(_,  3, #outer_header_creation.s_tag, _), IE6),
+    {IE2, Rest1} = maybe(Rest0, IsGTP, fun(Data, IE) -> int(Data, 32, #outer_header_creation.teid, IE) end, IE1),
+    {IE3, Rest2} = maybe(Rest1, IsIP4, fun(Data, IE) -> bin(Data,  4, #outer_header_creation.ipv4, IE) end, IE2),
+    {IE4, Rest3} = maybe(Rest2, IsIP6, fun(Data, IE) -> bin(Data, 16, #outer_header_creation.ipv6, IE) end, IE3),
+    {IE5, Rest4} = maybe(Rest3, IsUDP, fun(Data, IE) -> int(Data, 16, #outer_header_creation.port, IE) end, IE4),
+    {IE6, Rest5} = maybe(Rest4, C_TAG, fun(Data, IE) -> bin(Data,  3, #outer_header_creation.c_tag, IE) end, IE5),
+    {IE7, _Rest} = maybe(Rest5, S_TAG, fun(Data, IE) -> bin(Data,  3, #outer_header_creation.s_tag, IE) end, IE6),
     IE7.
 
 encode_outer_header_creation(#outer_header_creation{n6 = N6, n19 = N19,
@@ -681,12 +681,12 @@ encode_outer_header_creation(#outer_header_creation{n6 = N6, n19 = N19,
     FlagIP4 = FlagGTPv4 orelse FlagUDPv4 orelse FlagIPv4,
     FlagIP6 = FlagGTPv6 orelse FlagUDPv6 orelse FlagIPv6,
 
-    IE1 = maybe(Type =:= 'GTP-U', int(TEID, 32, _), IE0),
-    IE2 = maybe(FlagIP4,          bin(IPv4,  4, _), IE1),
-    IE3 = maybe(FlagIP6,          bin(IPv6, 16, _), IE2),
-    IE4 = maybe(Type =:= 'UDP',   int(Port, 16, _), IE3),
-    IE5 = maybe(FlagC_TAG,        bin(C_TAG, 3, _), IE4),
-    _IE = maybe(FlagS_TAG,        bin(S_TAG, 3, _), IE5).
+    IE1 = maybe(Type =:= 'GTP-U', fun(IE) -> int(TEID, 32, IE) end, IE0),
+    IE2 = maybe(FlagIP4,          fun(IE) -> bin(IPv4,  4, IE) end, IE1),
+    IE3 = maybe(FlagIP6,          fun(IE) -> bin(IPv6, 16, IE) end, IE2),
+    IE4 = maybe(Type =:= 'UDP',   fun(IE) -> int(Port, 16, IE) end, IE3),
+    IE5 = maybe(FlagC_TAG,        fun(IE) -> bin(C_TAG, 3, IE) end, IE4),
+    _IE = maybe(FlagS_TAG,        fun(IE) -> bin(S_TAG, 3, IE) end, IE5).
 
 decode_ue_ip_address(<<_:1, IP6PL:1, CHV6:1, CHV4:1, IPv6D:1,
 		       Type:1, IPv4:1, IPv6:1, Rest0/binary>>, _Type) ->
@@ -735,24 +735,24 @@ enum_v1_packet_rate_unit(X) when is_integer(X) -> X.
 
 decode_packet_rate(<<_:5, APRC:1, DL:1, UL:1, Rest0/binary>>, _Type) ->
     IE0 = #packet_rate{},
-    {IE1, Rest1} = maybe(Rest0, UL, spare(_, 5, _), IE0),
-    {IE2, Rest2} = maybe(Rest1, UL, enum(_,  3, fun enum_v1_packet_rate_unit/1,
-					 #packet_rate.ul_time_unit, _), IE1),
-    {IE3, Rest3} = maybe(Rest2, UL, int(_, 16, #packet_rate.ul_max_packet_rate, _), IE2),
-    {IE4, Rest4} = maybe(Rest3, DL, spare(_, 5, _), IE3),
-    {IE5, Rest5} = maybe(Rest4, DL, enum(_,  3, fun enum_v1_packet_rate_unit/1,
-					 #packet_rate.dl_time_unit, _), IE4),
-    {IE6, Rest6} = maybe(Rest5, DL, int(_, 16, #packet_rate.dl_max_packet_rate, _), IE5),
-    {IE7, Rest7} = maybe(Rest6, APRC band UL, spare(_, 5, _), IE6),
-    {IE8, Rest8} = maybe(Rest7, APRC band UL, enum(_,  3, fun enum_v1_packet_rate_unit/1,
-					 #packet_rate.additional_ul_time_unit, _), IE7),
+    {IE1, Rest1} = maybe(Rest0, UL, fun(Data, IE) -> spare(Data, 5, IE) end, IE0),
+    {IE2, Rest2} = maybe(Rest1, UL, fun(Data, IE) -> enum(Data,  3, fun enum_v1_packet_rate_unit/1,
+					 #packet_rate.ul_time_unit, IE) end, IE1),
+    {IE3, Rest3} = maybe(Rest2, UL, fun(Data, IE) -> int(Data, 16, #packet_rate.ul_max_packet_rate, IE) end, IE2),
+    {IE4, Rest4} = maybe(Rest3, DL, fun(Data, IE) -> spare(Data, 5, IE) end, IE3),
+    {IE5, Rest5} = maybe(Rest4, DL, fun(Data, IE) -> enum(Data,  3, fun enum_v1_packet_rate_unit/1,
+					 #packet_rate.dl_time_unit, IE) end, IE4),
+    {IE6, Rest6} = maybe(Rest5, DL, fun(Data, IE) -> int(Data, 16, #packet_rate.dl_max_packet_rate, IE) end, IE5),
+    {IE7, Rest7} = maybe(Rest6, APRC band UL, fun(Data, IE) -> spare(Data, 5, IE) end, IE6),
+    {IE8, Rest8} = maybe(Rest7, APRC band UL, fun(Data, IE) -> enum(Data,  3, fun enum_v1_packet_rate_unit/1,
+					 #packet_rate.additional_ul_time_unit, IE) end, IE7),
     {IE9, Rest9} = maybe(Rest8, APRC band UL,
-			 int(_, 16, #packet_rate.additional_ul_max_packet_rate, _), IE8),
-    {IE10, Rest10} = maybe(Rest9, APRC band DL, spare(_, 5, _), IE9),
-    {IE11, Rest11} = maybe(Rest10, APRC band DL, enum(_,  3, fun enum_v1_packet_rate_unit/1,
-					 #packet_rate.additional_dl_time_unit, _), IE10),
+			 fun(Data, IE) -> int(Data, 16, #packet_rate.additional_ul_max_packet_rate, IE) end, IE8),
+    {IE10, Rest10} = maybe(Rest9, APRC band DL, fun(Data, IE) -> spare(Data, 5, IE) end, IE9),
+    {IE11, Rest11} = maybe(Rest10, APRC band DL, fun(Data, IE) -> enum(Data,  3, fun enum_v1_packet_rate_unit/1,
+					 #packet_rate.additional_dl_time_unit, IE) end, IE10),
     {IE12, _Rest} = maybe(Rest11, APRC band DL,
-			  int(_, 16, #packet_rate.additional_dl_max_packet_rate, _), IE11),
+			  fun(Data, IE) -> int(Data, 16, #packet_rate.additional_dl_max_packet_rate, IE) end, IE11),
     IE12.
 
 encode_packet_rate(#packet_rate{
@@ -766,14 +766,14 @@ encode_packet_rate(#packet_rate{
     FlagDL = DlUnit =/= undefined,
     FlagAPRC = (AddUlUnit =/= undefined) or (AddDlUnit =/= undefined),
     IE0 = <<0:5, (bool2int(FlagAPRC)):1, (bool2int(FlagDL)):1, (bool2int(FlagUL)):1>>,
-    IE1 = maybe(FlagUL, int(enum_v1_packet_rate_unit(UlUnit), 8, _), IE0),
-    IE2 = maybe(FlagUL, int(UlRate, 16, _), IE1),
-    IE3 = maybe(FlagDL, int(enum_v1_packet_rate_unit(DlUnit), 8, _), IE2),
-    IE4 = maybe(FlagDL, int(DlRate, 16, _), IE3),
-    IE5 = maybe(FlagAPRC and FlagUL, int(enum_v1_packet_rate_unit(AddUlUnit), 8, _), IE4),
-    IE6 = maybe(FlagAPRC and FlagUL, int(AddUlRate, 16, _), IE5),
-    IE7 = maybe(FlagAPRC and FlagDL, int(enum_v1_packet_rate_unit(AddDlUnit), 8, _), IE6),
-    _IE = maybe(FlagAPRC and FlagDL, int(AddDlRate, 16, _), IE7).
+    IE1 = maybe(FlagUL, fun(IE) -> int(enum_v1_packet_rate_unit(UlUnit), 8, IE) end, IE0),
+    IE2 = maybe(FlagUL, fun(IE) -> int(UlRate, 16, IE) end, IE1),
+    IE3 = maybe(FlagDL, fun(IE) -> int(enum_v1_packet_rate_unit(DlUnit), 8, IE) end, IE2),
+    IE4 = maybe(FlagDL, fun(IE) -> int(DlRate, 16, IE) end, IE3),
+    IE5 = maybe(FlagAPRC and FlagUL, fun(IE) -> int(enum_v1_packet_rate_unit(AddUlUnit), 8, IE) end, IE4),
+    IE6 = maybe(FlagAPRC and FlagUL, fun(IE) -> int(AddUlRate, 16, IE) end, IE5),
+    IE7 = maybe(FlagAPRC and FlagDL, fun(IE) -> int(enum_v1_packet_rate_unit(AddDlUnit), 8, IE) end, IE6),
+    _IE = maybe(FlagAPRC and FlagDL, fun(IE) -> int(AddDlRate, 16, IE) end, IE7).
 
 decode_dl_flow_level_marking(<<_:6, SCI:1, TTC:1, Rest0/binary>>, _Type) ->
     IE0 = #dl_flow_level_marking{},
@@ -932,8 +932,8 @@ encode_mac_addresses({_Type, MACs, C_TAG, S_TAG}) ->
 
 decode_alternative_smf_ip_address(<<_:6, IPv4:1, IPv6:1, Rest0/binary>>, _Type) ->
     IE0 = #alternative_smf_ip_address{},
-    {IE1, Rest1} = maybe(Rest0, IPv4, bin(_,  4, #alternative_smf_ip_address.ipv4, _), IE0),
-    {IE2, _Rest} = maybe(Rest1, IPv6, bin(_, 16, #alternative_smf_ip_address.ipv6, _), IE1),
+    {IE1, Rest1} = maybe(Rest0, IPv4, fun(Data, IE) -> bin(Data,  4, #alternative_smf_ip_address.ipv4, IE) end, IE0),
+    {IE2, _Rest} = maybe(Rest1, IPv6, fun(Data, IE) -> bin(Data, 16, #alternative_smf_ip_address.ipv6, IE) end, IE1),
     IE2.
 
 encode_alternative_smf_ip_address(#alternative_smf_ip_address{ipv4 = IPv4, ipv6 = IPv6}) ->
@@ -941,13 +941,13 @@ encode_alternative_smf_ip_address(#alternative_smf_ip_address{ipv4 = IPv4, ipv6 
     FlagIPv6 = is_binary(IPv6),
 
     IE0 = <<0:6, (bool2int(FlagIPv4)):1, (bool2int(FlagIPv6)):1>>,
-    IE1 = maybe(FlagIPv4, bin(IPv4,  4, _), IE0),
-    _IE = maybe(FlagIPv6, bin(IPv6, 16, _), IE1).
+    IE1 = maybe(FlagIPv4, fun(IE) -> bin(IPv4,  4, IE) end, IE0),
+    _IE = maybe(FlagIPv6, fun(IE) -> bin(IPv6, 16, IE) end, IE1).
 
 decode_cp_pfcp_entity_ip_address(<<_:6, IPv4:1, IPv6:1, Rest0/binary>>, _Type) ->
     IE0 = #cp_pfcp_entity_ip_address{},
-    {IE1, Rest1} = maybe(Rest0, IPv4, bin(_,  4, #cp_pfcp_entity_ip_address.ipv4, _), IE0),
-    {IE2, _Rest} = maybe(Rest1, IPv6, bin(_, 16, #cp_pfcp_entity_ip_address.ipv6, _), IE1),
+    {IE1, Rest1} = maybe(Rest0, IPv4, fun(Data, IE) -> bin(Data,  4, #cp_pfcp_entity_ip_address.ipv4, IE) end, IE0),
+    {IE2, _Rest} = maybe(Rest1, IPv6, fun(Data, IE) -> bin(Data, 16, #cp_pfcp_entity_ip_address.ipv6, IE) end, IE1),
     IE2.
 
 encode_cp_pfcp_entity_ip_address(#cp_pfcp_entity_ip_address{ipv4 = IPv4, ipv6 = IPv6}) ->
@@ -955,8 +955,8 @@ encode_cp_pfcp_entity_ip_address(#cp_pfcp_entity_ip_address{ipv4 = IPv4, ipv6 = 
     FlagIPv6 = is_binary(IPv6),
 
     IE0 = <<0:6, (bool2int(FlagIPv4)):1, (bool2int(FlagIPv6)):1>>,
-    IE1 = maybe(FlagIPv4, bin(IPv4,  4, _), IE0),
-    _IE = maybe(FlagIPv6, bin(IPv6, 16, _), IE1).
+    IE1 = maybe(FlagIPv4, fun(IE) -> bin(IPv4,  4, IE) end, IE0),
+    _IE = maybe(FlagIPv6, fun(IE) -> bin(IPv6, 16, IE) end, IE1).
 
 decode_ip_multicast_address(<<_:4, 1:1, _:1, 0:1, 0:1, _/binary>>, _Type) ->
     #ip_multicast_address{ip = any};
@@ -1010,7 +1010,7 @@ encode_source_ip_address(IP, MPL) ->
 
     IE0 = <<0:5, (bool2int(FlagMPL)):1, (bool2int(IPv4v6)):1,
 	    (bool2int(not IPv4v6)):1, IP/binary>>,
-    _IE = maybe(FlagMPL, int(MPL, 8, _), IE0).
+    _IE = maybe(FlagMPL, fun(IE) -> int(MPL, 8, IE) end, IE0).
 
 encode_source_ip_address(#source_ip_address{ip = {IP, MPL}}) ->
     encode_source_ip_address(IP, MPL);
@@ -1021,18 +1021,18 @@ decode_packet_rate_status(<<_:5, APR:1, DL:1, UL:1, Rest0/binary>>, _Type) ->
     IE0 = #packet_rate_status{},
     {IE1, Rest1} =
 	maybe(Rest0, UL,
-	      int(_, 16, #packet_rate_status.remaining_uplink_packets_allowed, _), IE0),
+	      fun(Data, IE) -> int(Data, 16, #packet_rate_status.remaining_uplink_packets_allowed, IE) end, IE0),
     {IE2, Rest2} =
 	maybe(Rest1, DL,
-	      int(_, 16, #packet_rate_status.remaining_downlink_packets_allowed, _), IE1),
+	      fun(Data, IE) -> int(Data, 16, #packet_rate_status.remaining_downlink_packets_allowed, IE) end, IE1),
     {IE3, Rest3} =
 	maybe(Rest2, UL band APR,
-	      int(_, 16, #packet_rate_status.remaining_additional_uplink_packets_allowed, _), IE2),
+	      fun(Data, IE) -> int(Data, 16, #packet_rate_status.remaining_additional_uplink_packets_allowed, IE) end, IE2),
     {IE4, Rest4} =
 	maybe(Rest3, DL band APR,
-	      int(_, 16, #packet_rate_status.remaining_additional_downlink_packets_allowed, _), IE3),
+	      fun(Data, IE) -> int(Data, 16, #packet_rate_status.remaining_additional_downlink_packets_allowed, IE) end, IE3),
     {IE5, _Rest} =
-	maybe(Rest4, UL bor DL, float(_, 32, #packet_rate_status.validity_time, _), IE4),
+	maybe(Rest4, UL bor DL, fun(Data, IE) -> float(Data, 32, #packet_rate_status.validity_time, IE) end, IE4),
     IE5.
 
 encode_packet_rate_status(#packet_rate_status{
@@ -1047,27 +1047,27 @@ encode_packet_rate_status(#packet_rate_status{
     FlagAPR = is_integer(AUL) orelse is_integer(ADL),
 
     IE0 = <<0:5, (bool2int(FlagAPR)):1, (bool2int(FlagDL)):1, (bool2int(FlagUL)):1>>,
-    IE1 = maybe(FlagUL, int(UL, 16, _), IE0),
-    IE2 = maybe(FlagDL, int(DL, 16, _), IE1),
-    IE3 = maybe(FlagUL and FlagAPR, int(AUL, 16, _), IE2),
-    IE4 = maybe(FlagDL and FlagAPR, int(ADL, 16, _), IE3),
-    _IE = maybe(FlagUL or FlagDL, float(Time, 32, _), IE4).
+    IE1 = maybe(FlagUL, fun(IE) -> int(UL, 16, IE) end, IE0),
+    IE2 = maybe(FlagDL, fun(IE) -> int(DL, 16, IE) end, IE1),
+    IE3 = maybe(FlagUL and FlagAPR, fun(IE) -> int(AUL, 16, IE) end, IE2),
+    IE4 = maybe(FlagDL and FlagAPR, fun(IE) -> int(ADL, 16, IE) end, IE3),
+    _IE = maybe(FlagUL or FlagDL, fun(IE) -> float(Time, 32, IE) end, IE4).
 
 decode_tsn_bridge_id(<<_:7, MAC:1, Rest0/binary>>, _Type) ->
     IE0 = #tsn_bridge_id{},
-    {IE1, _Rest} = maybe(Rest0, MAC, bin(_, 6, #tsn_bridge_id.mac, _), IE0),
+    {IE1, _Rest} = maybe(Rest0, MAC, fun(Data, IE) -> bin(Data, 6, #tsn_bridge_id.mac, IE) end, IE0),
     IE1.
 
 encode_tsn_bridge_id(#tsn_bridge_id{mac = MAC}) ->
     FlagMAC = is_binary(MAC),
 
     IE0 = <<0:7, (bool2int(FlagMAC)):1>>,
-    _IE = maybe(FlagMAC, bin(MAC, 6, _), IE0).
+    _IE = maybe(FlagMAC, fun(IE) -> bin(MAC, 6, IE) end, IE0).
 
 decode_mptcp_address_information(<<_:6, IPv6:1, IPv4:1, Type:8, Port:16, Rest0/binary>>, _Type) ->
     IE0 = #mptcp_address_information{proxy_type = Type, proxy_port = Port},
-    {IE1, Rest1} = maybe(Rest0, IPv4, bin(_,  4, #mptcp_address_information.ipv4, _), IE0),
-    {IE2, _Rest} = maybe(Rest1, IPv6, bin(_, 16, #mptcp_address_information.ipv6, _), IE1),
+    {IE1, Rest1} = maybe(Rest0, IPv4, fun(Data, IE) -> bin(Data,  4, #mptcp_address_information.ipv4, IE) end, IE0),
+    {IE2, _Rest} = maybe(Rest1, IPv6, fun(Data, IE) -> bin(Data, 16, #mptcp_address_information.ipv6, IE) end, IE1),
     IE2.
 
 encode_mptcp_address_information(#mptcp_address_information{
@@ -1077,15 +1077,15 @@ encode_mptcp_address_information(#mptcp_address_information{
     FlagIPv6 = is_binary(IPv6),
 
     IE0 = <<0:6, (bool2int(FlagIPv6)):1, (bool2int(FlagIPv4)):1, Type, Port:16>>,
-    IE1 = maybe(FlagIPv4, bin(IPv4,  4, _), IE0),
-    _IE = maybe(FlagIPv6, bin(IPv6, 16, _), IE1).
+    IE1 = maybe(FlagIPv4, fun(IE) -> bin(IPv4,  4, IE) end, IE0),
+    _IE = maybe(FlagIPv6, fun(IE) -> bin(IPv6, 16, IE) end, IE1).
 
 decode_ue_link_specific_ip_address(<<_:4, NV6:1, NV4:1, V6:1, V4:1, Rest0/binary>>, _Type) ->
     IE0 = #ue_link_specific_ip_address{},
-    {IE1, Rest1} = maybe(Rest0, V4, bin(_,  4, #ue_link_specific_ip_address.tgpp_ipv4, _), IE0),
-    {IE2, Rest2} = maybe(Rest1, V6, bin(_, 16, #ue_link_specific_ip_address.tgpp_ipv6, _), IE1),
-    {IE3, Rest3} = maybe(Rest2, NV4, bin(_,  4, #ue_link_specific_ip_address.non_tgpp_ipv4, _), IE2),
-    {IE4, _Rest} = maybe(Rest3, NV6, bin(_, 16, #ue_link_specific_ip_address.non_tgpp_ipv6, _), IE3),
+    {IE1, Rest1} = maybe(Rest0, V4, fun(Data, IE) -> bin(Data,  4, #ue_link_specific_ip_address.tgpp_ipv4, IE) end, IE0),
+    {IE2, Rest2} = maybe(Rest1, V6, fun(Data, IE) -> bin(Data, 16, #ue_link_specific_ip_address.tgpp_ipv6, IE) end, IE1),
+    {IE3, Rest3} = maybe(Rest2, NV4, fun(Data, IE) -> bin(Data,  4, #ue_link_specific_ip_address.non_tgpp_ipv4, IE) end, IE2),
+    {IE4, _Rest} = maybe(Rest3, NV6, fun(Data, IE) -> bin(Data, 16, #ue_link_specific_ip_address.non_tgpp_ipv6, IE) end, IE3),
     IE4.
 
 encode_ue_link_specific_ip_address(#ue_link_specific_ip_address{
@@ -1098,19 +1098,19 @@ encode_ue_link_specific_ip_address(#ue_link_specific_ip_address{
 
     IE0 = <<0:4, (bool2int(FlagNV6)):1, (bool2int(FlagNV4)):1,
 	    (bool2int(FlagV6)):1, (bool2int(FlagV4)):1>>,
-    IE1 = maybe(FlagV4, bin(V4,  4, _), IE0),
-    IE2 = maybe(FlagV6, bin(V6, 16, _), IE1),
-    IE3 = maybe(FlagNV4, bin(NV4,  4, _), IE2),
-    _IE = maybe(FlagNV6, bin(NV6, 16, _), IE3).
+    IE1 = maybe(FlagV4, fun(IE) -> bin(V4,  4, IE) end, IE0),
+    IE2 = maybe(FlagV6, fun(IE) -> bin(V6, 16, IE) end, IE1),
+    IE3 = maybe(FlagNV4, fun(IE) -> bin(NV4,  4, IE) end, IE2),
+    _IE = maybe(FlagNV6, fun(IE) -> bin(NV6, 16, IE) end, IE3).
 
 decode_pmf_address_information(<<_:5, MAC:1, V6:1, V4:1, Rest0/binary>>, _Type) ->
     IE0 = #pmf_address_information{},
-    {IE1, Rest1} = maybe(Rest0, V4, bin(_,  4, #pmf_address_information.ipv4, _), IE0),
-    {IE2, Rest2} = maybe(Rest1, V6, bin(_, 16, #pmf_address_information.ipv6, _), IE1),
-    {IE3, Rest3} = maybe(Rest2, V4 bor V6, int(_, 16, #pmf_address_information.tgpp_port, _), IE2),
-    {IE4, Rest4} = maybe(Rest3, V4 bor V6, int(_, 16, #pmf_address_information.non_tgpp_port, _), IE3),
-    {IE5, Rest5} = maybe(Rest4, MAC, bin(_, 6, #pmf_address_information.tgpp_mac, _), IE4),
-    {IE6, _Rest} = maybe(Rest5, MAC, bin(_, 6, #pmf_address_information.non_tgpp_mac, _), IE5),
+    {IE1, Rest1} = maybe(Rest0, V4, fun(Data, IE) -> bin(Data,  4, #pmf_address_information.ipv4, IE) end, IE0),
+    {IE2, Rest2} = maybe(Rest1, V6, fun(Data, IE) -> bin(Data, 16, #pmf_address_information.ipv6, IE) end, IE1),
+    {IE3, Rest3} = maybe(Rest2, V4 bor V6, fun(Data, IE) -> int(Data, 16, #pmf_address_information.tgpp_port, IE) end, IE2),
+    {IE4, Rest4} = maybe(Rest3, V4 bor V6, fun(Data, IE) -> int(Data, 16, #pmf_address_information.non_tgpp_port, IE) end, IE3),
+    {IE5, Rest5} = maybe(Rest4, MAC, fun(Data, IE) -> bin(Data, 6, #pmf_address_information.tgpp_mac, IE) end, IE4),
+    {IE6, _Rest} = maybe(Rest5, MAC, fun(Data, IE) -> bin(Data, 6, #pmf_address_information.non_tgpp_mac, IE) end, IE5),
     IE6.
 
 encode_pmf_address_information(#pmf_address_information{
@@ -1122,24 +1122,24 @@ encode_pmf_address_information(#pmf_address_information{
     FlagMAC = is_binary(TgppMAC) orelse is_binary(NonTgppMAC),
 
     IE0 = <<0:5, (bool2int(FlagMAC)):1, (bool2int(FlagV6)):1, (bool2int(FlagV4)):1>>,
-    IE1 = maybe(FlagV4, bin(V4,  4, _), IE0),
-    IE2 = maybe(FlagV6, bin(V6, 16, _), IE1),
-    IE3 = maybe(FlagV4 or FlagV6, int(TgppPort, 16, _), IE2),
-    IE4 = maybe(FlagV4 or FlagV6, int(NonTgppPort, 16, _), IE3),
-    IE5 = maybe(FlagMAC, bin(TgppMAC, 6, _), IE4),
-    _IE = maybe(FlagMAC, bin(NonTgppMAC, 6, _), IE5).
+    IE1 = maybe(FlagV4, fun(IE) -> bin(V4,  4, IE) end, IE0),
+    IE2 = maybe(FlagV6, fun(IE) -> bin(V6, 16, IE) end, IE1),
+    IE3 = maybe(FlagV4 or FlagV6, fun(IE) -> int(TgppPort, 16, IE) end, IE2),
+    IE4 = maybe(FlagV4 or FlagV6, fun(IE) -> int(NonTgppPort, 16, IE) end, IE3),
+    IE5 = maybe(FlagMAC, fun(IE) -> bin(TgppMAC, 6, IE) end, IE4),
+    _IE = maybe(FlagMAC, fun(IE) -> bin(NonTgppMAC, 6, IE) end, IE5).
 
 decode_packet_delay_thresholds(<<_:5, RP:1, UL:1, DL:1, Rest0/binary>>, _Type) ->
     IE0 = #packet_delay_thresholds{},
     {IE1, Rest1} =
 	maybe(Rest0, DL,
-	      int(_, 32, #packet_delay_thresholds.downlink_packet_delay_threshold, _), IE0),
+	      fun(Data, IE) -> int(Data, 32, #packet_delay_thresholds.downlink_packet_delay_threshold, IE) end, IE0),
     {IE2, Rest2} =
 	maybe(Rest1, UL,
-	      int(_, 32, #packet_delay_thresholds.uplink_packet_delay_threshold, _), IE1),
+	      fun(Data, IE) -> int(Data, 32, #packet_delay_thresholds.uplink_packet_delay_threshold, IE) end, IE1),
     {IE3, _Rest} =
 	maybe(Rest2, RP,
-	      int(_, 32, #packet_delay_thresholds.round_trip_packet_delay_threshold, _), IE2),
+	      fun(Data, IE) -> int(Data, 32, #packet_delay_thresholds.round_trip_packet_delay_threshold, IE) end, IE2),
     IE3.
 
 encode_packet_delay_thresholds(#packet_delay_thresholds{
@@ -1151,21 +1151,21 @@ encode_packet_delay_thresholds(#packet_delay_thresholds{
     FlagRP = is_integer(RP),
 
     IE0 = <<0:5, (bool2int(FlagRP)):1, (bool2int(FlagUL)):1, (bool2int(FlagDL)):1>>,
-    IE1 = maybe(FlagDL, int(DL, 32, _), IE0),
-    IE2 = maybe(FlagUL, int(UL, 32, _), IE1),
-    _IE = maybe(FlagRP, int(RP, 32, _), IE2).
+    IE1 = maybe(FlagDL, fun(IE) -> int(DL, 32, IE) end, IE0),
+    IE2 = maybe(FlagUL, fun(IE) -> int(UL, 32, IE) end, IE1),
+    _IE = maybe(FlagRP, fun(IE) -> int(RP, 32, IE) end, IE2).
 
 decode_qos_monitoring_measurement(<<_:4, PLMF:1, RP:1, UL:1, DL:1, Rest0/binary>>, _Type) ->
     IE0 = #qos_monitoring_measurement{packet_delay_measurement_failure = (PLMF /= 0)},
     {IE1, Rest1} =
 	maybe(Rest0, DL,
-	      int(_, 32, #qos_monitoring_measurement.downlink_packet_delay, _), IE0),
+	      fun(Data, IE) -> int(Data, 32, #qos_monitoring_measurement.downlink_packet_delay, IE) end, IE0),
     {IE2, Rest2} =
 	maybe(Rest1, UL,
-	      int(_, 32, #qos_monitoring_measurement.uplink_packet_delay, _), IE1),
+	      fun(Data, IE) -> int(Data, 32, #qos_monitoring_measurement.uplink_packet_delay, IE) end, IE1),
     {IE3, _Rest} =
 	maybe(Rest2, RP,
-	      int(_, 32, #qos_monitoring_measurement.round_trip_packet_delay, _), IE2),
+	      fun(Data, IE) -> int(Data, 32, #qos_monitoring_measurement.round_trip_packet_delay, IE) end, IE2),
     IE3.
 
 encode_qos_monitoring_measurement(#qos_monitoring_measurement{
@@ -1179,9 +1179,9 @@ encode_qos_monitoring_measurement(#qos_monitoring_measurement{
 
     IE0 = <<0:4, (bool2int(PLMF)):1, (bool2int(FlagRP)):1,
 	    (bool2int(FlagUL)):1, (bool2int(FlagDL)):1>>,
-    IE1 = maybe(FlagDL, int(DL, 32, _), IE0),
-    IE2 = maybe(FlagUL, int(UL, 32, _), IE1),
-    _IE = maybe(FlagRP, int(RP, 32, _), IE2).
+    IE1 = maybe(FlagDL, fun(IE) -> int(DL, 32, IE) end, IE0),
+    IE2 = maybe(FlagUL, fun(IE) -> int(UL, 32, IE) end, IE1),
+    _IE = maybe(FlagRP, fun(IE) -> int(RP, 32, IE) end, IE2).
 
 decode_number_of_ue_ip_addresses(<<_:6, IPv6:1, IPv4:1, Rest0/binary>>, _Type) ->
     IE0 = #number_of_ue_ip_addresses{},
@@ -1194,8 +1194,8 @@ encode_number_of_ue_ip_addresses(#number_of_ue_ip_addresses{ipv6 = IPv6, ipv4 = 
     FlagIPv4 = is_integer(IPv4),
 
     IE0 = <<0:6, (bool2int(FlagIPv6)):1, (bool2int(FlagIPv4)):1>>,
-    IE1 = maybe(FlagIPv4, int(IPv4, 32, _), IE0),
-    _IE = maybe(FlagIPv6, int(IPv6, 32, _), IE1).
+    IE1 = maybe(FlagIPv4, fun(IE) -> int(IPv4, 32, IE) end, IE0),
+    _IE = maybe(FlagIPv6, fun(IE) -> int(IPv6, 32, IE) end, IE1).
 
 %% The following code is auto-generated. DO NOT EDIT
 
