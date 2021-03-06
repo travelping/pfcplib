@@ -3,10 +3,32 @@ pfcplib
 
 Erlang library for encoding and decoding Packet Forwarding Control Protocol (PFCP) frames.
 
-Version 1.1.0 - xx Sep 2018
+Version 2.0.0 - 6 Mar 2021
 ---------------------------
 
-* add all information elemens from Rel. 15.2
+**Dependencies** :gear:
+* [#2](https://github.com/travelping/pfcplib/pull/3) upgrade dependencies and drop old rebar compatibility stuff and add PFCP message validator
+
+**Improvements** :bulb:
+* [32f764a](https://github.com/travelping/pfcplib/commit/32f764a91d52724ff4d2ff52e91688cc28c63770) add all information elemens from Rel. `15.2`
+* [99ee214](https://github.com/travelping/pfcplib/commit/99ee214506f6dd35bdda4eec911d17836ad3c99b) add helper to format IEs for lager
+* [312ebca](https://github.com/travelping/pfcplib/commit/312ebca66835dc28f2821585cdd8cacc8914e29e) add `io_lib` pretty print helper
+* [14a0c73](https://github.com/travelping/pfcplib/commit/14a0c734a320bee8c55764b07adef3445d709394) export `ies_to_map/1`
+
+**Features** :rocket:
+* [#18](https://github.com/travelping/pfcplib/pull/18) Replace `erlando` to `cut` `1.0.3`
+* [#16](https://github.com/travelping/pfcplib/pull/16) Add `hex` to GH action
+* [#15](https://github.com/travelping/pfcplib/pull/15) Start use `SemVer`
+* [#14](https://github.com/travelping/pfcplib/pull/14) Update GH actions
+* [#13](https://github.com/travelping/pfcplib/pull/13) update to rel. `16.6.0`
+* [#12](https://github.com/travelping/pfcplib/pull/12) Add `.github`
+* [#10](https://github.com/travelping/pfcplib/pull/10) update to rel. `16.3.1`
+
+**Bugfixes** :bug:
+* [#9](https://github.com/travelping/pfcplib/pull/9) fix en/decode for DL Buffering Suggested Packet Count
+* [#7](https://github.com/travelping/pfcplib/pull/7) fix information loss in property test
+* [#6](https://github.com/travelping/pfcplib/pull/6) Fix PFD Contents and Query URR Reference IEs
+* [ec9d724](https://github.com/travelping/pfcplib/commit/ec9d7242dd4a180486b5ec12269e242b3489d1fd) fix specification for Travis-CI builds
 
 Version 1.0.0 - 01 Aug 2018
 ---------------------------
