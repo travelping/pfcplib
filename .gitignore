@@ -7,3 +7,4 @@ _checkouts/
 *~
 rebar3
 rebar.lock
+doc
