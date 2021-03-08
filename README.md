@@ -31,8 +31,8 @@ not be meet.
 
 <!-- Badges -->
 [hexpm]: https://hex.pm/packages/pfcplib
-[hexpm version]: https://img.shields.io/hexpm/v/pfcplib.svg?style=flat
-[hexpm downloads]: https://img.shields.io/hexpm/dt/pfcplib.svg?style=flat
+[hexpm version]: https://img.shields.io/hexpm/v/pfcplib.svg?style=flat-square
+[hexpm downloads]: https://img.shields.io/hexpm/dt/pfcplib.svg?style=flat-square
 [gh]: https://github.com/travelping/pfcplib/actions/workflows/main.yml
 [gh badge]: https://img.shields.io/github/workflow/status/travelping/pfcplib/CI?style=flat-square
 [coveralls]: https://coveralls.io/github/travelping/pfcplib
