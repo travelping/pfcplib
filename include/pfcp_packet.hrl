@@ -264,6 +264,16 @@
 	  ipv6	:: 'undefined' | 0..16#ffffffff
 	 }).
 
+-record(ppp_protocol, {
+	  control = 0,
+	  data = 0,
+	  protocol = undefined
+	 }).
+
+-record(l2tp_tunnel_endpoint, {
+	  endpoint
+	 }).
+
 -record(tp_packet_measurement, {
 	  total		:: 0..16#ffffffffffffffff,
 	  uplink	:: 0..16#ffffffffffffffff,
@@ -1351,6 +1361,65 @@
 }).
 
 -record(transport_delay_reporting, {
+	  group
+}).
+
+-record(bbf_up_function_features, {
+	  lcp_keepalive_offload = 0,
+	  lns = 0,
+	  lac = 0,
+	  ipoe = 0,
+	  pppoe = 0
+}).
+
+-record(logical_port, {
+	  port = <<>>
+}).
+
+-record(bbf_outer_header_creation, {
+	  cpr_nsh = 0,
+	  traffic_endpoint = 0,
+	  l2tp = 0,
+	  ppp = 0,
+	  tunnel_id = 0,
+	  session_id = 0
+}).
+
+-record(bbf_outer_header_removal, {
+	  header = 'Ethernet'
+}).
+
+-record(pppoe_session_id, {
+	  id = 0
+}).
+
+-record(verification_timers, {
+	  interval = 0,
+	  count = 0
+}).
+
+-record(ppp_lcp_magic_number, {
+	  tx = 0,
+	  rx = 0
+}).
+
+-record(mtu, {
+	  mtu = 0
+}).
+
+-record(l2tp_session_id, {
+	  id = 0
+}).
+
+-record(l2tp_type, {
+	  type = 0
+}).
+
+-record(ppp_lcp_connectivity, {
+	  group
+}).
+
+-record(l2tp_tunnel, {
 	  group
 }).
 
