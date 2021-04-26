@@ -352,7 +352,9 @@ grouped_ie() ->
      gen_packet_rate_status_report_ie_smresp(),
      gen_ue_ip_address_usage_information(),
      gen_redundant_transmission_forwarding(),
-     gen_transport_delay_reporting()
+     gen_transport_delay_reporting(),
+     gen_ppp_lcp_connectivity(),
+     gen_l2tp_tunnel()
     ].
 
 simple_ie() ->
@@ -541,6 +543,18 @@ simple_ie() ->
      gen_bridge_management_information_container(),
      gen_number_of_ue_ip_addresses(),
      gen_validity_timer(),
+     gen_bbf_up_function_features(),
+     gen_logical_port(),
+     gen_bbf_outer_header_creation(),
+     gen_bbf_outer_header_removal(),
+     gen_pppoe_session_id(),
+     gen_ppp_protocol(),
+     gen_verification_timers(),
+     gen_ppp_lcp_magic_number(),
+     gen_mtu(),
+     gen_l2tp_tunnel_endpoint(),
+     gen_l2tp_session_id(),
+     gen_l2tp_type(),
      gen_tp_packet_measurement(),
      gen_tp_build_identifier(),
      gen_tp_now(),
@@ -2360,3 +2374,86 @@ gen_redundant_transmission_forwarding() ->
 
 gen_transport_delay_reporting() ->
     #transport_delay_reporting{group = ie_group()}.
+
+gen_bbf_up_function_features() ->
+    #bbf_up_function_features{
+       lcp_keepalive_offload = flag(),
+       lns = flag(),
+       lac = flag(),
+       ipoe = flag(),
+       pppoe = flag()
+      }.
+
+gen_logical_port() ->
+    #logical_port{
+       port = binary()
+      }.
+
+gen_bbf_outer_header_creation() ->
+    #bbf_outer_header_creation{
+       cpr_nsh = flag(),
+       traffic_endpoint = flag(),
+       l2tp = flag(),
+       ppp = flag(),
+       tunnel_id = uint16(),
+       session_id = uint16()
+      }.
+
+gen_bbf_outer_header_removal() ->
+    #bbf_outer_header_removal{
+	 header = oneof(['Ethernet',
+			 'PPPoE / Ethernet',
+			 'PPP / PPPoE / Ethernet',
+			 'L2TP',
+			 'PPP / L2TP'])
+      }.
+
+gen_pppoe_session_id() ->
+    #pppoe_session_id{
+       id = uint16()
+      }.
+
+gen_ppp_protocol() ->
+    #ppp_protocol{
+       control = flag(),
+       data = flag(),
+       protocol = oneof([undefined, uint16()])
+      }.
+
+gen_verification_timers() ->
+    #verification_timers{
+	 interval = uint16(),
+	 count = uint8()
+      }.
+
+gen_ppp_lcp_magic_number() ->
+    #ppp_lcp_magic_number{
+       tx = uint32(),
+       rx = uint32()
+      }.
+
+gen_mtu() ->
+    #mtu{
+       mtu = uint16()
+      }.
+
+gen_l2tp_tunnel_endpoint() ->
+    #l2tp_tunnel_endpoint{
+       endpoint = oneof([choose, ip4_address(), ip6_address()])
+      }.
+
+gen_l2tp_session_id() ->
+    #l2tp_session_id{
+       id = uint16()
+      }.
+
+gen_l2tp_type() ->
+    #l2tp_type{
+       type = flag()
+      }.
+
+gen_ppp_lcp_connectivity() ->
+    #ppp_lcp_connectivity{group = ie_group()}.
+
+gen_l2tp_tunnel() ->
+    #l2tp_tunnel{group = ie_group()}.
