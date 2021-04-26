@@ -354,7 +354,13 @@ grouped_ie() ->
      gen_redundant_transmission_forwarding(),
      gen_transport_delay_reporting(),
      gen_ppp_lcp_connectivity(),
-     gen_l2tp_tunnel()
+     gen_l2tp_tunnel(),
+     gen_bbf_nat_outside_address(),
+     gen_bbf_apply_action(),
+     gen_bbf_nat_external_port_range(),
+     gen_bbf_nat_port_forward(),
+     gen_bbf_nat_port_block(),
+     gen_bbf_dynamic_port_block_starting_port()
     ].
 
 simple_ie() ->
@@ -2377,6 +2383,8 @@ gen_transport_delay_reporting() ->
 
 gen_bbf_up_function_features() ->
     #bbf_up_function_features{
+       nat_up = flag(),
+       nat_cp = flag(),
        lcp_keepalive_offload = flag(),
        lns = flag(),
        lac = flag(),
@@ -2457,3 +2465,34 @@ gen_ppp_lcp_connectivity() ->
 
 gen_l2tp_tunnel() ->
     #l2tp_tunnel{group = ie_group()}.
+
+
+gen_bbf_nat_outside_address() ->
+    #bbf_nat_outside_address{
+       ipv4 = ip4_address()
+      }.
+
+gen_bbf_apply_action() ->
+    #bbf_apply_action{
+       nat = flag()
+      }.
+
+gen_bbf_nat_external_port_range() ->
+    #bbf_nat_external_port_range{
+       ranges = list({uint16(), uint16()})
+      }.
+
+gen_bbf_nat_port_forward() ->
+    #bbf_nat_port_forward{
+       forwards = list({ip4_address(), uint16(), uint16(), uint8()})
+      }.
+
+gen_bbf_nat_port_block() ->
+    #bbf_nat_port_block{
+       block = binary()
+      }.
+
+gen_bbf_dynamic_port_block_starting_port() ->
+    #bbf_dynamic_port_block_starting_port{
+       start = uint16()
+      }.
