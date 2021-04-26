@@ -270,6 +270,14 @@
 	  protocol = undefined
 	 }).
 
+-record(bbf_nat_external_port_range, {
+	  ranges = []
+	 }).
+
+-record(bbf_nat_port_forward, {
+	  forwards = []
+	 }).
+
 -record(l2tp_tunnel_endpoint, {
 	  endpoint
 	 }).
@@ -1365,6 +1373,8 @@
 }).
 
 -record(bbf_up_function_features, {
+	  nat_up = 0,
+	  nat_cp = 0,
 	  lcp_keepalive_offload = 0,
 	  lns = 0,
 	  lac = 0,
@@ -1421,6 +1431,22 @@
 
 -record(l2tp_tunnel, {
 	  group
+}).
+
+-record(bbf_nat_outside_address, {
+	  ipv4 = <<0,0,0,0>>
+}).
+
+-record(bbf_apply_action, {
+	  nat = 0
+}).
+
+-record(bbf_nat_port_block, {
+	  block = <<>>
+}).
+
+-record(bbf_dynamic_port_block_starting_port, {
+	  start = 0
 }).
 
 -record(tp_build_identifier, {

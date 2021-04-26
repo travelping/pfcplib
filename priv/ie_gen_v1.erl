@@ -946,7 +946,9 @@ raw_ies() ->
       [{"Group", 0, {type, v1_grouped}}]},
 
      {{3561, 0}, "BBF UP Function Features",
-      [{'_', 3},
+      [{'_', 1},
+       {"NAT-UP", 1, integer},
+       {"NAT-CP", 1, integer},
        {"LCP keepalive offload", 1, integer},
        {"LNS", 1, integer},
        {"LAC", 1, integer},
@@ -1001,6 +1003,22 @@ raw_ies() ->
       [{"Group", 0, {type, v1_grouped}}]},
      {{3561, 13}, "L2TP Tunnel",
       [{"Group", 0, {type, v1_grouped}}]},
+
+     %% TBD: the id assigment table and the IE specification are somewhat inconsistent
+     %%      at the time of writing -- 2021-04-26
+     {{3561, 14}, "BBF NAT Outside Address",
+      [{"IPv4", 4, bytes}]},
+     {{3561, 15}, "BBF Apply Action",
+      [{'_', 7},
+       {"NAT", 1, integer},
+       {'_', 0}]},
+     {{3561, 16}, "BBF NAT external Port Range", bbf_nat_external_port_range},
+     {{3561, 17}, "BBF NAT Port Forward", bbf_nat_port_forward},
+     {{3561, 18}, "BBF NAT Port Block",
+      [{"Block", 0, binary}]},
+     {{3561, 19}, "BBF dynamic port block starting port",
+      [{"Start", 16, integer},
+       {'_', 0}]},
 
      {{18681, 1}, "TP Packet Measurement", volume_threshold},
      {{18681, 2}, "TP Build Identifier",
