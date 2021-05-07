@@ -2447,6 +2447,7 @@ gen_mtu() ->
 
 gen_l2tp_tunnel_endpoint() ->
     #l2tp_tunnel_endpoint{
+       tunnel_id = uint16(),
        endpoint = oneof([choose, ip4_address(), ip6_address()])
       }.
 
