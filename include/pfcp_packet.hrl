@@ -279,6 +279,7 @@
 	 }).
 
 -record(l2tp_tunnel_endpoint, {
+	  tunnel_id = 0,
 	  endpoint
 	 }).
 
