@@ -360,7 +360,8 @@ grouped_ie() ->
      gen_bbf_nat_external_port_range(),
      gen_bbf_nat_port_forward(),
      gen_bbf_nat_port_block(),
-     gen_bbf_dynamic_port_block_starting_port()
+     gen_bbf_dynamic_port_block_starting_port(),
+     gen_tp_error_report()
     ].
 
 simple_ie() ->
@@ -566,6 +567,9 @@ simple_ie() ->
      gen_tp_now(),
      gen_tp_start_time(),
      gen_tp_stop_time(),
+     gen_tp_error_message(),
+     gen_tp_file_name(),
+     gen_tp_line_number(),
      gen_enterprise_priv()
     ].
 
@@ -1710,17 +1714,38 @@ gen_tp_build_identifier() ->
 
 gen_tp_now() ->
     #tp_now{
-       now = float()
+       seconds = uint32(),
+       fraction = uint32()
       }.
 
 gen_tp_start_time() ->
     #tp_start_time{
-       start = float()
+       seconds = uint32(),
+       fraction = uint32()
       }.
 
 gen_tp_stop_time() ->
     #tp_stop_time{
-       stop = float()
+       seconds = uint32(),
+       fraction = uint32()
+      }.
+
+gen_tp_error_report() ->
+    #tp_error_report{group = ie_group()}.
+
+gen_tp_error_message() ->
+    #tp_error_message{
+       message = binary()
+      }.
+
+gen_tp_file_name() ->
+    #tp_file_name{
+       file_name = binary()
+      }.
+
+gen_tp_line_number() ->
+    #tp_line_number{
+       line = uint32()
       }.
 
 gen_enterprise_priv() ->

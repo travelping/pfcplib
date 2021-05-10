@@ -3647,19 +3647,42 @@ decode_v1_element(<<M_id/binary>>, {18681,2}) ->
     #tp_build_identifier{id = M_id};
 
 %% decode tp_now
-decode_v1_element(<<M_now:64/float,
+decode_v1_element(<<M_seconds:32/integer,
+		    M_fraction:32/integer,
 		    _/binary>>, {18681,3}) ->
-    #tp_now{now = M_now};
+    #tp_now{seconds = M_seconds,
+	    fraction = M_fraction};
 
 %% decode tp_start_time
-decode_v1_element(<<M_start:64/float,
+decode_v1_element(<<M_seconds:32/integer,
+		    M_fraction:32/integer,
 		    _/binary>>, {18681,4}) ->
-    #tp_start_time{start = M_start};
+    #tp_start_time{seconds = M_seconds,
+		   fraction = M_fraction};
 
 %% decode tp_stop_time
-decode_v1_element(<<M_stop:64/float,
+decode_v1_element(<<M_seconds:32/integer,
+		    M_fraction:32/integer,
 		    _/binary>>, {18681,5}) ->
-    #tp_stop_time{stop = M_stop};
+    #tp_stop_time{seconds = M_seconds,
+		  fraction = M_fraction};
+
+%% decode tp_error_report
+decode_v1_element(<<M_group/binary>>, {18681,6}) ->
+    #tp_error_report{group = decode_v1_grouped(M_group)};
+
+%% decode tp_error_message
+decode_v1_element(<<M_message/binary>>, {18681,7}) ->
+    #tp_error_message{message = M_message};
+
+%% decode tp_file_name
+decode_v1_element(<<M_file_name/binary>>, {18681,8}) ->
+    #tp_file_name{file_name = M_file_name};
+
+%% decode tp_line_number
+decode_v1_element(<<M_line:32/integer,
+		    _/binary>>, {18681,9}) ->
+    #tp_line_number{line = M_line};
 
 decode_v1_element(Value, Tag) ->
     {Tag, Value}.
@@ -5547,16 +5570,38 @@ encode_v1_element(#tp_build_identifier{
     encode_tlv({18681,2}, <<M_id/binary>>, Acc);
 
 encode_v1_element(#tp_now{
-		       now = M_now}, Acc) ->
-    encode_tlv({18681,3}, <<M_now:64/float>>, Acc);
+		       seconds = M_seconds,
+		       fraction = M_fraction}, Acc) ->
+    encode_tlv({18681,3}, <<M_seconds:32/integer,
+			    M_fraction:32/integer>>, Acc);
 
 encode_v1_element(#tp_start_time{
-		       start = M_start}, Acc) ->
-    encode_tlv({18681,4}, <<M_start:64/float>>, Acc);
+		       seconds = M_seconds,
+		       fraction = M_fraction}, Acc) ->
+    encode_tlv({18681,4}, <<M_seconds:32/integer,
+			    M_fraction:32/integer>>, Acc);
 
 encode_v1_element(#tp_stop_time{
-		       stop = M_stop}, Acc) ->
-    encode_tlv({18681,5}, <<M_stop:64/float>>, Acc);
+		       seconds = M_seconds,
+		       fraction = M_fraction}, Acc) ->
+    encode_tlv({18681,5}, <<M_seconds:32/integer,
+			    M_fraction:32/integer>>, Acc);
+
+encode_v1_element(#tp_error_report{
+		       group = M_group}, Acc) ->
+    encode_tlv({18681,6}, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#tp_error_message{
+		       message = M_message}, Acc) ->
+    encode_tlv({18681,7}, <<M_message/binary>>, Acc);
+
+encode_v1_element(#tp_file_name{
+		       file_name = M_file_name}, Acc) ->
+    encode_tlv({18681,8}, <<M_file_name/binary>>, Acc);
+
+encode_v1_element(#tp_line_number{
+		       line = M_line}, Acc) ->
+    encode_tlv({18681,9}, <<M_line:32/integer>>, Acc);
 
 encode_v1_element(IEs, Acc) when is_list(IEs) ->
     encode_v1(IEs, Acc);
@@ -5860,17 +5905,32 @@ encode_v1_element({Tag, Value}, Acc) when is_binary(Value) ->
 ?PRETTY_PRINT(pretty_print_v1, tp_now);
 ?PRETTY_PRINT(pretty_print_v1, tp_start_time);
 ?PRETTY_PRINT(pretty_print_v1, tp_stop_time);
+?PRETTY_PRINT(pretty_print_v1, tp_error_report);
+?PRETTY_PRINT(pretty_print_v1, tp_error_message);
+?PRETTY_PRINT(pretty_print_v1, tp_file_name);
+?PRETTY_PRINT(pretty_print_v1, tp_line_number);
 pretty_print_v1(_, _) ->
     no.
 
 v1_msg_defs() ->
     #{'N4' =>
 	  #{association_release_request =>
-		#{node_id => {'M',node_id},tp_build_identifier => {'O',tp_build_identifier}},
+		#{node_id => {'M',node_id},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    association_release_response =>
 		#{node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    association_setup_request =>
 		#{alternative_smf_ip_address => {'O',alternative_smf_ip_address},
 		  bbf_up_function_features => {'C',bbf_up_function_features},
@@ -5902,6 +5962,11 @@ v1_msg_defs() ->
 		  recovery_time_stamp => {'M',recovery_time_stamp},
 		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  ue_ip_address_pool_information =>
 		      {'O',
 			  #{ip_version => {'O',ip_version},
@@ -5942,6 +6007,11 @@ v1_msg_defs() ->
 		  recovery_time_stamp => {'M',recovery_time_stamp},
 		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  ue_ip_address_pool_information =>
 		      {'O',
 			  #{ip_version => {'O',ip_version},
@@ -5980,6 +6050,11 @@ v1_msg_defs() ->
 		  pfcp_association_release_request => {'C',pfcp_association_release_request},
 		  pfcpaureq_flags => {'O',pfcpaureq_flags},
 		  smf_set_id => {'C',smf_set_id},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  ue_ip_address_pool_information =>
 		      {'O',
 			  #{ip_version => {'O',ip_version},
@@ -6050,7 +6125,12 @@ v1_msg_defs() ->
 		#{node_id => {'M',node_id},
 		  offending_ie => {'C',offending_ie},
 		  pfcp_cause => {'M',pfcp_cause},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    pfd_management_request =>
 		#{'application_id\'s_pfds' =>
 		      {'M',
@@ -6084,6 +6164,11 @@ v1_msg_defs() ->
 				      start_time => {'O',start_time},
 				      time_stamp => {'M',time_stamp}}},
 			    srr_id => {'M',srr_id}}},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  usage_report_sdr =>
 		      {'C',
 			  #{duration_measurement => {'C',duration_measurement},
@@ -6372,89 +6457,17 @@ v1_msg_defs() ->
 			    timer => {'M',timer}}},
 		  pfcp_cause => {'M',pfcp_cause},
 		  rds_configuration_information => {'O',rds_configuration_information},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    session_modification_request =>
-		#{create_traffic_endpoint =>
-		      {'C',
-			  #{ethernet_pdu_session_information =>
-				{'O',ethernet_pdu_session_information},
-			    f_teid => {'O',f_teid},
-			    framed_ipv6_route => {'O',framed_ipv6_route},
-			    framed_route => {'O',framed_route},
-			    framed_routing => {'O',framed_routing},
-			    network_instance => {'O',network_instance},
-			    qfi => {'C',qfi},
-			    redundant_transmission_parameters =>
-				{'O',
-				    #{f_teid => {'M',f_teid},
-				      network_instance => {'C',network_instance}}},
-			    traffic_endpoint_id => {'M',traffic_endpoint_id},
-			    ue_ip_address => {'O',ue_ip_address}}},
-		  create_mar =>
-		      {'C',
-			  #{mar_id => {'M',mar_id},
-			    non_tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'M',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}},
-			    steering_functionality => {'M',steering_functionality},
-			    steering_mode => {'M',steering_mode},
-			    tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'M',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}}}},
-		  update_traffic_endpoint =>
-		      {'C',
-			  #{f_teid => {'C',f_teid},
-			    framed_ipv6_route => {'C',framed_ipv6_route},
-			    framed_route => {'C',framed_route},
-			    framed_routing => {'C',framed_routing},
-			    network_instance => {'O',network_instance},
-			    qfi => {'C',qfi},
-			    redundant_transmission_parameters =>
-				{'O',
-				    #{f_teid => {'M',f_teid},
-				      network_instance => {'C',network_instance}}},
-			    tgpp_interface_type => {'C',tgpp_interface_type},
-			    traffic_endpoint_id => {'M',traffic_endpoint_id},
-			    ue_ip_address => {'C',ue_ip_address}}},
+		#{access_availability_information => {'O',access_availability_information},
+		  remove_qer => {'C',#{qer_id => {'M',qer_id}}},
+		  remove_far => {'C',#{far_id => {'M',far_id}}},
 		  node_id => {'C',node_id},
-		  update_mar =>
-		      {'C',
-			  #{mar_id => {'M',mar_id},
-			    non_tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'M',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}},
-			    steering_functionality => {'C',steering_functionality},
-			    steering_mode => {'C',steering_mode},
-			    tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'M',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}},
-			    update_non_tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'C',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}},
-			    update_tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'C',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}}}},
-		  access_availability_information => {'O',access_availability_information},
-		  remove_mar => {'C',#{mar_id => {'M',mar_id}}},
-		  query_packet_rate_status_ie_smreq => {'C',#{qer_id => {'M',qer_id}}},
 		  update_bar =>
 		      {'C',
 			  #{bar_id => {'M',bar_id},
@@ -6462,53 +6475,6 @@ v1_msg_defs() ->
 				{'C',downlink_data_notification_delay},
 			    suggested_buffering_packets_count =>
 				{'C',suggested_buffering_packets_count}}},
-		  update_urr =>
-		      {'C',
-			  #{additional_monitoring_time =>
-				{'O',
-				    #{event_quota => {'O',event_quota},
-				      event_threshold => {'O',event_threshold},
-				      monitoring_time => {'M',monitoring_time},
-				      subsequent_time_quota => {'O',subsequent_time_quota},
-				      subsequent_time_threshold =>
-					  {'O',subsequent_time_threshold},
-				      subsequent_volume_quota =>
-					  {'O',subsequent_volume_quota},
-				      subsequent_volume_threshold =>
-					  {'O',subsequent_volume_threshold}}},
-			    dropped_dl_traffic_threshold =>
-				{'C',dropped_dl_traffic_threshold},
-			    ethernet_inactivity_timer => {'C',ethernet_inactivity_timer},
-			    event_quota => {'C',event_quota},
-			    event_threshold => {'C',event_threshold},
-			    far_id => {'C',far_id},
-			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id => {'C',linked_urr_id},
-			    measurement_information => {'C',measurement_information},
-			    measurement_method => {'C',measurement_method},
-			    measurement_period => {'C',measurement_period},
-			    monitoring_time => {'C',monitoring_time},
-			    number_of_reports => {'O',number_of_reports},
-			    quota_holding_time => {'C',quota_holding_time},
-			    quota_validity_time => {'C',quota_validity_time},
-			    reporting_triggers => {'C',reporting_triggers},
-			    subsequent_event_quota => {'O',subsequent_event_quota},
-			    subsequent_event_threshold => {'O',subsequent_event_threshold},
-			    subsequent_time_quota => {'C',subsequent_time_quota},
-			    subsequent_time_threshold => {'C',subsequent_time_threshold},
-			    subsequent_volume_quota => {'C',subsequent_volume_quota},
-			    subsequent_volume_threshold => {'C',subsequent_volume_threshold},
-			    time_quota => {'C',time_quota},
-			    time_threshold => {'C',time_threshold},
-			    urr_id => {'M',urr_id},
-			    volume_quota => {'C',volume_quota},
-			    volume_threshold => {'C',volume_threshold}}},
-		  query_urr_reference => {'O',query_urr_reference},
-		  sxsmreq_flags => {'C',sxsmreq_flags},
-		  remove_srr => {'C',#{srr_id => {'M',srr_id}}},
-		  remove_pdr => {'C',#{pdr_id => {'M',pdr_id}}},
-		  remove_traffic_endpoint =>
-		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
 		  create_qer =>
 		      {'C',
 			  #{averaging_window => {'O',averaging_window},
@@ -6522,7 +6488,10 @@ v1_msg_defs() ->
 			    qer_id => {'M',qer_id},
 			    qfi => {'C',qfi},
 			    rqi => {'C',rqi}}},
-		  query_urr => {'C',#{urr_id => {'M',urr_id}}},
+		  ethernet_context_information =>
+		      {'C',#{mac_addressed_detected => {'M',mac_addressed_detected}}},
+		  query_packet_rate_status_ie_smreq => {'C',#{qer_id => {'M',qer_id}}},
+		  remove_pdr => {'C',#{pdr_id => {'M',pdr_id}}},
 		  update_qer =>
 		      {'C',
 			  #{averaging_window => {'O',averaging_window},
@@ -6535,44 +6504,6 @@ v1_msg_defs() ->
 			    qer_id => {'M',qer_id},
 			    qfi => {'C',qfi},
 			    rqi => {'C',rqi}}},
-		  update_far =>
-		      {'C',
-			  #{apply_action => {'C',apply_action},
-			    bar_id => {'C',bar_id},
-			    far_id => {'M',far_id},
-			    redundant_transmission_parameters =>
-				{'C',
-				    #{f_teid => {'M',f_teid},
-				      network_instance => {'O',network_instance}}},
-			    update_duplicating_parameters =>
-				{'C',
-				    #{destination_interface => {'C',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      outer_header_creation => {'C',outer_header_creation},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}},
-			    update_forwarding_parameters =>
-				{'C',
-				    #{bbf_apply_action => {'O',bbf_apply_action},
-				      bbf_nat_port_block => {'O',bbf_nat_port_block},
-				      destination_interface => {'C',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      header_enrichment => {'C',header_enrichment},
-				      network_instance => {'C',network_instance},
-				      outer_header_creation => {'C',outer_header_creation},
-				      redirect_information => {'C',redirect_information},
-				      sxsmreq_flags => {'C',sxsmreq_flags},
-				      tgpp_interface_type => {'C',tgpp_interface_type},
-				      traffic_endpoint_id => {'C',traffic_endpoint_id},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}}}},
-		  remove_far => {'C',#{far_id => {'M',far_id}}},
-		  create_bar =>
-		      {'C',
-			  #{bar_id => {'M',bar_id},
-			    suggested_buffering_packets_count =>
-				{'C',suggested_buffering_packets_count}}},
-		  remove_qer => {'C',#{qer_id => {'M',qer_id}}},
 		  create_pdr =>
 		      {'C',
 			  #{activate_predefined_rules => {'C',activate_predefined_rules},
@@ -6629,39 +6560,256 @@ v1_msg_defs() ->
 			    qer_id => {'C',qer_id},
 			    ue_ip_address_pool_identity => {'O',ue_ip_address_pool_identity},
 			    urr_id => {'C',urr_id}}},
-		  f_seid => {'C',f_seid},
-		  trace_information => {'O',trace_information},
-		  create_far =>
+		  port_management_information_for_tsc =>
 		      {'C',
-			  #{apply_action => {'M',apply_action},
-			    bar_id => {'O',bar_id},
-			    duplicating_parameters =>
-				{'C',
-				    #{destination_interface => {'M',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      outer_header_creation => {'C',outer_header_creation},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}},
+			  #{port_management_information_containerd =>
+				{'M',port_management_information_containerd}}},
+		  update_far =>
+		      {'C',
+			  #{apply_action => {'C',apply_action},
+			    bar_id => {'C',bar_id},
 			    far_id => {'M',far_id},
-			    forwarding_parameters =>
-				{'C',
-				    #{bbf_apply_action => {'O',bbf_apply_action},
-				      bbf_nat_port_block => {'O',bbf_nat_port_block},
-				      destination_interface => {'M',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      header_enrichment => {'O',header_enrichment},
-				      network_instance => {'O',network_instance},
-				      outer_header_creation => {'C',outer_header_creation},
-				      proxying => {'C',proxying},
-				      redirect_information => {'C',redirect_information},
-				      tgpp_interface_type => {'O',tgpp_interface_type},
-				      traffic_endpoint_id => {'C',traffic_endpoint_id},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}},
 			    redundant_transmission_parameters =>
 				{'C',
 				    #{f_teid => {'M',f_teid},
-				      network_instance => {'C',network_instance}}}}},
+				      network_instance => {'O',network_instance}}},
+			    update_duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'C',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    update_forwarding_parameters =>
+				{'C',
+				    #{bbf_apply_action => {'O',bbf_apply_action},
+				      bbf_nat_port_block => {'O',bbf_nat_port_block},
+				      destination_interface => {'C',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'C',header_enrichment},
+				      network_instance => {'C',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      redirect_information => {'C',redirect_information},
+				      sxsmreq_flags => {'C',sxsmreq_flags},
+				      tgpp_interface_type => {'C',tgpp_interface_type},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}}}},
+		  create_urr =>
+		      {'C',
+			  #{additional_monitoring_time =>
+				{'O',
+				    #{event_quota => {'O',event_quota},
+				      event_threshold => {'O',event_threshold},
+				      monitoring_time => {'M',monitoring_time},
+				      subsequent_time_quota => {'O',subsequent_time_quota},
+				      subsequent_time_threshold =>
+					  {'O',subsequent_time_threshold},
+				      subsequent_volume_quota =>
+					  {'O',subsequent_volume_quota},
+				      subsequent_volume_threshold =>
+					  {'O',subsequent_volume_threshold}}},
+			    dropped_dl_traffic_threshold =>
+				{'C',dropped_dl_traffic_threshold},
+			    ethernet_inactivity_timer => {'C',ethernet_inactivity_timer},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id => {'C',linked_urr_id},
+			    measurement_information => {'C',measurement_information},
+			    measurement_method => {'M',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'O',monitoring_time},
+			    number_of_reports => {'O',number_of_reports},
+			    quota_holding_time => {'C',quota_holding_time},
+			    quota_validity_time => {'C',quota_validity_time},
+			    reporting_triggers => {'M',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'O',subsequent_time_quota},
+			    subsequent_time_threshold => {'O',subsequent_time_threshold},
+			    subsequent_volume_quota => {'O',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
+		  query_urr => {'C',#{urr_id => {'M',urr_id}}},
+		  trace_information => {'O',trace_information},
+		  update_srr =>
+		      {'C',
+			  #{access_availability_control_information =>
+				{'C',
+				    #{requested_access_availability_information =>
+					  {'M',requested_access_availability_information}}},
+			    qos_monitoring_per_qos_flow_control_information =>
+				{'C',
+				    #{measurement_period => {'C',measurement_period},
+				      minimum_wait_time => {'C',minimum_wait_time},
+				      packet_delay_thresholds =>
+					  {'C',packet_delay_thresholds},
+				      qfi => {'M',qfi},
+				      reporting_frequency => {'M',reporting_frequency},
+				      requested_qos_monitoring =>
+					  {'M',requested_qos_monitoring}}},
+			    srr_id => {'M',srr_id}}},
+		  remove_bar => {'C',#{bar_id => {'M',bar_id}}},
+		  user_plane_inactivity_timer => {'C',user_plane_inactivity_timer},
+		  create_mar =>
+		      {'C',
+			  #{mar_id => {'M',mar_id},
+			    non_tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'M',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}},
+			    steering_functionality => {'M',steering_functionality},
+			    steering_mode => {'M',steering_mode},
+			    tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'M',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}}}},
+		  f_seid => {'C',f_seid},
+		  query_urr_reference => {'O',query_urr_reference},
+		  sxsmreq_flags => {'C',sxsmreq_flags},
+		  remove_mar => {'C',#{mar_id => {'M',mar_id}}},
+		  remove_srr => {'C',#{srr_id => {'M',srr_id}}},
+		  update_mar =>
+		      {'C',
+			  #{mar_id => {'M',mar_id},
+			    non_tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'M',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}},
+			    steering_functionality => {'C',steering_functionality},
+			    steering_mode => {'C',steering_mode},
+			    tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'M',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}},
+			    update_non_tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'C',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}},
+			    update_tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'C',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}}}},
+		  update_urr =>
+		      {'C',
+			  #{additional_monitoring_time =>
+				{'O',
+				    #{event_quota => {'O',event_quota},
+				      event_threshold => {'O',event_threshold},
+				      monitoring_time => {'M',monitoring_time},
+				      subsequent_time_quota => {'O',subsequent_time_quota},
+				      subsequent_time_threshold =>
+					  {'O',subsequent_time_threshold},
+				      subsequent_volume_quota =>
+					  {'O',subsequent_volume_quota},
+				      subsequent_volume_threshold =>
+					  {'O',subsequent_volume_threshold}}},
+			    dropped_dl_traffic_threshold =>
+				{'C',dropped_dl_traffic_threshold},
+			    ethernet_inactivity_timer => {'C',ethernet_inactivity_timer},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id => {'C',linked_urr_id},
+			    measurement_information => {'C',measurement_information},
+			    measurement_method => {'C',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'C',monitoring_time},
+			    number_of_reports => {'O',number_of_reports},
+			    quota_holding_time => {'C',quota_holding_time},
+			    quota_validity_time => {'C',quota_validity_time},
+			    reporting_triggers => {'C',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'C',subsequent_time_quota},
+			    subsequent_time_threshold => {'C',subsequent_time_threshold},
+			    subsequent_volume_quota => {'C',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'C',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
+		  create_traffic_endpoint =>
+		      {'C',
+			  #{ethernet_pdu_session_information =>
+				{'O',ethernet_pdu_session_information},
+			    f_teid => {'O',f_teid},
+			    framed_ipv6_route => {'O',framed_ipv6_route},
+			    framed_route => {'O',framed_route},
+			    framed_routing => {'O',framed_routing},
+			    network_instance => {'O',network_instance},
+			    qfi => {'C',qfi},
+			    redundant_transmission_parameters =>
+				{'O',
+				    #{f_teid => {'M',f_teid},
+				      network_instance => {'C',network_instance}}},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'O',ue_ip_address}}},
+		  provide_atsss_control_information =>
+		      {'C',
+			  #{atsss_ll_control_information =>
+				{'C',atsss_ll_control_information},
+			    mptcp_control_information => {'C',mptcp_control_information},
+			    pmf_control_information => {'C',pmf_control_information}}},
+		  create_srr =>
+		      {'C',
+			  #{access_availability_control_information =>
+				{'C',
+				    #{requested_access_availability_information =>
+					  {'M',requested_access_availability_information}}},
+			    qos_monitoring_per_qos_flow_control_information =>
+				{'C',
+				    #{measurement_period => {'C',measurement_period},
+				      minimum_wait_time => {'C',minimum_wait_time},
+				      packet_delay_thresholds =>
+					  {'C',packet_delay_thresholds},
+				      qfi => {'M',qfi},
+				      reporting_frequency => {'M',reporting_frequency},
+				      requested_qos_monitoring =>
+					  {'M',requested_qos_monitoring}}},
+			    srr_id => {'M',srr_id}}},
+		  create_bar =>
+		      {'C',
+			  #{bar_id => {'M',bar_id},
+			    suggested_buffering_packets_count =>
+				{'C',suggested_buffering_packets_count}}},
+		  update_traffic_endpoint =>
+		      {'C',
+			  #{f_teid => {'C',f_teid},
+			    framed_ipv6_route => {'C',framed_ipv6_route},
+			    framed_route => {'C',framed_route},
+			    framed_routing => {'C',framed_routing},
+			    network_instance => {'O',network_instance},
+			    qfi => {'C',qfi},
+			    redundant_transmission_parameters =>
+				{'O',
+				    #{f_teid => {'M',f_teid},
+				      network_instance => {'C',network_instance}}},
+			    tgpp_interface_type => {'C',tgpp_interface_type},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'C',ue_ip_address}}},
+		  remove_traffic_endpoint =>
+		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
 		  update_pdr =>
 		      {'C',
 			  #{activate_predefined_rules => {'C',activate_predefined_rules},
@@ -6704,96 +6852,38 @@ v1_msg_defs() ->
 			    precedence => {'C',precedence},
 			    qer_id => {'C',qer_id},
 			    urr_id => {'C',urr_id}}},
-		  update_srr =>
-		      {'C',
-			  #{access_availability_control_information =>
-				{'C',
-				    #{requested_access_availability_information =>
-					  {'M',requested_access_availability_information}}},
-			    qos_monitoring_per_qos_flow_control_information =>
-				{'C',
-				    #{measurement_period => {'C',measurement_period},
-				      minimum_wait_time => {'C',minimum_wait_time},
-				      packet_delay_thresholds =>
-					  {'C',packet_delay_thresholds},
-				      qfi => {'M',qfi},
-				      reporting_frequency => {'M',reporting_frequency},
-				      requested_qos_monitoring =>
-					  {'M',requested_qos_monitoring}}},
-			    srr_id => {'M',srr_id}}},
-		  create_srr =>
-		      {'C',
-			  #{access_availability_control_information =>
-				{'C',
-				    #{requested_access_availability_information =>
-					  {'M',requested_access_availability_information}}},
-			    qos_monitoring_per_qos_flow_control_information =>
-				{'C',
-				    #{measurement_period => {'C',measurement_period},
-				      minimum_wait_time => {'C',minimum_wait_time},
-				      packet_delay_thresholds =>
-					  {'C',packet_delay_thresholds},
-				      qfi => {'M',qfi},
-				      reporting_frequency => {'M',reporting_frequency},
-				      requested_qos_monitoring =>
-					  {'M',requested_qos_monitoring}}},
-			    srr_id => {'M',srr_id}}},
-		  port_management_information_for_tsc =>
-		      {'C',
-			  #{port_management_information_containerd =>
-				{'M',port_management_information_containerd}}},
-		  user_plane_inactivity_timer => {'C',user_plane_inactivity_timer},
 		  remove_urr => {'C',#{urr_id => {'M',urr_id}}},
-		  ethernet_context_information =>
-		      {'C',#{mac_addressed_detected => {'M',mac_addressed_detected}}},
-		  remove_bar => {'C',#{bar_id => {'M',bar_id}}},
-		  provide_atsss_control_information =>
+		  create_far =>
 		      {'C',
-			  #{atsss_ll_control_information =>
-				{'C',atsss_ll_control_information},
-			    mptcp_control_information => {'C',mptcp_control_information},
-			    pmf_control_information => {'C',pmf_control_information}}},
-		  create_urr =>
-		      {'C',
-			  #{additional_monitoring_time =>
-				{'O',
-				    #{event_quota => {'O',event_quota},
-				      event_threshold => {'O',event_threshold},
-				      monitoring_time => {'M',monitoring_time},
-				      subsequent_time_quota => {'O',subsequent_time_quota},
-				      subsequent_time_threshold =>
-					  {'O',subsequent_time_threshold},
-				      subsequent_volume_quota =>
-					  {'O',subsequent_volume_quota},
-				      subsequent_volume_threshold =>
-					  {'O',subsequent_volume_threshold}}},
-			    dropped_dl_traffic_threshold =>
-				{'C',dropped_dl_traffic_threshold},
-			    ethernet_inactivity_timer => {'C',ethernet_inactivity_timer},
-			    event_quota => {'C',event_quota},
-			    event_threshold => {'C',event_threshold},
-			    far_id => {'C',far_id},
-			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id => {'C',linked_urr_id},
-			    measurement_information => {'C',measurement_information},
-			    measurement_method => {'M',measurement_method},
-			    measurement_period => {'C',measurement_period},
-			    monitoring_time => {'O',monitoring_time},
-			    number_of_reports => {'O',number_of_reports},
-			    quota_holding_time => {'C',quota_holding_time},
-			    quota_validity_time => {'C',quota_validity_time},
-			    reporting_triggers => {'M',reporting_triggers},
-			    subsequent_event_quota => {'O',subsequent_event_quota},
-			    subsequent_event_threshold => {'O',subsequent_event_threshold},
-			    subsequent_time_quota => {'O',subsequent_time_quota},
-			    subsequent_time_threshold => {'O',subsequent_time_threshold},
-			    subsequent_volume_quota => {'O',subsequent_volume_quota},
-			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
-			    time_quota => {'C',time_quota},
-			    time_threshold => {'C',time_threshold},
-			    urr_id => {'M',urr_id},
-			    volume_quota => {'C',volume_quota},
-			    volume_threshold => {'C',volume_threshold}}}},
+			  #{apply_action => {'M',apply_action},
+			    bar_id => {'O',bar_id},
+			    duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    far_id => {'M',far_id},
+			    forwarding_parameters =>
+				{'C',
+				    #{bbf_apply_action => {'O',bbf_apply_action},
+				      bbf_nat_port_block => {'O',bbf_nat_port_block},
+				      destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'O',header_enrichment},
+				      network_instance => {'O',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      proxying => {'C',proxying},
+				      redirect_information => {'C',redirect_information},
+				      tgpp_interface_type => {'O',tgpp_interface_type},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    redundant_transmission_parameters =>
+				{'C',
+				    #{f_teid => {'M',f_teid},
+				      network_instance => {'C',network_instance}}}}}},
 	    session_modification_response =>
 		#{additional_usage_reports_information =>
 		      {'C',additional_usage_reports_information},
@@ -6932,6 +7022,11 @@ v1_msg_defs() ->
 		  offending_ie => {'C',offending_ie},
 		  pfcp_cause => {'M',pfcp_cause},
 		  sxsrrsp_flags => {'C',sxsrrsp_flags},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  update_bar =>
 		      {'C',
 			  #{bar_id => {'M',bar_id},
@@ -6945,11 +7040,22 @@ v1_msg_defs() ->
 	    version_not_supported_response => #{}},
       'Sxa' =>
 	  #{association_release_request =>
-		#{node_id => {'M',node_id},tp_build_identifier => {'O',tp_build_identifier}},
+		#{node_id => {'M',node_id},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    association_release_response =>
 		#{node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    association_setup_request =>
 		#{alternative_smf_ip_address => {'O',alternative_smf_ip_address},
 		  bbf_up_function_features => {'C',bbf_up_function_features},
@@ -6964,6 +7070,11 @@ v1_msg_defs() ->
 		  recovery_time_stamp => {'M',recovery_time_stamp},
 		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
@@ -6981,6 +7092,11 @@ v1_msg_defs() ->
 		  recovery_time_stamp => {'M',recovery_time_stamp},
 		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
@@ -6996,6 +7112,11 @@ v1_msg_defs() ->
 		  pfcp_association_release_request => {'C',pfcp_association_release_request},
 		  pfcpaureq_flags => {'O',pfcpaureq_flags},
 		  smf_set_id => {'C',smf_set_id},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  ue_ip_address_usage_information => {'O',#{}},
 		  up_function_features => {'O',up_function_features},
@@ -7025,7 +7146,12 @@ v1_msg_defs() ->
 		#{node_id => {'M',node_id},
 		  offending_ie => {'C',offending_ie},
 		  pfcp_cause => {'M',pfcp_cause},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    session_deletion_request => #{},
 	    session_deletion_response =>
 		#{additional_usage_reports_information =>
@@ -7034,6 +7160,11 @@ v1_msg_defs() ->
 		  offending_ie => {'C',offending_ie},
 		  overload_control_information => {'O',overload_control_information},
 		  pfcp_cause => {'M',pfcp_cause},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  usage_report_sdr =>
 		      {'C',
 			  #{duration_measurement => {'C',duration_measurement},
@@ -7146,7 +7277,12 @@ v1_msg_defs() ->
 			    sequence_number => {'M',sequence_number},
 			    timer => {'M',timer}}},
 		  pfcp_cause => {'M',pfcp_cause},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    session_modification_request =>
 		#{create_bar =>
 		      {'C',
@@ -7352,6 +7488,11 @@ v1_msg_defs() ->
 		#{offending_ie => {'C',offending_ie},
 		  pfcp_cause => {'M',pfcp_cause},
 		  sxsrrsp_flags => {'C',sxsrrsp_flags},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  update_bar =>
 		      {'C',
 			  #{bar_id => {'M',bar_id},
@@ -7363,20 +7504,41 @@ v1_msg_defs() ->
 	    session_set_deletion_request =>
 		#{fq_csid => {'C',fq_csid},
 		  node_id => {'M',node_id},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    session_set_deletion_response =>
 		#{node_id => {'M',node_id},
 		  offending_ie => {'C',offending_ie},
 		  pfcp_cause => {'M',pfcp_cause},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    version_not_supported_response => #{}},
       'Sxb' =>
 	  #{association_release_request =>
-		#{node_id => {'M',node_id},tp_build_identifier => {'O',tp_build_identifier}},
+		#{node_id => {'M',node_id},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    association_release_response =>
 		#{node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    association_setup_request =>
 		#{alternative_smf_ip_address => {'O',alternative_smf_ip_address},
 		  bbf_up_function_features => {'C',bbf_up_function_features},
@@ -7391,6 +7553,11 @@ v1_msg_defs() ->
 		  recovery_time_stamp => {'M',recovery_time_stamp},
 		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  ue_ip_address_pool_information =>
 		      {'O',
 			  #{network_instance => {'O',network_instance},
@@ -7412,6 +7579,11 @@ v1_msg_defs() ->
 		  recovery_time_stamp => {'M',recovery_time_stamp},
 		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  ue_ip_address_pool_information =>
 		      {'O',
 			  #{network_instance => {'O',network_instance},
@@ -7431,6 +7603,11 @@ v1_msg_defs() ->
 		  pfcp_association_release_request => {'C',pfcp_association_release_request},
 		  pfcpaureq_flags => {'O',pfcpaureq_flags},
 		  smf_set_id => {'C',smf_set_id},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  ue_ip_address_pool_information =>
 		      {'O',
 			  #{network_instance => {'O',network_instance},
@@ -7478,7 +7655,12 @@ v1_msg_defs() ->
 		#{node_id => {'M',node_id},
 		  offending_ie => {'C',offending_ie},
 		  pfcp_cause => {'M',pfcp_cause},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    pfd_management_request =>
 		#{'application_id\'s_pfds' =>
 		      {'M',
@@ -7498,6 +7680,11 @@ v1_msg_defs() ->
 			  #{packet_rate_status => {'M',packet_rate_status},
 			    qer_id => {'M',qer_id}}},
 		  pfcp_cause => {'M',pfcp_cause},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  usage_report_sdr =>
 		      {'C',
 			  #{duration_measurement => {'C',duration_measurement},
@@ -7668,7 +7855,12 @@ v1_msg_defs() ->
 			    timer => {'M',timer}}},
 		  pfcp_cause => {'M',pfcp_cause},
 		  rds_configuration_information => {'O',rds_configuration_information},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    session_modification_request =>
 		#{create_far =>
 		      {'C',
@@ -7977,24 +8169,51 @@ v1_msg_defs() ->
 			    usage_report_trigger => {'M',usage_report_trigger},
 			    volume_measurement => {'C',volume_measurement}}}},
 	    session_report_response =>
-		#{offending_ie => {'C',offending_ie},pfcp_cause => {'M',pfcp_cause}},
+		#{offending_ie => {'C',offending_ie},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    session_set_deletion_request =>
 		#{fq_csid => {'C',fq_csid},
 		  node_id => {'M',node_id},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    session_set_deletion_response =>
 		#{node_id => {'M',node_id},
 		  offending_ie => {'C',offending_ie},
 		  pfcp_cause => {'M',pfcp_cause},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    version_not_supported_response => #{}},
       'Sxc' =>
 	  #{association_release_request =>
-		#{node_id => {'M',node_id},tp_build_identifier => {'O',tp_build_identifier}},
+		#{node_id => {'M',node_id},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    association_release_response =>
 		#{node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    association_setup_request =>
 		#{alternative_smf_ip_address => {'O',alternative_smf_ip_address},
 		  bbf_up_function_features => {'C',bbf_up_function_features},
@@ -8009,6 +8228,11 @@ v1_msg_defs() ->
 		  recovery_time_stamp => {'M',recovery_time_stamp},
 		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
@@ -8026,6 +8250,11 @@ v1_msg_defs() ->
 		  recovery_time_stamp => {'M',recovery_time_stamp},
 		  smf_set_id => {'C',smf_set_id},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
@@ -8041,6 +8270,11 @@ v1_msg_defs() ->
 		  pfcp_association_release_request => {'C',pfcp_association_release_request},
 		  pfcpaureq_flags => {'O',pfcpaureq_flags},
 		  smf_set_id => {'C',smf_set_id},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  ue_ip_address_usage_information => {'O',#{}},
 		  up_function_features => {'O',up_function_features},
@@ -8066,7 +8300,12 @@ v1_msg_defs() ->
 		#{node_id => {'M',node_id},
 		  offending_ie => {'C',offending_ie},
 		  pfcp_cause => {'M',pfcp_cause},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    pfd_management_request =>
 		#{'application_id\'s_pfds' =>
 		      {'M',
@@ -8082,6 +8321,11 @@ v1_msg_defs() ->
 		  offending_ie => {'C',offending_ie},
 		  overload_control_information => {'O',overload_control_information},
 		  pfcp_cause => {'M',pfcp_cause},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  usage_report_sdr =>
 		      {'C',
 			  #{duration_measurement => {'C',duration_measurement},
@@ -8198,7 +8442,12 @@ v1_msg_defs() ->
 			    sequence_number => {'M',sequence_number},
 			    timer => {'M',timer}}},
 		  pfcp_cause => {'M',pfcp_cause},
-		  tp_build_identifier => {'O',tp_build_identifier}},
+		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    session_modification_request =>
 		#{create_far =>
 		      {'C',
@@ -8426,5 +8675,11 @@ v1_msg_defs() ->
 			    usage_report_trigger => {'M',usage_report_trigger},
 			    volume_measurement => {'C',volume_measurement}}}},
 	    session_report_response =>
-		#{offending_ie => {'C',offending_ie},pfcp_cause => {'M',pfcp_cause}},
+		#{offending_ie => {'C',offending_ie},
+		  pfcp_cause => {'M',pfcp_cause},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}}},
 	    version_not_supported_response => #{}}}.
