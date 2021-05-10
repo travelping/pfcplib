@@ -447,7 +447,7 @@
 -record(redirect_information, {
 	  type = 'IPv4',
 	  address = <<>>,
-	  other_address
+	  other_address = <<>>
 }).
 
 -record(report_type, {
