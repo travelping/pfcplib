@@ -1975,23 +1975,27 @@ msgs() ->
        {"SxSRRsp-Flags",			   'C', {'X', '-', '-', 'X'}},
        {"F-SEID",				   'O', {'-', '-', '-', 'X'}},
        {"F-TEID",				   'O', {'-', '-', '-', 'X'}},
-       {"Alternative SMF IP Address",		   'O', {'-', '-', '-', 'X'}}
+       {"Alternative SMF IP Address",		   'O', {'-', '-', '-', 'X'}},
+       {"TP Error Report",			   'O', {'X', 'X', 'X', 'X'},
+	[{"TP Error Message",			   'M', {'X', 'X', 'X', 'X'}},
+	 {"TP File Name",			   'O', {'X', 'X', 'X', 'X'}},
+	 {"TP Line Number",			   'O', {'X', 'X', 'X', 'X'}}]}
       ]}].
 
--type flag() :: any().
--type enum() :: any().
--type array_def() :: any().
--type field_type() ::
-    {flags, [flag()]} |
-    {enum, [enum()]} |
-    boolean |
-    integer |
-    bits |
-    bytes |
-    binary |
-    length_binary |
-    {array, array_def()} |
-    tuple().
+%% -type flag() :: any().
+%% -type enum() :: any().
+%% -type array_def() :: any().
+%% -type field_type() ::
+%%     {flags, [flag()]} |
+%%     {enum, [enum()]} |
+%%     boolean |
+%%     integer |
+%%     bits |
+%%     bytes |
+%%     binary |
+%%     length_binary |
+%%     {array, array_def()} |
+%%     tuple().
 
 -record(ie, {id, name, type, field_spec, fields}).
 -record(field, {rec, name, len, optional, type, spec}).
