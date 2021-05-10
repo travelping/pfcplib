@@ -1455,13 +1455,32 @@
 }).
 
 -record(tp_now, {
-	  now = 0.0
+	  seconds = 0,
+	  fraction = 0
 }).
 
 -record(tp_start_time, {
-	  start = 0.0
+	  seconds = 0,
+	  fraction = 0
 }).
 
 -record(tp_stop_time, {
-	  stop = 0.0
+	  seconds = 0,
+	  fraction = 0
+}).
+
+-record(tp_error_report, {
+	  group
+}).
+
+-record(tp_error_message, {
+	  message = <<>>
+}).
+
+-record(tp_file_name, {
+	  file_name = <<>>
+}).
+
+-record(tp_line_number, {
+	  line = 0
 }).
