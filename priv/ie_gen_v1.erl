@@ -140,7 +140,7 @@ raw_ies() ->
        {'_', 1},
        {"REport the End Marker Reception", 1, integer},
        {'_', 0}]},
-     {38, "Redirect Information", 3,
+     {38, "Redirect Information",
       [{'_', 4},
        {"Type", 4, {enum, [{0, "IPv4"},
 			   {1, "IPv6"},
