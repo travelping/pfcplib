@@ -1043,7 +1043,9 @@ raw_ies() ->
       [{"File Name", 0, binary}]},
      {{18681, 9}, "TP Line Number",
       [{"Line", 32, integer},
-       {'_', 0}]}
+       {'_', 0}]},
+     {{18681, 10}, "TP Created NAT Binding",
+      [{"Group", 0, {type, v1_grouped}}]}
     ].
 
 msgs() ->
@@ -1495,7 +1497,11 @@ msgs() ->
        {"TP Error Report",			   'O', {'X', 'X', 'X', 'X'},
 	[{"TP Error Message",			   'M', {'X', 'X', 'X', 'X'}},
 	 {"TP File Name",			   'O', {'X', 'X', 'X', 'X'}},
-	 {"TP Line Number",			   'O', {'X', 'X', 'X', 'X'}}]}]},
+	 {"TP Line Number",			   'O', {'X', 'X', 'X', 'X'}}]},
+       {"TP Created NAT Binding",		   'C', {'-', 'X', 'X', 'X'},
+	[{"BBF NAT Outside Address",		   'C', {'-', 'X', 'X', 'X'}},
+	 {"BBF NAT Port Block",			   'C', {'-', 'X', 'X', 'X'}}]}
+      ]},
      {52, "Session Modification Request",		{'X', 'X', 'X', 'X'},
       [{"F-SEID",				   'C', {'X', 'X', 'X', 'X'}},
        {"Remove PDR",				   'C', {'X', 'X', 'X', 'X'},
@@ -1912,7 +1918,15 @@ msgs() ->
 	 {"F-TEID",				   'C', {'-', '-', '-', 'X'}}]},
        {"Packet Rate Status Report IE SMResp",	   'C', {'-', 'X', '-', 'X'},
 	[{"QER ID",				   'M', {'-', 'X', '-', 'X'}},
-	 {"Packet Rate Status",			   'M', {'-', 'X', '-', 'X'}}]}]},
+	 {"Packet Rate Status",			   'M', {'-', 'X', '-', 'X'}}]},
+       {"TP Error Report",			   'O', {'X', 'X', 'X', 'X'},
+	[{"TP Error Message",			   'M', {'X', 'X', 'X', 'X'}},
+	 {"TP File Name",			   'O', {'X', 'X', 'X', 'X'}},
+	 {"TP Line Number",			   'O', {'X', 'X', 'X', 'X'}}]},
+       {"TP Created NAT Binding",		   'C', {'-', 'X', 'X', 'X'},
+	[{"BBF NAT Outside Address",		   'C', {'-', 'X', 'X', 'X'}},
+	 {"BBF NAT Port Block",			   'C', {'-', 'X', 'X', 'X'}}]}
+      ]},
      {54, "Session Deletion Request",			{'X', 'X', 'X', 'X'},
       []},
      {55, "Session Deletion Response",			{'X', 'X', 'X', 'X'},

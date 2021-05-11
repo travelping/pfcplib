@@ -361,7 +361,8 @@ grouped_ie() ->
      gen_bbf_nat_port_forward(),
      gen_bbf_nat_port_block(),
      gen_bbf_dynamic_port_block_starting_port(),
-     gen_tp_error_report()
+     gen_tp_error_report(),
+     gen_tp_created_nat_binding()
     ].
 
 simple_ie() ->
@@ -1747,6 +1748,9 @@ gen_tp_line_number() ->
     #tp_line_number{
        line = uint32()
       }.
+
+gen_tp_created_nat_binding() ->
+    #tp_created_nat_binding{group = ie_group()}.
 
 gen_enterprise_priv() ->
     {{18681, 500}, binary()}.
