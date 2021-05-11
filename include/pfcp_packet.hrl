@@ -1484,3 +1484,7 @@
 -record(tp_line_number, {
 	  line = 0
 }).
+
+-record(tp_created_nat_binding, {
+	  group
+}).

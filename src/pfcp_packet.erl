@@ -3684,6 +3684,10 @@ decode_v1_element(<<M_line:32/integer,
 		    _/binary>>, {18681,9}) ->
     #tp_line_number{line = M_line};
 
+%% decode tp_created_nat_binding
+decode_v1_element(<<M_group/binary>>, {18681,10}) ->
+    #tp_created_nat_binding{group = decode_v1_grouped(M_group)};
+
 decode_v1_element(Value, Tag) ->
     {Tag, Value}.
 
@@ -5603,6 +5607,10 @@ encode_v1_element(#tp_line_number{
 		       line = M_line}, Acc) ->
     encode_tlv({18681,9}, <<M_line:32/integer>>, Acc);
 
+encode_v1_element(#tp_created_nat_binding{
+		       group = M_group}, Acc) ->
+    encode_tlv({18681,10}, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
 encode_v1_element(IEs, Acc) when is_list(IEs) ->
     encode_v1(IEs, Acc);
 
@@ -5909,6 +5917,7 @@ encode_v1_element({Tag, Value}, Acc) when is_binary(Value) ->
 ?PRETTY_PRINT(pretty_print_v1, tp_error_message);
 ?PRETTY_PRINT(pretty_print_v1, tp_file_name);
 ?PRETTY_PRINT(pretty_print_v1, tp_line_number);
+?PRETTY_PRINT(pretty_print_v1, tp_created_nat_binding);
 pretty_print_v1(_, _) ->
     no.
 
@@ -6458,6 +6467,10 @@ v1_msg_defs() ->
 		  pfcp_cause => {'M',pfcp_cause},
 		  rds_configuration_information => {'O',rds_configuration_information},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_created_nat_binding =>
+		      {'C',
+			  #{bbf_nat_outside_address => {'C',bbf_nat_outside_address},
+			    bbf_nat_port_block => {'C',bbf_nat_port_block}}},
 		  tp_error_report =>
 		      {'O',
 			  #{tp_error_message => {'M',tp_error_message},
@@ -6468,13 +6481,6 @@ v1_msg_defs() ->
 		  remove_qer => {'C',#{qer_id => {'M',qer_id}}},
 		  remove_far => {'C',#{far_id => {'M',far_id}}},
 		  node_id => {'C',node_id},
-		  update_bar =>
-		      {'C',
-			  #{bar_id => {'M',bar_id},
-			    downlink_data_notification_delay =>
-				{'C',downlink_data_notification_delay},
-			    suggested_buffering_packets_count =>
-				{'C',suggested_buffering_packets_count}}},
 		  create_qer =>
 		      {'C',
 			  #{averaging_window => {'O',averaging_window},
@@ -6771,6 +6777,13 @@ v1_msg_defs() ->
 				{'C',atsss_ll_control_information},
 			    mptcp_control_information => {'C',mptcp_control_information},
 			    pmf_control_information => {'C',pmf_control_information}}},
+		  update_bar =>
+		      {'C',
+			  #{bar_id => {'M',bar_id},
+			    downlink_data_notification_delay =>
+				{'C',downlink_data_notification_delay},
+			    suggested_buffering_packets_count =>
+				{'C',suggested_buffering_packets_count}}},
 		  create_srr =>
 		      {'C',
 			  #{access_availability_control_information =>
@@ -6920,6 +6933,15 @@ v1_msg_defs() ->
 		      {'C',
 			  #{port_management_information_container =>
 				{'O',port_management_information_container}}},
+		  tp_created_nat_binding =>
+		      {'C',
+			  #{bbf_nat_outside_address => {'C',bbf_nat_outside_address},
+			    bbf_nat_port_block => {'C',bbf_nat_port_block}}},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  updated_pdr => {'C',#{f_teid => {'C',f_teid},pdr_id => {'M',pdr_id}}},
 		  usage_report_smr =>
 		      {'C',
@@ -7442,6 +7464,11 @@ v1_msg_defs() ->
 		  offending_ie => {'C',offending_ie},
 		  overload_control_information => {'O',overload_control_information},
 		  pfcp_cause => {'M',pfcp_cause},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  usage_report_smr =>
 		      {'C',
 			  #{duration_measurement => {'C',duration_measurement},
@@ -7856,6 +7883,10 @@ v1_msg_defs() ->
 		  pfcp_cause => {'M',pfcp_cause},
 		  rds_configuration_information => {'O',rds_configuration_information},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_created_nat_binding =>
+		      {'C',
+			  #{bbf_nat_outside_address => {'C',bbf_nat_outside_address},
+			    bbf_nat_port_block => {'C',bbf_nat_port_block}}},
 		  tp_error_report =>
 		      {'O',
 			  #{tp_error_message => {'M',tp_error_message},
@@ -8116,6 +8147,15 @@ v1_msg_defs() ->
 			  #{packet_rate_status => {'M',packet_rate_status},
 			    qer_id => {'M',qer_id}}},
 		  pfcp_cause => {'M',pfcp_cause},
+		  tp_created_nat_binding =>
+		      {'C',
+			  #{bbf_nat_outside_address => {'C',bbf_nat_outside_address},
+			    bbf_nat_port_block => {'C',bbf_nat_port_block}}},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  usage_report_smr =>
 		      {'C',
 			  #{duration_measurement => {'C',duration_measurement},
@@ -8443,6 +8483,10 @@ v1_msg_defs() ->
 			    timer => {'M',timer}}},
 		  pfcp_cause => {'M',pfcp_cause},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_created_nat_binding =>
+		      {'C',
+			  #{bbf_nat_outside_address => {'C',bbf_nat_outside_address},
+			    bbf_nat_port_block => {'C',bbf_nat_port_block}}},
 		  tp_error_report =>
 		      {'O',
 			  #{tp_error_message => {'M',tp_error_message},
@@ -8625,6 +8669,15 @@ v1_msg_defs() ->
 		  offending_ie => {'C',offending_ie},
 		  overload_control_information => {'O',overload_control_information},
 		  pfcp_cause => {'M',pfcp_cause},
+		  tp_created_nat_binding =>
+		      {'C',
+			  #{bbf_nat_outside_address => {'C',bbf_nat_outside_address},
+			    bbf_nat_port_block => {'C',bbf_nat_port_block}}},
+		  tp_error_report =>
+		      {'O',
+			  #{tp_error_message => {'M',tp_error_message},
+			    tp_file_name => {'O',tp_file_name},
+			    tp_line_number => {'O',tp_line_number}}},
 		  usage_report_smr =>
 		      {'C',
 			  #{duration_measurement => {'C',duration_measurement},
