@@ -24,7 +24,7 @@ end_per_suite(_Config) ->
 
 
 all() ->
-    [msg_enc_dec, validation].
+    [msg_enc_dec, validation, normalize].
 
 %%%===================================================================
 %%% Tests
@@ -170,4 +170,51 @@ validation(_Config) ->
 			#overload_control_information{},
 			#usage_report_sdr{}]},
     ?match({'EXIT', {badarg, _}}, (catch pfcp_packet:validate('Sxb', Msg18))),
+    ok.
+
+normalize() ->
+    [{doc, "Test nomalization of FQDNs"}].
+normalize(_) ->
+    Bin1 = pfcp_packet:encode(
+	     #pfcp{version = v1, type = heartbeat_request, seq_no = 0,
+		   ie = [#remote_gtp_u_peer{network_instance = <<"TesT">>}]}),
+    ?match(#pfcp{ie = #{remote_gtp_u_peer := #remote_gtp_u_peer{network_instance = <<"test">>}}},
+	   pfcp_packet:decode(Bin1)),
+
+    Bin2 = pfcp_packet:encode(
+	     #pfcp{version = v1, type = heartbeat_request, seq_no = 0,
+		   ie = [#user_plane_ip_resource_information{network_instance = <<"TesT">>}]}),
+    ?match(#pfcp{ie = #{user_plane_ip_resource_information :=
+			    #user_plane_ip_resource_information{network_instance = <<"test">>}}},
+	   pfcp_packet:decode(Bin2)),
+
+    Bin3 = pfcp_packet:encode(
+	     #pfcp{version = v1, type = heartbeat_request, seq_no = 0,
+		   ie = [#network_instance{instance = <<"TesT">>}]}),
+    ?match(#pfcp{ie = #{network_instance := #network_instance{instance = <<"test">>}}},
+	   pfcp_packet:decode(Bin3)),
+
+    Bin4 = pfcp_packet:encode(
+	     #pfcp{version = v1, type = heartbeat_request, seq_no = 0,
+		   ie = [#network_instance{instance = <<4, "TesT">>}]}),
+    ?match(#pfcp{ie = #{network_instance := #network_instance{instance = <<4, "test">>}}},
+	   pfcp_packet:decode(Bin4)),
+
+    Bin5 = pfcp_packet:encode(
+	     #pfcp{version = v1, type = heartbeat_request, seq_no = 0,
+		   ie = [#node_id{id = [<<"TesT">>, <<"NET">>]}]}),
+    ?match(#pfcp{ie = #{node_id := #node_id{id = [<<"test">>, <<"net">>]}}},
+	   pfcp_packet:decode(Bin5)),
+
+    Bin6 = pfcp_packet:encode(
+	     #pfcp{version = v1, type = heartbeat_request, seq_no = 0,
+		   ie = [#apn_dnn{apn = [<<"TesT">>, <<"NET">>]}]}),
+    ?match(#pfcp{ie = #{apn_dnn := #apn_dnn{apn = [<<"test">>, <<"net">>]}}},
+	   pfcp_packet:decode(Bin6)),
+
+    Bin7 = pfcp_packet:encode(
+	     #pfcp{version = v1, type = heartbeat_request, seq_no = 0,
+		   ie = [#smf_set_id{fqdn = [<<"TesT">>, <<"NET">>]}]}),
+    ?match(#pfcp{ie = #{smf_set_id := #smf_set_id{fqdn = [<<"test">>, <<"net">>]}}},
+	   pfcp_packet:decode(Bin7)),
     ok.

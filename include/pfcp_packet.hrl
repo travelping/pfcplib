@@ -374,7 +374,7 @@
 }).
 
 -record(network_instance, {
-	  instance = <<>>
+	  instance
 }).
 
 -record(application_id, {
