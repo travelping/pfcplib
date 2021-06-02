@@ -142,13 +142,16 @@ encode_dns_label(Labels) ->
     ?LET(Name, Labels,
 	 << <<(size(Label)):8, Label/binary>> || Label <- Name >>).
 
+encode_fqdn(Labels) ->
+    ?LET(Name, Labels, iolist_to_binary(lists:join($., Name))).
+
 flag() ->
     oneof([0,1]).
 
 string(I) ->
     vector(I,
 	   oneof(
-	     lists:seq($A, $Z) ++ lists:seq($a, $z) ++ lists:seq($0, $9) ++ [$-])).
+	     lists:seq($a, $z) ++ lists:seq($0, $9) ++ [$-])).
 
 dns_label() ->
     ?LET(I, int_range(1,63), string(I)).
@@ -176,6 +179,9 @@ mnc_label() ->
 
 apn() ->
     ?LET(L, [dns_name(), mnc_label(), mcc_label(), <<"gprs">>], lists:flatten(L)).
+
+network_instance() ->
+    oneof([encode_dns_label(dns_name()), encode_fqdn(dns_name())]).
 
 uint4() ->
     int_range(0,16#0f).
@@ -711,9 +717,8 @@ gen_f_teid() ->
 
 gen_network_instance() ->
     #network_instance{
-       instance =
-	   oneof([encode_dns_label(dns_name()),
-		  binary()])}.
+       instance = network_instance()
+      }.
 
 gen_sdf_filter() ->
     #sdf_filter{
@@ -1461,7 +1466,7 @@ gen_remote_gtp_u_peer() ->
        ipv4 = oneof([undefined, ip4_address()]),
        ipv6 = oneof([undefined, ip6_address()]),
        destination_interface = oneof([undefined, binary()]),
-       network_instance = oneof([undefined, binary()])
+       network_instance = oneof([undefined, network_instance()])
       }.
 
 gen_ur_seqn() ->
@@ -1538,7 +1543,7 @@ gen_user_plane_ip_resource_information() ->
        teid_range = oneof([undefined, {byte(), int_range(1,7)}]),
        ipv4 = oneof([undefined, ip4_address()]),
        ipv6 = oneof([undefined, ip6_address()]),
-       network_instance = oneof([undefined, encode_dns_label(dns_name()), binary()])
+       network_instance = oneof([undefined, network_instance()])
       }.
 
 gen_user_plane_inactivity_timer() ->

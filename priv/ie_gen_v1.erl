@@ -72,7 +72,7 @@ raw_ies() ->
        {'_', 0}]},
      {21, "F-TEID", f_teid},
      {22, "Network Instance",
-      [{"Instance", 0, binary}]},
+      [{"Instance", 0, {type, network_instance}}]},
      {23, "SDF Filter", sdf_filter},
      {24, "Application ID",
       [{"Id", 0, binary}]},
