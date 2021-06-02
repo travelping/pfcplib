@@ -610,7 +610,6 @@ encode_fq_csid(#fq_csid{address = Address, csid = CSID}) ->
 	      {MCC, MNC, Id} ->
 		  <<2:4, Count:4, (MCC * 1000 + MNC):20, Id:12>>
 	  end,
-    ct:pal("CSID: ~p, ~p", [CSID,  << <<X:16>> || X <- CSID >>]),
     <<IE0/binary, << <<X:16>> || X <- CSID >>/binary>>.
 
 decode_dropped_dl_traffic_threshold(<<_:6, DLBY:1, DLPA:1, Rest0/binary>>, _Type) ->
