@@ -3,6 +3,12 @@ pfcplib
 
 Erlang library for encoding and decoding Packet Forwarding Control Protocol (PFCP) frames.
 
+Version 2.1.0 - 3 June 2021
+---------------------------
+
+**Features** :rocket:
+* [#24](https://github.com/travelping/pfcplib/pull/24) Normalize `FQDNs` by lowercasing them in all `IEs`
+
 Version 2.0.1 - 19 May 2021
 ---------------------------
 
