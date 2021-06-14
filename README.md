@@ -37,4 +37,4 @@ not be meet.
 [gh badge]: https://img.shields.io/github/workflow/status/travelping/pfcplib/CI?style=flat-square
 [coveralls]: https://coveralls.io/github/travelping/pfcplib
 [coveralls badge]: https://img.shields.io/coveralls/travelping/pfcplib/master.svg?style=flat-square
-[erlang version badge]: https://img.shields.io/badge/erlang-20.1%20to%2023.2-blue.svg?style=flat-square
+[erlang version badge]: https://img.shields.io/badge/erlang-20.1%20to%2024.0.2-blue.svg?style=flat-square
