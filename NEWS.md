@@ -3,6 +3,12 @@ pfcplib
 
 Erlang library for encoding and decoding Packet Forwarding Control Protocol (PFCP) frames.
 
+Version 2.1.1 - 24 June 2021
+---------------------------
+
+**Bugfixes** :bug:
+* [#27](https://github.com/travelping/pfcplib/pull/27) fix encoding of User ID
+
 Version 2.1.0 - 3 June 2021
 ---------------------------
 
