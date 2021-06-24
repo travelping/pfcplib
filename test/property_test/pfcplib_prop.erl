@@ -229,6 +229,9 @@ binary(Min, Max) ->
 imsi() ->
     binstr_number(7,15).
 
+msisdn() ->
+    binstr_number(7,20).
+
 imei() ->
     binstr_number(15, 15).
 
@@ -1666,7 +1669,7 @@ gen_user_id() ->
     #user_id{
        imsi = oneof(['undefined', imsi()]),
        imei = oneof(['undefined', imei(), imeisv()]),
-       msisdn = oneof(['undefined', binary()]),
+       msisdn = oneof(['undefined', msisdn()]),
        nai = oneof(['undefined', binary()])
       }.
 

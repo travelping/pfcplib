@@ -270,6 +270,9 @@ float(F, Size, IE) ->
 bin(Bin, Size, IE) ->
     <<IE/binary, Bin:Size/bytes>>.
 
+len(Size, Bin, IE) ->
+    <<IE/binary, (byte_size(Bin)):Size/integer, Bin/binary>>.
+
 %% spare(Len, IE) ->
 %%     <<IE/binary, 0:Len>>.
 
@@ -393,6 +396,9 @@ decode_tbcd(<<15:4, Lo:4, _/binary>>, BCD) ->
 decode_tbcd(<<Hi:4, Lo:4, Next/binary>>, BCD) ->
     decode_tbcd(Next, <<BCD/binary, (tbcd_to_string(Lo)), (tbcd_to_string(Hi))>>).
 
+encode_tbcd(Number) ->
+    encode_tbcd(Number, <<>>).
+
 string_to_tbcd($*) -> 10;
 string_to_tbcd($#) -> 11;
 string_to_tbcd($a) -> 12;
@@ -401,12 +407,12 @@ string_to_tbcd($c) -> 14;
 string_to_tbcd(15) -> 15;
 string_to_tbcd(BCD) -> BCD - $0.
 
-%% encode_tbcd(<<>>, BCD) ->
-%%     BCD;
-%% encode_tbcd(<<D:8>>, BCD) ->
-%%     <<BCD/binary, 2#1111:4, (string_to_tbcd(D)):4>>;
-%% encode_tbcd(<<H:8, L:8, Next/binary>>, BCD) ->
-%%     encode_tbcd(Next, <<BCD/binary, (string_to_tbcd(L)):4, (string_to_tbcd(H)):4>>).
+encode_tbcd(<<>>, BCD) ->
+    BCD;
+encode_tbcd(<<D:8>>, BCD) ->
+    <<BCD/binary, 2#1111:4, (string_to_tbcd(D)):4>>;
+encode_tbcd(<<H:8, L:8, Next/binary>>, BCD) ->
+    encode_tbcd(Next, <<BCD/binary, (string_to_tbcd(L)):4, (string_to_tbcd(H)):4>>).
 
 decode_mcc(<<MCCHi:8, _:4, MCC3:4, _:8>>) ->
     decode_tbcd(<<MCCHi:8, 15:4, MCC3:4>>).
@@ -920,18 +926,23 @@ encode_vlan_tag({_Type, PCP, DEI, VID}) ->
 
 decode_user_id(<<_:4, NAI:1, MSISDN:1, IMEI:1, IMSI:1, Rest0/binary>>, _Type) ->
     IE0 = #user_id{},
-    {IE1, Rest1} = maybe_len_bin(Rest0, IMSI, 8, #user_id.imsi, IE0),
-    {IE2, Rest2} = maybe_len_bin(Rest1, IMEI, 8, #user_id.imei, IE1),
-    {IE3, Rest3} = maybe_len_bin(Rest2, MSISDN, 8, #user_id.msisdn, IE2),
+    {IE1, Rest1} = maybe(Rest0, IMSI, len(_, 8, fun decode_tbcd/1, #user_id.imsi, _), IE0),
+    {IE2, Rest2} = maybe(Rest1, IMEI, len(_, 8, fun decode_tbcd/1, #user_id.imei, _), IE1),
+    {IE3, Rest3} = maybe(Rest2, MSISDN, len(_, 8, fun decode_tbcd/1, #user_id.msisdn, _), IE2),
     {IE4, _Rest} = maybe_len_bin(Rest3, NAI, 8, #user_id.nai, IE3),
     IE4.
 
 encode_user_id(#user_id{imsi = IMSI, imei = IMEI, msisdn = MSISDN, nai = NAI}) ->
-    IE0 = <<0:4, (is_set(NAI)):1, (is_set(MSISDN)):1, (is_set(IMEI)):1, (is_set(IMSI)):1>>,
-    IE1 = maybe_len_bin(IMSI, 8, IE0),
-    IE2 = maybe_len_bin(IMEI, 8, IE1),
-    IE3 = maybe_len_bin(MSISDN, 8, IE2),
-    _IE = maybe_len_bin(NAI, 8, IE3).
+    FlagIMSI = is_binary(IMSI),
+    FlagIMEI = is_binary(IMEI),
+    FlagMSISDN = is_binary(MSISDN),
+    FlagNAI = is_binary(NAI),
+
+    IE0 = <<0:4, (bool2int(FlagNAI)):1, (bool2int(FlagMSISDN)):1, (bool2int(FlagIMEI)):1, (bool2int(FlagIMSI)):1>>,
+    IE1 = maybe(FlagIMSI, len(8, encode_tbcd(IMSI), _), IE0),
+    IE2 = maybe(FlagIMEI, len(8, encode_tbcd(IMEI), _), IE1),
+    IE3 = maybe(FlagMSISDN, len(8, encode_tbcd(MSISDN), _), IE2),
+    _IE = maybe(FlagNAI, len(8, NAI, _), IE3).
 
 decode_mac_addresses(<<MACsCnt:8, Rest0/binary>>, Type) ->
     Size = MACsCnt * 6,
