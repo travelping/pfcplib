@@ -31,6 +31,7 @@ jobs:
       run: |
            rebar3 do xref
            rebar3 do ct
+           rebar3 do dialyzer
     - name: Coveralls
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
