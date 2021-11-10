@@ -5,26 +5,26 @@
 %% Copyright 2017, Travelping GmbH <info@travelping.com>
 
 -record(pfcp, {
-	  version	:: 'undefined' | 'v1',
+	  version	:: undefined | 'v1',
 	  type		:: atom(),
-	  seid		:: 'undefined' | 0..16#ffffffffffffffff,
+	  seid		:: undefined | 0..16#ffffffffffffffff,
 	  seq_no	:: 0..16#ffffff,
-	  ie		:: [term()] | map()
+	  ie		:: [term()] | map() | binary()
 	 }).
 
 -record(f_teid, {
 	  teid       :: 'choose' | 0..16#ffffffff,
-	  ipv6       :: 'undefined' | 'choose' | inet:ip6_address(),
-	  ipv4       :: 'undefined' | 'choose' | inet:ip4_address(),
-	  choose_id  :: 'undefined' | 0..16#ff
+	  ipv6       :: undefined | 'choose' | inet:ip6_address(),
+	  ipv4       :: undefined | 'choose' | inet:ip4_address(),
+	  choose_id  :: undefined | 0..16#ff
 	 }).
 
 -record(sdf_filter, {
-	  flow_description         :: binary(),
-	  tos_traffic_class        :: 0..16#ffff,
-	  security_parameter_index :: 0..16#ffffffff,
-	  flow_label               :: 0..16#ffffff,
-	  filter_id                :: 0..16#ffffffff
+	  flow_description         :: undefined | binary(),
+	  tos_traffic_class        :: undefined | 0..16#ffff,
+	  security_parameter_index :: undefined | 0..16#ffffffff,
+	  flow_label               :: undefined | 0..16#ffffff,
+	  filter_id                :: undefined | 0..16#ffffffff
 	 }).
 
 -record(volume_threshold, {
@@ -40,8 +40,8 @@
 	 }).
 
 -record(downlink_data_service_information, {
-	  value :: 0..16#3f,
-	  qfi   :: 0..16#3f
+	  value :: undefined | 0..16#3f,
+	  qfi   :: undefined | 0..16#3f
 	 }).
 
 -record(dl_buffering_suggested_packet_count, {
@@ -50,42 +50,42 @@
 
 -record(f_seid, {
 	  seid	:: 0..16#ffffffffffffffff,
-	  ipv4	:: inet:ip4_address(),
-	  ipv6	:: inet:ip6_address()
+	  ipv4	:: undefined | inet:ip4_address(),
+	  ipv6	:: undefined | inet:ip6_address()
 	 }).
 
 -record(node_id, {
-	  id	:: {ipv4 | ipv6 | fqdn, binary()}
+	  id	:: {ipv4 | ipv6 | fqdn, binary()} | binary() |[ bitstring()]
 	 }).
 
 -record(pfd_contents, {
-	  flow		:: binary(),
-	  url		:: binary(),
-	  domain	:: binary(),
-	  custom	:: binary(),
-	  dnp		:: binary(),
-	  aflow		:: binary(),
-	  aurl		:: binary(),
-	  adnp		:: binary()
+	  flow		:: undefined | binary(),
+	  url		:: undefined | binary(),
+	  domain	:: undefined | binary(),
+	  custom	:: undefined | binary(),
+	  dnp		:: undefined | binary(),
+	  aflow		:: undefined | binary(),
+	  aurl		:: undefined | binary(),
+	  adnp		:: undefined | binary()
 	 }).
 
 -record(fq_csid, {
-	  address = {1,1,0}	:: binary() | {MCC :: integer, MNC :: integer, Id :: integer},
+	  address = {1,1,0}	:: binary() | {MCC :: integer, MNC :: integer, Id :: integer} |  {MCC :: char(), MNC :: char(), Id :: char()},
 	  csid = []		:: [0..16#ffff]
 	 }).
 
 -record(volume_measurement, {
-	  total		:: 0..16#ffffffffffffffff,
-	  uplink	:: 0..16#ffffffffffffffff,
-	  downlink	:: 0..16#ffffffffffffffff,
-	  total_pkts	:: 0..16#ffffffffffffffff,
-	  uplink_pkts	:: 0..16#ffffffffffffffff,
-	  downlink_pkts	:: 0..16#ffffffffffffffff
+	  total		:: undefined | 0..16#ffffffffffffffff,
+	  uplink	:: undefined | 0..16#ffffffffffffffff,
+	  downlink	:: undefined | 0..16#ffffffffffffffff,
+	  total_pkts	:: undefined | 0..16#ffffffffffffffff,
+	  uplink_pkts	:: undefined | 0..16#ffffffffffffffff,
+	  downlink_pkts	:: undefined | 0..16#ffffffffffffffff
 	 }).
 
 -record(dropped_dl_traffic_threshold, {
-	  value         :: 0..16#ffffffffffffffff,
-	  bytes         :: 0..16#ffffffffffffffff
+	  value         :: undefined | 0..16#ffffffffffffffff,
+	  bytes         :: undefined | 0..16#ffffffffffffffff
 	 }).
 
 -record(volume_quota, {
@@ -97,21 +97,21 @@
 -record(outer_header_creation, {
 	  n6 = false	:: boolean(),
 	  n19 = false	:: boolean(),
-	  type		:: 'GTP-U' | 'UDP' | 'IP' | 'RAW',
-	  teid		:: 'undefined' | 0..16#fffffffffffffff,
-	  ipv4		:: 'undefined' | inet:ip4_address(),
-	  ipv6		:: 'undefined' | inet:ip6_address(),
-	  port		:: 'undefined' | 0..16#ffff,
-	  c_tag		:: 'undefined' | binary(),
-	  s_tag		:: 'undefined' | binary()
+	  type		:: 'GTP-U' | 'UDP' | 'IP' | 'RAW' | undefined,
+	  teid		:: undefined | 0..16#fffffffffffffff,
+	  ipv4		:: undefined | inet:ip4_address() | binary(),
+	  ipv6		:: undefined | inet:ip6_address() | binary(),
+	  port		:: undefined | 0..16#ffff,
+	  c_tag		:: undefined | binary(),
+	  s_tag		:: undefined | binary()
 	 }).
 
 -record(ue_ip_address, {
-	  type			:: 'undefined' | 'src' | 'dst',
-	  ipv4			:: 'undefined' | 'choose' | inet:ip4_address(),
-	  ipv6			:: 'undefined' | 'choose' | inet:ip6_address(),
-	  prefix_delegation	:: 0..16#ff,
-	  prefix_length		:: 0..16#ff
+	  type			:: undefined | 'src' | 'dst',
+	  ipv4			:: undefined | 'choose' | inet:ip4_address(),
+	  ipv6			:: undefined | 'choose' | inet:ip6_address(),
+	  prefix_delegation	:: undefined | 0..16#ff,
+	  prefix_length		:: undefined | 0..16#ff
 	 }).
 
 -record(packet_rate, {
@@ -131,10 +131,10 @@
 	 }).
 
 -record(remote_gtp_u_peer, {
-	  ipv4	:: 'undefined' | inet:ip4_address(),
-	  ipv6	:: 'undefined' | inet:ip6_address(),
-	  destination_interface  :: 'undefined' | binary(),
-	  network_instance       :: 'undefined' | binary()
+	  ipv4	:: undefined | inet:ip4_address(),
+	  ipv6	:: undefined | inet:ip6_address(),
+	  destination_interface  :: undefined | binary(),
+	  network_instance       :: undefined | binary()
 	 }).
 
 -record(failed_rule_id, {
@@ -163,9 +163,9 @@
 	 }).
 
 -record(c_tag, {
-	  pcp		:: 'undefined' | 0..7,
-	  dei		:: 'undefined' | 0..1,
-	  vid		:: 'undefined' | 0..16#fff
+	  pcp		:: undefined | 0..7,
+	  dei		:: undefined | 0..1,
+	  vid		:: undefined | 0..16#fff
 	 }).
 
 -record(s_tag, {
@@ -175,10 +175,10 @@
 	 }).
 
 -record(user_id, {
-	  imsi		:: 'undefined' | binary(),
-	  imei		:: 'undefined' | binary(),
-	  msisdn	:: 'undefined' | binary(),
-	  nai		:: 'undefined' | binary()
+	  imsi		:: undefined | binary(),
+	  imei		:: undefined | binary(),
+	  msisdn	:: undefined | binary(),
+	  nai		:: undefined | binary()
 	 }).
 
 -record(mac_addresses_detected, {
@@ -260,8 +260,8 @@
 }).
 
 -record(number_of_ue_ip_addresses, {
-	  ipv4	:: 'undefined' | 0..16#ffffffff,
-	  ipv6	:: 'undefined' | 0..16#ffffffff
+	  ipv4	:: undefined | 0..16#ffffffff,
+	  ipv6	:: undefined | 0..16#ffffffff
 	 }).
 
 -record(ppp_protocol, {
