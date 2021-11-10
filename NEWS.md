@@ -3,11 +3,25 @@ pfcplib
 
 Erlang library for encoding and decoding Packet Forwarding Control Protocol (PFCP) frames.
 
+Version 2.1.2 - 10 November 2021
+---------------------------
+
+**Refactorings** :fire:
+* [#29](https://github.com/travelping/pfcplib/pull/29) Remove all `dialyzer` warning
+____
+**Special thanks to our contributors**
+
+* [@jbdamiano](https://github.com/jbdamiano) [#29](https://github.com/travelping/pfcplib/pull/29) Remove all `dialyzer` warning
+
+**[Compare 2.1.1...2.1.2](https://github.com/travelping/pfcplib/compare/2.1.1...2.1.2)**
+
 Version 2.1.1 - 24 June 2021
 ---------------------------
 
 **Bugfixes** :bug:
 * [#27](https://github.com/travelping/pfcplib/pull/27) fix encoding of User ID
+
+**[Compare 2.1.0...2.1.1](https://github.com/travelping/pfcplib/compare/2.1.0...2.1.1)**
 
 Version 2.1.0 - 3 June 2021
 ---------------------------
@@ -15,11 +29,15 @@ Version 2.1.0 - 3 June 2021
 **Features** :rocket:
 * [#24](https://github.com/travelping/pfcplib/pull/24) Normalize `FQDNs` by lowercasing them in all `IEs`
 
+**[Compare 2.0.1...2.1.0](https://github.com/travelping/pfcplib/compare/2.0.1...2.1.0)**
+
 Version 2.0.1 - 19 May 2021
 ---------------------------
 
 **Features** :rocket:
 * [#22](https://github.com/travelping/pfcplib/pull/22) `BBF TR 459`
+
+**[Compare 2.0.0...2.0.1](https://github.com/travelping/pfcplib/compare/2.0.0...2.0.1)**
 
 Version 2.0.0 - 6 Mar 2021
 ---------------------------
@@ -47,6 +65,8 @@ Version 2.0.0 - 6 Mar 2021
 * [#7](https://github.com/travelping/pfcplib/pull/7) fix information loss in property test
 * [#6](https://github.com/travelping/pfcplib/pull/6) Fix PFD Contents and Query URR Reference IEs
 * [ec9d724](https://github.com/travelping/pfcplib/commit/ec9d7242dd4a180486b5ec12269e242b3489d1fd) fix specification for Travis-CI builds
+
+**[Compare 1.0.0...2.0.0](https://github.com/travelping/pfcplib/compare/1.0.0...2.0.0)**
 
 Version 1.0.0 - 01 Aug 2018
 ---------------------------
