@@ -3717,6 +3717,10 @@ decode_v1_element(<<M_line:32/integer,
 decode_v1_element(<<M_group/binary>>, {18681,10}) ->
     #tp_created_nat_binding{group = decode_v1_grouped(M_group)};
 
+%% decode tp_ipfix_policy
+decode_v1_element(<<M_policy/binary>>, {18681,11}) ->
+    #tp_ipfix_policy{policy = M_policy};
+
 decode_v1_element(Value, Tag) ->
     {Tag, Value}.
 
@@ -5640,6 +5644,10 @@ encode_v1_element(#tp_created_nat_binding{
 		       group = M_group}, Acc) ->
     encode_tlv({18681,10}, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
+encode_v1_element(#tp_ipfix_policy{
+		       policy = M_policy}, Acc) ->
+    encode_tlv({18681,11}, <<M_policy/binary>>, Acc);
+
 encode_v1_element(IEs, Acc) when is_list(IEs) ->
     encode_v1(IEs, Acc);
 
@@ -5947,6 +5955,7 @@ encode_v1_element({Tag, Value}, Acc) when is_binary(Value) ->
 ?PRETTY_PRINT(pretty_print_v1, tp_file_name);
 ?PRETTY_PRINT(pretty_print_v1, tp_line_number);
 ?PRETTY_PRINT(pretty_print_v1, tp_created_nat_binding);
+?PRETTY_PRINT(pretty_print_v1, tp_ipfix_policy);
 pretty_print_v1(_, _) ->
     no.
 
@@ -6264,7 +6273,8 @@ v1_msg_defs() ->
 			    redundant_transmission_parameters =>
 				{'C',
 				    #{f_teid => {'M',f_teid},
-				      network_instance => {'C',network_instance}}}}},
+				      network_instance => {'C',network_instance}}},
+			    tp_ipfix_policy => {'O',tp_ipfix_policy}}},
 		  create_mar =>
 		      {'C',
 			  #{mar_id => {'M',mar_id},
@@ -6506,8 +6516,135 @@ v1_msg_defs() ->
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}}},
 	    session_modification_request =>
-		#{remove_traffic_endpoint =>
+		#{trace_information => {'O',trace_information},
+		  create_far =>
+		      {'C',
+			  #{apply_action => {'M',apply_action},
+			    bar_id => {'O',bar_id},
+			    duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    far_id => {'M',far_id},
+			    forwarding_parameters =>
+				{'C',
+				    #{bbf_apply_action => {'O',bbf_apply_action},
+				      bbf_nat_port_block => {'O',bbf_nat_port_block},
+				      destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'O',header_enrichment},
+				      network_instance => {'O',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      proxying => {'C',proxying},
+				      redirect_information => {'C',redirect_information},
+				      tgpp_interface_type => {'O',tgpp_interface_type},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    redundant_transmission_parameters =>
+				{'C',
+				    #{f_teid => {'M',f_teid},
+				      network_instance => {'C',network_instance}}}}},
+		  remove_traffic_endpoint =>
 		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
+		  update_mar =>
+		      {'C',
+			  #{mar_id => {'M',mar_id},
+			    non_tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'M',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}},
+			    steering_functionality => {'C',steering_functionality},
+			    steering_mode => {'C',steering_mode},
+			    tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'M',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}},
+			    update_non_tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'C',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}},
+			    update_tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'C',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}}}},
+		  remove_qer => {'C',#{qer_id => {'M',qer_id}}},
+		  update_srr =>
+		      {'C',
+			  #{access_availability_control_information =>
+				{'C',
+				    #{requested_access_availability_information =>
+					  {'M',requested_access_availability_information}}},
+			    qos_monitoring_per_qos_flow_control_information =>
+				{'C',
+				    #{measurement_period => {'C',measurement_period},
+				      minimum_wait_time => {'C',minimum_wait_time},
+				      packet_delay_thresholds =>
+					  {'C',packet_delay_thresholds},
+				      qfi => {'M',qfi},
+				      reporting_frequency => {'M',reporting_frequency},
+				      requested_qos_monitoring =>
+					  {'M',requested_qos_monitoring}}},
+			    srr_id => {'M',srr_id}}},
+		  create_traffic_endpoint =>
+		      {'C',
+			  #{ethernet_pdu_session_information =>
+				{'O',ethernet_pdu_session_information},
+			    f_teid => {'O',f_teid},
+			    framed_ipv6_route => {'O',framed_ipv6_route},
+			    framed_route => {'O',framed_route},
+			    framed_routing => {'O',framed_routing},
+			    network_instance => {'O',network_instance},
+			    qfi => {'C',qfi},
+			    redundant_transmission_parameters =>
+				{'O',
+				    #{f_teid => {'M',f_teid},
+				      network_instance => {'C',network_instance}}},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'O',ue_ip_address}}},
+		  update_traffic_endpoint =>
+		      {'C',
+			  #{f_teid => {'C',f_teid},
+			    framed_ipv6_route => {'C',framed_ipv6_route},
+			    framed_route => {'C',framed_route},
+			    framed_routing => {'C',framed_routing},
+			    network_instance => {'O',network_instance},
+			    qfi => {'C',qfi},
+			    redundant_transmission_parameters =>
+				{'O',
+				    #{f_teid => {'M',f_teid},
+				      network_instance => {'C',network_instance}}},
+			    tgpp_interface_type => {'C',tgpp_interface_type},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'C',ue_ip_address}}},
+		  create_mar =>
+		      {'C',
+			  #{mar_id => {'M',mar_id},
+			    non_tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'M',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}},
+			    steering_functionality => {'M',steering_functionality},
+			    steering_mode => {'M',steering_mode},
+			    tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'M',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}}}},
 		  create_qer =>
 		      {'C',
 			  #{averaging_window => {'O',averaging_window},
@@ -6521,11 +6658,43 @@ v1_msg_defs() ->
 			    qer_id => {'M',qer_id},
 			    qfi => {'C',qfi},
 			    rqi => {'C',rqi}}},
-		  remove_srr => {'C',#{srr_id => {'M',srr_id}}},
-		  user_plane_inactivity_timer => {'C',user_plane_inactivity_timer},
-		  sxsmreq_flags => {'C',sxsmreq_flags},
-		  ethernet_context_information =>
-		      {'C',#{mac_addressed_detected => {'M',mac_addressed_detected}}},
+		  port_management_information_for_tsc =>
+		      {'C',
+			  #{port_management_information_containerd =>
+				{'M',port_management_information_containerd}}},
+		  access_availability_information => {'O',access_availability_information},
+		  update_far =>
+		      {'C',
+			  #{apply_action => {'C',apply_action},
+			    bar_id => {'C',bar_id},
+			    far_id => {'M',far_id},
+			    redundant_transmission_parameters =>
+				{'C',
+				    #{f_teid => {'M',f_teid},
+				      network_instance => {'O',network_instance}}},
+			    tp_ipfix_policy => {'O',tp_ipfix_policy},
+			    update_duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'C',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    update_forwarding_parameters =>
+				{'C',
+				    #{bbf_apply_action => {'O',bbf_apply_action},
+				      bbf_nat_port_block => {'O',bbf_nat_port_block},
+				      destination_interface => {'C',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'C',header_enrichment},
+				      network_instance => {'C',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      redirect_information => {'C',redirect_information},
+				      sxsmreq_flags => {'C',sxsmreq_flags},
+				      tgpp_interface_type => {'C',tgpp_interface_type},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}}}},
 		  create_pdr =>
 		      {'C',
 			  #{activate_predefined_rules => {'C',activate_predefined_rules},
@@ -6582,35 +6751,36 @@ v1_msg_defs() ->
 			    qer_id => {'C',qer_id},
 			    ue_ip_address_pool_identity => {'O',ue_ip_address_pool_identity},
 			    urr_id => {'C',urr_id}}},
-		  create_mar =>
+		  create_bar =>
 		      {'C',
-			  #{mar_id => {'M',mar_id},
-			    non_tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'M',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}},
-			    steering_functionality => {'M',steering_functionality},
-			    steering_mode => {'M',steering_mode},
-			    tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'M',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}}}},
-		  update_qer =>
+			  #{bar_id => {'M',bar_id},
+			    suggested_buffering_packets_count =>
+				{'C',suggested_buffering_packets_count}}},
+		  node_id => {'C',node_id},
+		  user_plane_inactivity_timer => {'C',user_plane_inactivity_timer},
+		  sxsmreq_flags => {'C',sxsmreq_flags},
+		  create_srr =>
 		      {'C',
-			  #{averaging_window => {'O',averaging_window},
-			    gate_status => {'C',gate_status},
-			    gbr => {'C',gbr},
-			    mbr => {'C',mbr},
-			    paging_policy_indicator => {'C',paging_policy_indicator},
-			    qer_control_indications => {'C',qer_control_indications},
-			    qer_correlation_id => {'C',qer_correlation_id},
-			    qer_id => {'M',qer_id},
-			    qfi => {'C',qfi},
-			    rqi => {'C',rqi}}},
+			  #{access_availability_control_information =>
+				{'C',
+				    #{requested_access_availability_information =>
+					  {'M',requested_access_availability_information}}},
+			    qos_monitoring_per_qos_flow_control_information =>
+				{'C',
+				    #{measurement_period => {'C',measurement_period},
+				      minimum_wait_time => {'C',minimum_wait_time},
+				      packet_delay_thresholds =>
+					  {'C',packet_delay_thresholds},
+				      qfi => {'M',qfi},
+				      reporting_frequency => {'M',reporting_frequency},
+				      requested_qos_monitoring =>
+					  {'M',requested_qos_monitoring}}},
+			    srr_id => {'M',srr_id}}},
+		  remove_pdr => {'C',#{pdr_id => {'M',pdr_id}}},
+		  remove_srr => {'C',#{srr_id => {'M',srr_id}}},
+		  ethernet_context_information =>
+		      {'C',#{mac_addressed_detected => {'M',mac_addressed_detected}}},
+		  remove_urr => {'C',#{urr_id => {'M',urr_id}}},
 		  update_urr =>
 		      {'C',
 			  #{additional_monitoring_time =>
@@ -6652,94 +6822,13 @@ v1_msg_defs() ->
 			    urr_id => {'M',urr_id},
 			    volume_quota => {'C',volume_quota},
 			    volume_threshold => {'C',volume_threshold}}},
-		  query_packet_rate_status_ie_smreq => {'C',#{qer_id => {'M',qer_id}}},
-		  provide_atsss_control_information =>
+		  update_bar =>
 		      {'C',
-			  #{atsss_ll_control_information =>
-				{'C',atsss_ll_control_information},
-			    mptcp_control_information => {'C',mptcp_control_information},
-			    pmf_control_information => {'C',pmf_control_information}}},
-		  remove_mar => {'C',#{mar_id => {'M',mar_id}}},
-		  update_mar =>
-		      {'C',
-			  #{mar_id => {'M',mar_id},
-			    non_tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'M',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}},
-			    steering_functionality => {'C',steering_functionality},
-			    steering_mode => {'C',steering_mode},
-			    tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'M',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}},
-			    update_non_tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'C',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}},
-			    update_tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'C',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}}}},
-		  create_traffic_endpoint =>
-		      {'C',
-			  #{ethernet_pdu_session_information =>
-				{'O',ethernet_pdu_session_information},
-			    f_teid => {'O',f_teid},
-			    framed_ipv6_route => {'O',framed_ipv6_route},
-			    framed_route => {'O',framed_route},
-			    framed_routing => {'O',framed_routing},
-			    network_instance => {'O',network_instance},
-			    qfi => {'C',qfi},
-			    redundant_transmission_parameters =>
-				{'O',
-				    #{f_teid => {'M',f_teid},
-				      network_instance => {'C',network_instance}}},
-			    traffic_endpoint_id => {'M',traffic_endpoint_id},
-			    ue_ip_address => {'O',ue_ip_address}}},
-		  node_id => {'C',node_id},
-		  update_far =>
-		      {'C',
-			  #{apply_action => {'C',apply_action},
-			    bar_id => {'C',bar_id},
-			    far_id => {'M',far_id},
-			    redundant_transmission_parameters =>
-				{'C',
-				    #{f_teid => {'M',f_teid},
-				      network_instance => {'O',network_instance}}},
-			    update_duplicating_parameters =>
-				{'C',
-				    #{destination_interface => {'C',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      outer_header_creation => {'C',outer_header_creation},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}},
-			    update_forwarding_parameters =>
-				{'C',
-				    #{bbf_apply_action => {'O',bbf_apply_action},
-				      bbf_nat_port_block => {'O',bbf_nat_port_block},
-				      destination_interface => {'C',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      header_enrichment => {'C',header_enrichment},
-				      network_instance => {'C',network_instance},
-				      outer_header_creation => {'C',outer_header_creation},
-				      redirect_information => {'C',redirect_information},
-				      sxsmreq_flags => {'C',sxsmreq_flags},
-				      tgpp_interface_type => {'C',tgpp_interface_type},
-				      traffic_endpoint_id => {'C',traffic_endpoint_id},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}}}},
-		  remove_pdr => {'C',#{pdr_id => {'M',pdr_id}}},
-		  query_urr_reference => {'O',query_urr_reference},
-		  f_seid => {'C',f_seid},
+			  #{bar_id => {'M',bar_id},
+			    downlink_data_notification_delay =>
+				{'C',downlink_data_notification_delay},
+			    suggested_buffering_packets_count =>
+				{'C',suggested_buffering_packets_count}}},
 		  update_pdr =>
 		      {'C',
 			  #{activate_predefined_rules => {'C',activate_predefined_rules},
@@ -6782,104 +6871,10 @@ v1_msg_defs() ->
 			    precedence => {'C',precedence},
 			    qer_id => {'C',qer_id},
 			    urr_id => {'C',urr_id}}},
-		  remove_bar => {'C',#{bar_id => {'M',bar_id}}},
-		  create_srr =>
-		      {'C',
-			  #{access_availability_control_information =>
-				{'C',
-				    #{requested_access_availability_information =>
-					  {'M',requested_access_availability_information}}},
-			    qos_monitoring_per_qos_flow_control_information =>
-				{'C',
-				    #{measurement_period => {'C',measurement_period},
-				      minimum_wait_time => {'C',minimum_wait_time},
-				      packet_delay_thresholds =>
-					  {'C',packet_delay_thresholds},
-				      qfi => {'M',qfi},
-				      reporting_frequency => {'M',reporting_frequency},
-				      requested_qos_monitoring =>
-					  {'M',requested_qos_monitoring}}},
-			    srr_id => {'M',srr_id}}},
-		  remove_urr => {'C',#{urr_id => {'M',urr_id}}},
-		  create_bar =>
-		      {'C',
-			  #{bar_id => {'M',bar_id},
-			    suggested_buffering_packets_count =>
-				{'C',suggested_buffering_packets_count}}},
-		  access_availability_information => {'O',access_availability_information},
-		  update_bar =>
-		      {'C',
-			  #{bar_id => {'M',bar_id},
-			    downlink_data_notification_delay =>
-				{'C',downlink_data_notification_delay},
-			    suggested_buffering_packets_count =>
-				{'C',suggested_buffering_packets_count}}},
-		  create_far =>
-		      {'C',
-			  #{apply_action => {'M',apply_action},
-			    bar_id => {'O',bar_id},
-			    duplicating_parameters =>
-				{'C',
-				    #{destination_interface => {'M',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      outer_header_creation => {'C',outer_header_creation},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}},
-			    far_id => {'M',far_id},
-			    forwarding_parameters =>
-				{'C',
-				    #{bbf_apply_action => {'O',bbf_apply_action},
-				      bbf_nat_port_block => {'O',bbf_nat_port_block},
-				      destination_interface => {'M',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      header_enrichment => {'O',header_enrichment},
-				      network_instance => {'O',network_instance},
-				      outer_header_creation => {'C',outer_header_creation},
-				      proxying => {'C',proxying},
-				      redirect_information => {'C',redirect_information},
-				      tgpp_interface_type => {'O',tgpp_interface_type},
-				      traffic_endpoint_id => {'C',traffic_endpoint_id},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}},
-			    redundant_transmission_parameters =>
-				{'C',
-				    #{f_teid => {'M',f_teid},
-				      network_instance => {'C',network_instance}}}}},
-		  remove_far => {'C',#{far_id => {'M',far_id}}},
-		  update_traffic_endpoint =>
-		      {'C',
-			  #{f_teid => {'C',f_teid},
-			    framed_ipv6_route => {'C',framed_ipv6_route},
-			    framed_route => {'C',framed_route},
-			    framed_routing => {'C',framed_routing},
-			    network_instance => {'O',network_instance},
-			    qfi => {'C',qfi},
-			    redundant_transmission_parameters =>
-				{'O',
-				    #{f_teid => {'M',f_teid},
-				      network_instance => {'C',network_instance}}},
-			    tgpp_interface_type => {'C',tgpp_interface_type},
-			    traffic_endpoint_id => {'M',traffic_endpoint_id},
-			    ue_ip_address => {'C',ue_ip_address}}},
-		  remove_qer => {'C',#{qer_id => {'M',qer_id}}},
-		  update_srr =>
-		      {'C',
-			  #{access_availability_control_information =>
-				{'C',
-				    #{requested_access_availability_information =>
-					  {'M',requested_access_availability_information}}},
-			    qos_monitoring_per_qos_flow_control_information =>
-				{'C',
-				    #{measurement_period => {'C',measurement_period},
-				      minimum_wait_time => {'C',minimum_wait_time},
-				      packet_delay_thresholds =>
-					  {'C',packet_delay_thresholds},
-				      qfi => {'M',qfi},
-				      reporting_frequency => {'M',reporting_frequency},
-				      requested_qos_monitoring =>
-					  {'M',requested_qos_monitoring}}},
-			    srr_id => {'M',srr_id}}},
+		  remove_mar => {'C',#{mar_id => {'M',mar_id}}},
+		  query_packet_rate_status_ie_smreq => {'C',#{qer_id => {'M',qer_id}}},
 		  query_urr => {'C',#{urr_id => {'M',urr_id}}},
+		  f_seid => {'C',f_seid},
 		  create_urr =>
 		      {'C',
 			  #{additional_monitoring_time =>
@@ -6921,11 +6916,27 @@ v1_msg_defs() ->
 			    urr_id => {'M',urr_id},
 			    volume_quota => {'C',volume_quota},
 			    volume_threshold => {'C',volume_threshold}}},
-		  port_management_information_for_tsc =>
+		  provide_atsss_control_information =>
 		      {'C',
-			  #{port_management_information_containerd =>
-				{'M',port_management_information_containerd}}},
-		  trace_information => {'O',trace_information}},
+			  #{atsss_ll_control_information =>
+				{'C',atsss_ll_control_information},
+			    mptcp_control_information => {'C',mptcp_control_information},
+			    pmf_control_information => {'C',pmf_control_information}}},
+		  update_qer =>
+		      {'C',
+			  #{averaging_window => {'O',averaging_window},
+			    gate_status => {'C',gate_status},
+			    gbr => {'C',gbr},
+			    mbr => {'C',mbr},
+			    paging_policy_indicator => {'C',paging_policy_indicator},
+			    qer_control_indications => {'C',qer_control_indications},
+			    qer_correlation_id => {'C',qer_correlation_id},
+			    qer_id => {'M',qer_id},
+			    qfi => {'C',qfi},
+			    rqi => {'C',rqi}}},
+		  query_urr_reference => {'O',query_urr_reference},
+		  remove_far => {'C',#{far_id => {'M',far_id}}},
+		  remove_bar => {'C',#{bar_id => {'M',bar_id}}}},
 	    session_modification_response =>
 		#{additional_usage_reports_information =>
 		      {'C',additional_usage_reports_information},
@@ -7257,7 +7268,8 @@ v1_msg_defs() ->
 				      tgpp_interface_type => {'O',tgpp_interface_type},
 				      traffic_endpoint_id => {'C',traffic_endpoint_id},
 				      transport_level_marking =>
-					  {'C',transport_level_marking}}}}},
+					  {'C',transport_level_marking}}},
+			    tp_ipfix_policy => {'O',tp_ipfix_policy}}},
 		  create_pdr =>
 		      {'M',
 			  #{far_id => {'C',far_id},
@@ -7425,6 +7437,7 @@ v1_msg_defs() ->
 			  #{apply_action => {'C',apply_action},
 			    bar_id => {'C',bar_id},
 			    far_id => {'M',far_id},
+			    tp_ipfix_policy => {'O',tp_ipfix_policy},
 			    update_duplicating_parameters =>
 				{'C',
 				    #{destination_interface => {'C',destination_interface},
@@ -7782,7 +7795,8 @@ v1_msg_defs() ->
 				      tgpp_interface_type => {'O',tgpp_interface_type},
 				      traffic_endpoint_id => {'C',traffic_endpoint_id},
 				      transport_level_marking =>
-					  {'C',transport_level_marking}}}}},
+					  {'C',transport_level_marking}}},
+			    tp_ipfix_policy => {'O',tp_ipfix_policy}}},
 		  create_pdr =>
 		      {'M',
 			  #{activate_predefined_rules => {'C',activate_predefined_rules},
@@ -8052,6 +8066,7 @@ v1_msg_defs() ->
 		      {'C',
 			  #{apply_action => {'C',apply_action},
 			    far_id => {'M',far_id},
+			    tp_ipfix_policy => {'O',tp_ipfix_policy},
 			    update_duplicating_parameters =>
 				{'C',
 				    #{destination_interface => {'C',destination_interface},
@@ -8421,7 +8436,8 @@ v1_msg_defs() ->
 				      forwarding_policy => {'C',forwarding_policy},
 				      header_enrichment => {'O',header_enrichment},
 				      network_instance => {'O',network_instance},
-				      redirect_information => {'C',redirect_information}}}}},
+				      redirect_information => {'C',redirect_information}}},
+			    tp_ipfix_policy => {'O',tp_ipfix_policy}}},
 		  create_pdr =>
 		      {'M',
 			  #{activate_predefined_rules => {'C',activate_predefined_rules},
@@ -8615,6 +8631,7 @@ v1_msg_defs() ->
 		      {'C',
 			  #{apply_action => {'C',apply_action},
 			    far_id => {'M',far_id},
+			    tp_ipfix_policy => {'O',tp_ipfix_policy},
 			    update_forwarding_parameters =>
 				{'C',
 				    #{destination_interface => {'C',destination_interface},

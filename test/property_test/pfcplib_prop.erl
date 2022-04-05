@@ -580,6 +580,7 @@ simple_ie() ->
      gen_tp_error_message(),
      gen_tp_file_name(),
      gen_tp_line_number(),
+     gen_tp_ipfix_policy(),
      gen_enterprise_priv()
     ].
 
@@ -1755,6 +1756,11 @@ gen_tp_file_name() ->
 gen_tp_line_number() ->
     #tp_line_number{
        line = uint32()
+      }.
+
+gen_tp_ipfix_policy() ->
+    #tp_ipfix_policy{
+       policy = binary()
       }.
 
 gen_tp_created_nat_binding() ->

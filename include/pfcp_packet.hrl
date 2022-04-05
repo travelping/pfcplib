@@ -1488,3 +1488,7 @@
 -record(tp_created_nat_binding, {
 	  group
 }).
+
+-record(tp_ipfix_policy, {
+	  policy = <<>>
+}).
