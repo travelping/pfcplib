@@ -4,6 +4,7 @@
 
 -mode(compile).
 
+%% Please check 8.1.1 chapter in "3GPP TS 29.244 rel 16"
 raw_ies() ->
     [
      {1, "Create PDR",
@@ -1045,8 +1046,14 @@ raw_ies() ->
       [{"Line", 32, integer},
        {'_', 0}]},
      {{18681, 10}, "TP Created NAT Binding",
-      [{"Group", 0, {type, v1_grouped}}]}
+      [{"Group", 0, {type, v1_grouped}}]},
+     {{18681, 11}, "TP IPFIX Policy",
+      [{"Policy", 0, binary}]}
     ].
+
+
+%% Please check 7.3, 7.4, 7.5 chapters in "3GPP TS 29.244 rel 16"
+%% In the following list the tuple positions correspond to the Sxa, Sxb, Sxc and N4 ref points
 
 msgs() ->
     [{1, "Heartbeat Request",				{'X', 'X', 'X', 'X'},
@@ -1339,7 +1346,8 @@ msgs() ->
 	 {"BAR ID",				   'O', {'X', '-', '-', 'X'}},
 	 {"Redundant Transmission Parameters",	   'C', {'-', '-', '-', 'X'},
 	  [{"F-TEID",				   'M', {'-', '-', '-', 'X'}},
-	   {"Network Instance",			   'C', {'-', '-', '-', 'X'}}]}]},
+	   {"Network Instance",			   'C', {'-', '-', '-', 'X'}}]},
+	 {"TP IPFIX Policy",			   'O', {'X', 'X', 'X', 'X'}}]},
        {"Create URR",				   'C', {'X', 'X', 'X', 'X'},
 	[{"URR ID",				   'M', {'X', 'X', 'X', 'X'}},
 	 {"Measurement Method",			   'M', {'X', 'X', 'X', 'X'}},
@@ -1718,7 +1726,8 @@ msgs() ->
 	 {"Redundant Transmission Parameters",	   'C', {'-', '-', '-', 'X'},
 	    [{"F-TEID",				   'M', {'-', '-', '-', 'X'}},
 	     {"Network Instance",		   'O', {'-', '-', '-', 'X'}}]},
-	 {"BAR ID",				   'C', {'X', '-', '-', 'X'}}]},
+	 {"BAR ID",				   'C', {'X', '-', '-', 'X'}},
+	 {"TP IPFIX Policy",			   'O', {'X', 'X', 'X', 'X'}}]},
        {"Update URR",				   'C', {'X', 'X', 'X', 'X'},
 	[{"URR ID",				   'M', {'X', 'X', 'X', 'X'}},
 	 {"Measurement Method",			   'C', {'X', 'X', 'X', 'X'}},
@@ -2140,7 +2149,6 @@ gen_record_def(#field{name = Name, type = array}) ->
     [io_lib:format("~s = []", [Name])];
 gen_record_def(#field{name = Name}) ->
     [to_string(Name)].
-
 
 gen_decoder_header_match(#field{type = '_', len = 0}) ->
     ["_/binary"];
