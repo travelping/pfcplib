@@ -3721,6 +3721,18 @@ decode_v1_element(<<M_group/binary>>, {18681,10}) ->
 decode_v1_element(<<M_policy/binary>>, {18681,11}) ->
     #tp_ipfix_policy{policy = M_policy};
 
+%% decode tp_trace_information
+decode_v1_element(<<M_group/binary>>, {18681,12}) ->
+    #tp_trace_information{group = decode_v1_grouped(M_group)};
+
+%% decode tp_trace_parent
+decode_v1_element(<<M_parent/binary>>, {18681,13}) ->
+    #tp_trace_parent{parent = M_parent};
+
+%% decode tp_trace_state
+decode_v1_element(<<M_state/binary>>, {18681,14}) ->
+    #tp_trace_state{state = M_state};
+
 decode_v1_element(Value, Tag) ->
     {Tag, Value}.
 
@@ -5648,6 +5660,18 @@ encode_v1_element(#tp_ipfix_policy{
 		       policy = M_policy}, Acc) ->
     encode_tlv({18681,11}, <<M_policy/binary>>, Acc);
 
+encode_v1_element(#tp_trace_information{
+		       group = M_group}, Acc) ->
+    encode_tlv({18681,12}, <<(encode_v1_grouped(M_group))/binary>>, Acc);
+
+encode_v1_element(#tp_trace_parent{
+		       parent = M_parent}, Acc) ->
+    encode_tlv({18681,13}, <<M_parent/binary>>, Acc);
+
+encode_v1_element(#tp_trace_state{
+		       state = M_state}, Acc) ->
+    encode_tlv({18681,14}, <<M_state/binary>>, Acc);
+
 encode_v1_element(IEs, Acc) when is_list(IEs) ->
     encode_v1(IEs, Acc);
 
@@ -5956,6 +5980,9 @@ encode_v1_element({Tag, Value}, Acc) when is_binary(Value) ->
 ?PRETTY_PRINT(pretty_print_v1, tp_line_number);
 ?PRETTY_PRINT(pretty_print_v1, tp_created_nat_binding);
 ?PRETTY_PRINT(pretty_print_v1, tp_ipfix_policy);
+?PRETTY_PRINT(pretty_print_v1, tp_trace_information);
+?PRETTY_PRINT(pretty_print_v1, tp_trace_parent);
+?PRETTY_PRINT(pretty_print_v1, tp_trace_state);
 pretty_print_v1(_, _) ->
     no.
 
@@ -5968,7 +5995,11 @@ v1_msg_defs() ->
 		      {'O',
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
-			    tp_line_number => {'O',tp_line_number}}}},
+			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    association_release_response =>
 		#{node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
@@ -5977,7 +6008,11 @@ v1_msg_defs() ->
 		      {'O',
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
-			    tp_line_number => {'O',tp_line_number}}}},
+			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    association_setup_request =>
 		#{alternative_smf_ip_address => {'O',alternative_smf_ip_address},
 		  bbf_up_function_features => {'C',bbf_up_function_features},
@@ -6014,6 +6049,10 @@ v1_msg_defs() ->
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_pool_information =>
 		      {'O',
 			  #{ip_version => {'O',ip_version},
@@ -6059,6 +6098,10 @@ v1_msg_defs() ->
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_pool_information =>
 		      {'O',
 			  #{ip_version => {'O',ip_version},
@@ -6102,6 +6145,10 @@ v1_msg_defs() ->
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_pool_information =>
 		      {'O',
 			  #{ip_version => {'O',ip_version},
@@ -6126,6 +6173,10 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_usage_information =>
 		      {'O',
 			  #{metric => {'M',metric},
@@ -6137,8 +6188,17 @@ v1_msg_defs() ->
 		  up_function_features => {'O',up_function_features}},
 	    heartbeat_request =>
 		#{recovery_time_stamp => {'M',recovery_time_stamp},
-		  source_ip_address => {'O',source_ip_address}},
-	    heartbeat_response => #{recovery_time_stamp => {'M',recovery_time_stamp}},
+		  source_ip_address => {'O',source_ip_address},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
+	    heartbeat_response =>
+		#{recovery_time_stamp => {'M',recovery_time_stamp},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    node_report_request =>
 		#{clock_drift_report =>
 		      {'C',
@@ -6185,7 +6245,11 @@ v1_msg_defs() ->
 			    pfd_context => {'C',#{pfd_contents => {'M',pfd_contents}}}}}},
 	    pfd_management_response =>
 		#{offending_ie => {'C',offending_ie},pfcp_cause => {'M',pfcp_cause}},
-	    session_deletion_request => #{},
+	    session_deletion_request =>
+		#{tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    session_deletion_response =>
 		#{additional_usage_reports_information =>
 		      {'C',additional_usage_reports_information},
@@ -6457,6 +6521,10 @@ v1_msg_defs() ->
 		  recovery_time_stamp => {'O',recovery_time_stamp},
 		  s_nssai => {'O',s_nssai},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  trace_information => {'O',trace_information},
 		  user_id => {'O',user_id},
 		  user_plane_inactivity_timer => {'O',user_plane_inactivity_timer}},
@@ -6662,6 +6730,13 @@ v1_msg_defs() ->
 		      {'C',
 			  #{port_management_information_containerd =>
 				{'M',port_management_information_containerd}}},
+		  update_bar =>
+		      {'C',
+			  #{bar_id => {'M',bar_id},
+			    downlink_data_notification_delay =>
+				{'C',downlink_data_notification_delay},
+			    suggested_buffering_packets_count =>
+				{'C',suggested_buffering_packets_count}}},
 		  access_availability_information => {'O',access_availability_information},
 		  update_far =>
 		      {'C',
@@ -6822,13 +6897,6 @@ v1_msg_defs() ->
 			    urr_id => {'M',urr_id},
 			    volume_quota => {'C',volume_quota},
 			    volume_threshold => {'C',volume_threshold}}},
-		  update_bar =>
-		      {'C',
-			  #{bar_id => {'M',bar_id},
-			    downlink_data_notification_delay =>
-				{'C',downlink_data_notification_delay},
-			    suggested_buffering_packets_count =>
-				{'C',suggested_buffering_packets_count}}},
 		  update_pdr =>
 		      {'C',
 			  #{activate_predefined_rules => {'C',activate_predefined_rules},
@@ -6875,6 +6943,10 @@ v1_msg_defs() ->
 		  query_packet_rate_status_ie_smreq => {'C',#{qer_id => {'M',qer_id}}},
 		  query_urr => {'C',#{urr_id => {'M',urr_id}}},
 		  f_seid => {'C',f_seid},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  create_urr =>
 		      {'C',
 			  #{additional_monitoring_time =>
@@ -7039,6 +7111,10 @@ v1_msg_defs() ->
 				      start_time => {'O',start_time},
 				      time_stamp => {'M',time_stamp}}},
 			    srr_id => {'M',srr_id}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  usage_report_srr =>
 		      {'C',
 			  #{application_detection_information =>
@@ -7108,7 +7184,11 @@ v1_msg_defs() ->
 		      {'O',
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
-			    tp_line_number => {'O',tp_line_number}}}},
+			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    association_release_response =>
 		#{node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
@@ -7117,7 +7197,11 @@ v1_msg_defs() ->
 		      {'O',
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
-			    tp_line_number => {'O',tp_line_number}}}},
+			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    association_setup_request =>
 		#{alternative_smf_ip_address => {'O',alternative_smf_ip_address},
 		  bbf_up_function_features => {'C',bbf_up_function_features},
@@ -7137,6 +7221,10 @@ v1_msg_defs() ->
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
@@ -7159,6 +7247,10 @@ v1_msg_defs() ->
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
@@ -7179,6 +7271,10 @@ v1_msg_defs() ->
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  ue_ip_address_usage_information => {'O',#{}},
 		  up_function_features => {'O',up_function_features},
@@ -7190,12 +7286,25 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_usage_information => {'O',#{}},
 		  up_function_features => {'O',up_function_features}},
 	    heartbeat_request =>
 		#{recovery_time_stamp => {'M',recovery_time_stamp},
-		  source_ip_address => {'O',source_ip_address}},
-	    heartbeat_response => #{recovery_time_stamp => {'M',recovery_time_stamp}},
+		  source_ip_address => {'O',source_ip_address},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
+	    heartbeat_response =>
+		#{recovery_time_stamp => {'M',recovery_time_stamp},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    node_report_request =>
 		#{node_id => {'M',node_id},
 		  node_report_type => {'M',node_report_type},
@@ -7214,7 +7323,11 @@ v1_msg_defs() ->
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}}},
-	    session_deletion_request => #{},
+	    session_deletion_request =>
+		#{tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    session_deletion_response =>
 		#{additional_usage_reports_information =>
 		      {'C',additional_usage_reports_information},
@@ -7317,6 +7430,10 @@ v1_msg_defs() ->
 		  pfcpsereq_flags => {'C',pfcpsereq_flags},
 		  recovery_time_stamp => {'O',recovery_time_stamp},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  trace_information => {'O',trace_information},
 		  user_id => {'O',user_id}},
 	    session_establishment_response =>
@@ -7425,6 +7542,10 @@ v1_msg_defs() ->
 		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
 		  remove_urr => {'C',#{urr_id => {'M',urr_id}}},
 		  sxsmreq_flags => {'C',sxsmreq_flags},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  trace_information => {'O',trace_information},
 		  update_bar =>
 		      {'C',
@@ -7539,6 +7660,10 @@ v1_msg_defs() ->
 		  overload_control_information => {'O',overload_control_information},
 		  pfcpsrreq_flags => {'C',pfcpsrreq_flags},
 		  report_type => {'M',report_type},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  usage_report_srr =>
 		      {'C',
 			  #{duration_measurement => {'C',duration_measurement},
@@ -7598,7 +7723,11 @@ v1_msg_defs() ->
 		      {'O',
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
-			    tp_line_number => {'O',tp_line_number}}}},
+			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    association_release_response =>
 		#{node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
@@ -7607,7 +7736,11 @@ v1_msg_defs() ->
 		      {'O',
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
-			    tp_line_number => {'O',tp_line_number}}}},
+			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    association_setup_request =>
 		#{alternative_smf_ip_address => {'O',alternative_smf_ip_address},
 		  bbf_up_function_features => {'C',bbf_up_function_features},
@@ -7627,6 +7760,10 @@ v1_msg_defs() ->
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_pool_information =>
 		      {'O',
 			  #{network_instance => {'O',network_instance},
@@ -7653,6 +7790,10 @@ v1_msg_defs() ->
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_pool_information =>
 		      {'O',
 			  #{network_instance => {'O',network_instance},
@@ -7677,6 +7818,10 @@ v1_msg_defs() ->
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_pool_information =>
 		      {'O',
 			  #{network_instance => {'O',network_instance},
@@ -7699,6 +7844,10 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_usage_information =>
 		      {'O',
 			  #{metric => {'M',metric},
@@ -7710,8 +7859,17 @@ v1_msg_defs() ->
 		  up_function_features => {'O',up_function_features}},
 	    heartbeat_request =>
 		#{recovery_time_stamp => {'M',recovery_time_stamp},
-		  source_ip_address => {'O',source_ip_address}},
-	    heartbeat_response => #{recovery_time_stamp => {'M',recovery_time_stamp}},
+		  source_ip_address => {'O',source_ip_address},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
+	    heartbeat_response =>
+		#{recovery_time_stamp => {'M',recovery_time_stamp},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    node_report_request =>
 		#{node_id => {'M',node_id},
 		  node_report_type => {'M',node_report_type},
@@ -7737,7 +7895,11 @@ v1_msg_defs() ->
 			    pfd_context => {'C',#{pfd_contents => {'M',pfd_contents}}}}}},
 	    pfd_management_response =>
 		#{offending_ie => {'C',offending_ie},pfcp_cause => {'M',pfcp_cause}},
-	    session_deletion_request => #{},
+	    session_deletion_request =>
+		#{tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    session_deletion_response =>
 		#{additional_usage_reports_information =>
 		      {'C',additional_usage_reports_information},
@@ -7895,6 +8057,10 @@ v1_msg_defs() ->
 		      {'O',provide_rds_configuration_information},
 		  recovery_time_stamp => {'O',recovery_time_stamp},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  trace_information => {'O',trace_information},
 		  user_id => {'O',user_id},
 		  user_plane_inactivity_timer => {'O',user_plane_inactivity_timer}},
@@ -8061,6 +8227,10 @@ v1_msg_defs() ->
 		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
 		  remove_urr => {'C',#{urr_id => {'M',urr_id}}},
 		  sxsmreq_flags => {'C',sxsmreq_flags},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  trace_information => {'O',trace_information},
 		  update_far =>
 		      {'C',
@@ -8228,6 +8398,10 @@ v1_msg_defs() ->
 			    qer_id => {'M',qer_id}}},
 		  pfcpsrreq_flags => {'C',pfcpsrreq_flags},
 		  report_type => {'M',report_type},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  usage_report_srr =>
 		      {'C',
 			  #{application_detection_information =>
@@ -8288,7 +8462,11 @@ v1_msg_defs() ->
 		      {'O',
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
-			    tp_line_number => {'O',tp_line_number}}}},
+			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    association_release_response =>
 		#{node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
@@ -8297,7 +8475,11 @@ v1_msg_defs() ->
 		      {'O',
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
-			    tp_line_number => {'O',tp_line_number}}}},
+			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    association_setup_request =>
 		#{alternative_smf_ip_address => {'O',alternative_smf_ip_address},
 		  bbf_up_function_features => {'C',bbf_up_function_features},
@@ -8317,6 +8499,10 @@ v1_msg_defs() ->
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
@@ -8339,6 +8525,10 @@ v1_msg_defs() ->
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  up_function_features => {'C',up_function_features},
 		  user_plane_ip_resource_information =>
@@ -8359,6 +8549,10 @@ v1_msg_defs() ->
 			  #{tp_error_message => {'M',tp_error_message},
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_pool_information => {'O',#{}},
 		  ue_ip_address_usage_information => {'O',#{}},
 		  up_function_features => {'O',up_function_features},
@@ -8370,12 +8564,25 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  pfcp_cause => {'M',pfcp_cause},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  ue_ip_address_usage_information => {'O',#{}},
 		  up_function_features => {'O',up_function_features}},
 	    heartbeat_request =>
 		#{recovery_time_stamp => {'M',recovery_time_stamp},
-		  source_ip_address => {'O',source_ip_address}},
-	    heartbeat_response => #{recovery_time_stamp => {'M',recovery_time_stamp}},
+		  source_ip_address => {'O',source_ip_address},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
+	    heartbeat_response =>
+		#{recovery_time_stamp => {'M',recovery_time_stamp},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    node_report_request =>
 		#{node_id => {'M',node_id},
 		  node_report_type => {'M',node_report_type},
@@ -8397,7 +8604,11 @@ v1_msg_defs() ->
 			    pfd_context => {'C',#{pfd_contents => {'M',pfd_contents}}}}}},
 	    pfd_management_response =>
 		#{offending_ie => {'C',offending_ie},pfcp_cause => {'M',pfcp_cause}},
-	    session_deletion_request => #{},
+	    session_deletion_request =>
+		#{tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}}},
 	    session_deletion_response =>
 		#{additional_usage_reports_information =>
 		      {'C',additional_usage_reports_information},
@@ -8509,6 +8720,10 @@ v1_msg_defs() ->
 		  node_id => {'M',node_id},
 		  recovery_time_stamp => {'O',recovery_time_stamp},
 		  tp_build_identifier => {'O',tp_build_identifier},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  trace_information => {'O',trace_information},
 		  user_id => {'O',user_id},
 		  user_plane_inactivity_timer => {'O',user_plane_inactivity_timer}},
@@ -8626,6 +8841,10 @@ v1_msg_defs() ->
 		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
 		  remove_urr => {'C',#{urr_id => {'M',urr_id}}},
 		  sxsmreq_flags => {'C',sxsmreq_flags},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  trace_information => {'O',trace_information},
 		  update_far =>
 		      {'C',
@@ -8747,6 +8966,10 @@ v1_msg_defs() ->
 		  overload_control_information => {'O',overload_control_information},
 		  pfcpsrreq_flags => {'C',pfcpsrreq_flags},
 		  report_type => {'M',report_type},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
 		  usage_report_srr =>
 		      {'C',
 			  #{application_detection_information =>
