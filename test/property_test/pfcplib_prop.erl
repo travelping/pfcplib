@@ -371,7 +371,8 @@ grouped_ie() ->
      gen_bbf_nat_port_block(),
      gen_bbf_dynamic_port_block_starting_port(),
      gen_tp_error_report(),
-     gen_tp_created_nat_binding()
+     gen_tp_created_nat_binding(),
+     gen_tp_trace_information()
     ].
 
 simple_ie() ->
@@ -581,6 +582,8 @@ simple_ie() ->
      gen_tp_file_name(),
      gen_tp_line_number(),
      gen_tp_ipfix_policy(),
+     gen_tp_trace_parent(),
+     gen_tp_trace_state(),
      gen_enterprise_priv()
     ].
 
@@ -1765,6 +1768,19 @@ gen_tp_ipfix_policy() ->
 
 gen_tp_created_nat_binding() ->
     #tp_created_nat_binding{group = ie_group()}.
+
+gen_tp_trace_information() ->
+    #tp_trace_information{group = ie_group()}.
+
+gen_tp_trace_parent() ->
+    #tp_trace_parent{
+       parent = binary()
+      }.
+
+gen_tp_trace_state() ->
+    #tp_trace_state{
+       state = binary()
+      }.
 
 gen_enterprise_priv() ->
     {{18681, 500}, binary()}.

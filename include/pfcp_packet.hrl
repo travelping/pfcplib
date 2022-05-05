@@ -1492,3 +1492,15 @@
 -record(tp_ipfix_policy, {
 	  policy = <<>>
 }).
+
+-record(tp_trace_information, {
+	  group
+}).
+
+-record(tp_trace_parent, {
+	  parent = <<>>
+}).
+
+-record(tp_trace_state, {
+	  state = <<>>
+}).
