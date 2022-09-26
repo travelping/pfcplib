@@ -3,6 +3,22 @@ pfcplib
 
 Erlang library for encoding and decoding Packet Forwarding Control Protocol (PFCP) frames.
 
+Version 2.3.0 - 26 Sep 2022
+---------------------------
+
+**Features** :rocket:
+* [#32](https://github.com/travelping/pfcplib/pull/32) add Travelping VSAs to transport tracing information
+
+**[Compare 2.2.0...2.3.0](https://github.com/travelping/pfcplib/compare/2.2.0...2.3.0)**
+
+Version 2.2.0 - 5 Apr 2022
+--------------------------
+
+**Features** :rocket:
+* [#31](https://github.com/travelping/pfcplib/pull/31) Adding TP IPFIX Policy IE
+
+**[Compare 2.1.2...2.2.0](https://github.com/travelping/pfcplib/compare/2.1.2...2.2.0)**
+
 Version 2.1.2 - 10 November 2021
 ---------------------------
 
