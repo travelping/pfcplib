@@ -330,6 +330,12 @@ maybe_unsigned_integer(Value, Len, IE) when is_integer(Value) ->
 maybe_unsigned_integer(_, _, IE) ->
     IE.
 
+encode_min_int(Min, Int, little) ->
+    case binary:encode_unsigned(Int, little) of
+	B when bit_size(B) >= Min -> B;
+	_ -> <<Int:Min/little>>
+    end.
+
 decode_v1(<<>>, IEs) ->
     IEs;
 decode_v1(<<0:1, Type:15/integer, Length:16/integer, Data:Length/bytes, Next/binary>>, IEs) ->
@@ -342,7 +348,6 @@ decode_v1(<<1:1, Type:15/integer, Length:16/integer, EnterpriseId:16/integer,
     IE = decode_v1_element(Data, {EnterpriseId, Type}),
     decode_v1(Next, put_ie(IE, IEs));
 decode_v1(Data, IEs) ->
-    ct:pal("undecoded: ~p", [Data]),
     decode_v1(<<>>, put_ie({undecoded, Data}, IEs)).
 
 decode_v1_grouped(Bin) ->
@@ -424,6 +429,28 @@ encode_mccmnc(MCC, MNC) ->
     [MCC1, MCC2, MCC3 | _] = [ string_to_tbcd(X) || <<X:8>> <= MCC] ++ [15,15,15],
     [MNC1, MNC2, MNC3 | _] = [ string_to_tbcd(X) || <<X:8>> <= MNC] ++ [15,15,15],
     <<MCC2:4, MCC1:4, MNC3:4, MCC3:4, MNC2:4, MNC1:4>>.
+
+decode_flags(<<>>, _, Acc) ->
+    Acc;
+decode_flags(<<_:1, Next/bits>>, ['_' | Flags], Acc) ->
+    decode_flags(Next, Flags, Acc);
+decode_flags(<<1:1, Next/bits>>, [F | Flags], Acc) ->
+    decode_flags(Next, Flags, [{F, []} | Acc]);
+decode_flags(<<_:1, Next/bits>>, [_ | Flags], Acc) ->
+    decode_flags(Next, Flags, Acc);
+decode_flags(Bin, [], Acc) ->
+    case binary:decode_unsigned(Bin, little) of
+	0 -> Acc;
+	Value -> [{undecoded, Value}|Acc]
+    end.
+
+decode_flags(Bin, Flags) ->
+    maps:from_list(decode_flags(Bin, Flags, [])).
+
+encode_flags(Set, []) ->
+    maps:get(undecoded, Set, 0);
+encode_flags(Set, [F | N]) ->
+    bool2int(is_map_key(F, Set)) + encode_flags(Set, N) * 2.
 
 decode_network_instance(Instance) ->
     to_lower(Instance).
@@ -1227,14 +1254,19 @@ encode_number_of_ue_ip_addresses(#number_of_ue_ip_addresses{ipv6 = IPv6, ipv4 = 
     _IE = maybe(FlagIPv6, int(IPv6, 32, _), IE1).
 
 decode_ppp_protocol(<<_:5, Control:1, Data:1, Specific:1, Rest0/binary>>, _Type) ->
-    IE0 = #ppp_protocol{control = Control, data = Data},
+    IE0 = #ppp_protocol{
+	     flags =
+		 sets:from_list([control || Control =:= 1] ++ [data || Data =:= 1],
+				[{version, 2}])
+	     },
     {IE1, _Rest} = maybe_unsigned_integer(Rest0, Specific, 16, #ppp_protocol.protocol, IE0),
     IE1.
 
-encode_ppp_protocol(#ppp_protocol{control = Control, data = Data, protocol = Protocol}) ->
+encode_ppp_protocol(#ppp_protocol{flags = Flags, protocol = Protocol}) ->
     Specific = is_integer(Protocol),
 
-    IE0 = <<0:5, Control:1, Data:1, (bool2int(Specific)):1>>,
+    IE0 = <<0:5, (bool2int(is_map_key(control, Flags))):1,
+	    (bool2int(is_map_key(data, Flags))):1, (bool2int(Specific)):1>>,
     _IE = maybe(Specific, int(Protocol, 16, _), IE0).
 
 decode_l2tp_tunnel_endpoint(<<0:5, 1:1, 0:1, 0:1, Id:16, _IPv4:4/bytes, _IPv6:16/bytes, _/binary>>, _Type) ->
@@ -1782,83 +1814,12 @@ decode_v1_element(<<M_time:32/integer,
     #inactivity_detection_time{time = M_time};
 
 %% decode reporting_triggers
-decode_v1_element(<<M_linked_usage_reporting:1/integer,
-		    M_dropped_dl_traffic_threshold:1/integer,
-		    M_stop_of_traffic:1/integer,
-		    M_start_of_traffic:1/integer,
-		    M_quota_holding_time:1/integer,
-		    M_time_threshold:1/integer,
-		    M_volume_threshold:1/integer,
-		    M_periodic_reporting:1/integer,
-		    M_quota_validity_time:1/integer,
-		    M_ip_multicast_join_leave:1/integer,
-		    M_event_quota:1/integer,
-		    M_event_threshold:1/integer,
-		    M_mac_addresses_reporting:1/integer,
-		    M_envelope_closure:1/integer,
-		    M_time_quota:1/integer,
-		    M_volume_quota:1/integer,
-		    _:1,
-		    _:1,
-		    _:1,
-		    _:1,
-		    _:1,
-		    _:1,
-		    _:1,
-		    M_report_the_end_marker_reception:1/integer,
-		    _/binary>>, 37) ->
-    #reporting_triggers{linked_usage_reporting = M_linked_usage_reporting,
-			dropped_dl_traffic_threshold = M_dropped_dl_traffic_threshold,
-			stop_of_traffic = M_stop_of_traffic,
-			start_of_traffic = M_start_of_traffic,
-			quota_holding_time = M_quota_holding_time,
-			time_threshold = M_time_threshold,
-			volume_threshold = M_volume_threshold,
-			periodic_reporting = M_periodic_reporting,
-			quota_validity_time = M_quota_validity_time,
-			ip_multicast_join_leave = M_ip_multicast_join_leave,
-			event_quota = M_event_quota,
-			event_threshold = M_event_threshold,
-			mac_addresses_reporting = M_mac_addresses_reporting,
-			envelope_closure = M_envelope_closure,
-			time_quota = M_time_quota,
-			volume_quota = M_volume_quota,
-			report_the_end_marker_reception = M_report_the_end_marker_reception};
-
-%% decode reporting_triggers
-decode_v1_element(<<M_linked_usage_reporting:1/integer,
-		    M_dropped_dl_traffic_threshold:1/integer,
-		    M_stop_of_traffic:1/integer,
-		    M_start_of_traffic:1/integer,
-		    M_quota_holding_time:1/integer,
-		    M_time_threshold:1/integer,
-		    M_volume_threshold:1/integer,
-		    M_periodic_reporting:1/integer,
-		    M_quota_validity_time:1/integer,
-		    M_ip_multicast_join_leave:1/integer,
-		    M_event_quota:1/integer,
-		    M_event_threshold:1/integer,
-		    M_mac_addresses_reporting:1/integer,
-		    M_envelope_closure:1/integer,
-		    M_time_quota:1/integer,
-		    M_volume_quota:1/integer,
-		    _/binary>>, 37) ->
-    #reporting_triggers{linked_usage_reporting = M_linked_usage_reporting,
-			dropped_dl_traffic_threshold = M_dropped_dl_traffic_threshold,
-			stop_of_traffic = M_stop_of_traffic,
-			start_of_traffic = M_start_of_traffic,
-			quota_holding_time = M_quota_holding_time,
-			time_threshold = M_time_threshold,
-			volume_threshold = M_volume_threshold,
-			periodic_reporting = M_periodic_reporting,
-			quota_validity_time = M_quota_validity_time,
-			ip_multicast_join_leave = M_ip_multicast_join_leave,
-			event_quota = M_event_quota,
-			event_threshold = M_event_threshold,
-			mac_addresses_reporting = M_mac_addresses_reporting,
-			envelope_closure = M_envelope_closure,
-			time_quota = M_time_quota,
-			volume_quota = M_volume_quota};
+decode_v1_element(<<M_flags/binary>>, 37) ->
+    #reporting_triggers{flags = decode_flags(M_flags, ['LIUSA','DROTH','STOPT','START','QUHTI',
+                               'TIMTH','VOLTH','PERIO','QUVTI','IPMJL',
+                               'EVEQU','EVETH','MACAR','ENVCL','TIMQU',
+                               'VOLQU','_','_','_','_','_','_','UPINT',
+                               'REEMR'])};
 
 %% decode redirect_information
 decode_v1_element(<<_:4,
@@ -1871,22 +1832,9 @@ decode_v1_element(<<_:4,
 			  other_address = M_other_address};
 
 %% decode report_type
-decode_v1_element(<<_:1,
-		    M_uisr:1/integer,
-		    M_sesr:1/integer,
-		    M_pmir:1/integer,
-		    M_upir:1/integer,
-		    M_erir:1/integer,
-		    M_usar:1/integer,
-		    M_dldr:1/integer,
-		    _/binary>>, 39) ->
-    #report_type{uisr = M_uisr,
-		 sesr = M_sesr,
-		 pmir = M_pmir,
-		 upir = M_upir,
-		 erir = M_erir,
-		 usar = M_usar,
-		 dldr = M_dldr};
+decode_v1_element(<<M_flags/binary>>, 39) ->
+    #report_type{flags = decode_flags(M_flags, ['_','UISR','SESR','PMIR','UPIR','ERIR','USAR',
+                               'DLDR'])};
 
 %% decode offending_ie
 decode_v1_element(<<M_type:16/integer>>, 40) ->
@@ -1904,400 +1852,21 @@ decode_v1_element(<<_:4,
     #destination_interface{interface = enum_v1_destination_interface_interface(M_interface)};
 
 %% decode up_function_features
-decode_v1_element(<<M_treu:1/integer,
-		    M_heeu:1/integer,
-		    M_pfdm:1/integer,
-		    M_ftup:1/integer,
-		    M_trst:1/integer,
-		    M_dlbd:1/integer,
-		    M_ddnd:1/integer,
-		    M_bucp:1/integer,
-		    M_epfar:1/integer,
-		    M_pfde:1/integer,
-		    M_frrt:1/integer,
-		    M_trace:1/integer,
-		    M_quoac:1/integer,
-		    M_udbc:1/integer,
-		    M_pdiu:1/integer,
-		    M_empu:1/integer,
-		    M_gcom:1/integer,
-		    M_bundl:1/integer,
-		    M_mte:1/integer,
-		    M_mnop:1/integer,
-		    M_sset:1/integer,
-		    M_ueip:1/integer,
-		    M_adpdp:1/integer,
-		    M_dpdra:1/integer,
-		    M_mptcp:1/integer,
-		    M_tscu:1/integer,
-		    M_ip6pl:1/integer,
-		    M_iptv:1/integer,
-		    M_norp:1/integer,
-		    M_vtime:1/integer,
-		    M_rttl:1/integer,
-		    M_mpas:1/integer,
-		    M_rds:1/integer,
-		    M_ddds:1/integer,
-		    M_ethar:1/integer,
-		    M_ciot:1/integer,
-		    M_mt_edt:1/integer,
-		    M_gpqm:1/integer,
-		    M_qfqm:1/integer,
-		    M_atsss_ll:1/integer,
-		    _:1,
-		    _:1,
-		    _:1,
-		    _:1,
-		    _:1,
-		    _:1,
-		    _:1,
-		    M_rttwp:1/integer,
-		    _/binary>>, 43) ->
-    #up_function_features{treu = M_treu,
-			  heeu = M_heeu,
-			  pfdm = M_pfdm,
-			  ftup = M_ftup,
-			  trst = M_trst,
-			  dlbd = M_dlbd,
-			  ddnd = M_ddnd,
-			  bucp = M_bucp,
-			  epfar = M_epfar,
-			  pfde = M_pfde,
-			  frrt = M_frrt,
-			  trace = M_trace,
-			  quoac = M_quoac,
-			  udbc = M_udbc,
-			  pdiu = M_pdiu,
-			  empu = M_empu,
-			  gcom = M_gcom,
-			  bundl = M_bundl,
-			  mte = M_mte,
-			  mnop = M_mnop,
-			  sset = M_sset,
-			  ueip = M_ueip,
-			  adpdp = M_adpdp,
-			  dpdra = M_dpdra,
-			  mptcp = M_mptcp,
-			  tscu = M_tscu,
-			  ip6pl = M_ip6pl,
-			  iptv = M_iptv,
-			  norp = M_norp,
-			  vtime = M_vtime,
-			  rttl = M_rttl,
-			  mpas = M_mpas,
-			  rds = M_rds,
-			  ddds = M_ddds,
-			  ethar = M_ethar,
-			  ciot = M_ciot,
-			  mt_edt = M_mt_edt,
-			  gpqm = M_gpqm,
-			  qfqm = M_qfqm,
-			  atsss_ll = M_atsss_ll,
-			  rttwp = M_rttwp};
-
-%% decode up_function_features
-decode_v1_element(<<M_treu:1/integer,
-		    M_heeu:1/integer,
-		    M_pfdm:1/integer,
-		    M_ftup:1/integer,
-		    M_trst:1/integer,
-		    M_dlbd:1/integer,
-		    M_ddnd:1/integer,
-		    M_bucp:1/integer,
-		    M_epfar:1/integer,
-		    M_pfde:1/integer,
-		    M_frrt:1/integer,
-		    M_trace:1/integer,
-		    M_quoac:1/integer,
-		    M_udbc:1/integer,
-		    M_pdiu:1/integer,
-		    M_empu:1/integer,
-		    M_gcom:1/integer,
-		    M_bundl:1/integer,
-		    M_mte:1/integer,
-		    M_mnop:1/integer,
-		    M_sset:1/integer,
-		    M_ueip:1/integer,
-		    M_adpdp:1/integer,
-		    M_dpdra:1/integer,
-		    M_mptcp:1/integer,
-		    M_tscu:1/integer,
-		    M_ip6pl:1/integer,
-		    M_iptv:1/integer,
-		    M_norp:1/integer,
-		    M_vtime:1/integer,
-		    M_rttl:1/integer,
-		    M_mpas:1/integer,
-		    M_rds:1/integer,
-		    M_ddds:1/integer,
-		    M_ethar:1/integer,
-		    M_ciot:1/integer,
-		    M_mt_edt:1/integer,
-		    M_gpqm:1/integer,
-		    M_qfqm:1/integer,
-		    M_atsss_ll:1/integer,
-		    _/binary>>, 43) ->
-    #up_function_features{treu = M_treu,
-			  heeu = M_heeu,
-			  pfdm = M_pfdm,
-			  ftup = M_ftup,
-			  trst = M_trst,
-			  dlbd = M_dlbd,
-			  ddnd = M_ddnd,
-			  bucp = M_bucp,
-			  epfar = M_epfar,
-			  pfde = M_pfde,
-			  frrt = M_frrt,
-			  trace = M_trace,
-			  quoac = M_quoac,
-			  udbc = M_udbc,
-			  pdiu = M_pdiu,
-			  empu = M_empu,
-			  gcom = M_gcom,
-			  bundl = M_bundl,
-			  mte = M_mte,
-			  mnop = M_mnop,
-			  sset = M_sset,
-			  ueip = M_ueip,
-			  adpdp = M_adpdp,
-			  dpdra = M_dpdra,
-			  mptcp = M_mptcp,
-			  tscu = M_tscu,
-			  ip6pl = M_ip6pl,
-			  iptv = M_iptv,
-			  norp = M_norp,
-			  vtime = M_vtime,
-			  rttl = M_rttl,
-			  mpas = M_mpas,
-			  rds = M_rds,
-			  ddds = M_ddds,
-			  ethar = M_ethar,
-			  ciot = M_ciot,
-			  mt_edt = M_mt_edt,
-			  gpqm = M_gpqm,
-			  qfqm = M_qfqm,
-			  atsss_ll = M_atsss_ll};
-
-%% decode up_function_features
-decode_v1_element(<<M_treu:1/integer,
-		    M_heeu:1/integer,
-		    M_pfdm:1/integer,
-		    M_ftup:1/integer,
-		    M_trst:1/integer,
-		    M_dlbd:1/integer,
-		    M_ddnd:1/integer,
-		    M_bucp:1/integer,
-		    M_epfar:1/integer,
-		    M_pfde:1/integer,
-		    M_frrt:1/integer,
-		    M_trace:1/integer,
-		    M_quoac:1/integer,
-		    M_udbc:1/integer,
-		    M_pdiu:1/integer,
-		    M_empu:1/integer,
-		    M_gcom:1/integer,
-		    M_bundl:1/integer,
-		    M_mte:1/integer,
-		    M_mnop:1/integer,
-		    M_sset:1/integer,
-		    M_ueip:1/integer,
-		    M_adpdp:1/integer,
-		    M_dpdra:1/integer,
-		    M_mptcp:1/integer,
-		    M_tscu:1/integer,
-		    M_ip6pl:1/integer,
-		    M_iptv:1/integer,
-		    M_norp:1/integer,
-		    M_vtime:1/integer,
-		    M_rttl:1/integer,
-		    M_mpas:1/integer,
-		    _/binary>>, 43) ->
-    #up_function_features{treu = M_treu,
-			  heeu = M_heeu,
-			  pfdm = M_pfdm,
-			  ftup = M_ftup,
-			  trst = M_trst,
-			  dlbd = M_dlbd,
-			  ddnd = M_ddnd,
-			  bucp = M_bucp,
-			  epfar = M_epfar,
-			  pfde = M_pfde,
-			  frrt = M_frrt,
-			  trace = M_trace,
-			  quoac = M_quoac,
-			  udbc = M_udbc,
-			  pdiu = M_pdiu,
-			  empu = M_empu,
-			  gcom = M_gcom,
-			  bundl = M_bundl,
-			  mte = M_mte,
-			  mnop = M_mnop,
-			  sset = M_sset,
-			  ueip = M_ueip,
-			  adpdp = M_adpdp,
-			  dpdra = M_dpdra,
-			  mptcp = M_mptcp,
-			  tscu = M_tscu,
-			  ip6pl = M_ip6pl,
-			  iptv = M_iptv,
-			  norp = M_norp,
-			  vtime = M_vtime,
-			  rttl = M_rttl,
-			  mpas = M_mpas};
-
-%% decode up_function_features
-decode_v1_element(<<M_treu:1/integer,
-		    M_heeu:1/integer,
-		    M_pfdm:1/integer,
-		    M_ftup:1/integer,
-		    M_trst:1/integer,
-		    M_dlbd:1/integer,
-		    M_ddnd:1/integer,
-		    M_bucp:1/integer,
-		    M_epfar:1/integer,
-		    M_pfde:1/integer,
-		    M_frrt:1/integer,
-		    M_trace:1/integer,
-		    M_quoac:1/integer,
-		    M_udbc:1/integer,
-		    M_pdiu:1/integer,
-		    M_empu:1/integer,
-		    M_gcom:1/integer,
-		    M_bundl:1/integer,
-		    M_mte:1/integer,
-		    M_mnop:1/integer,
-		    M_sset:1/integer,
-		    M_ueip:1/integer,
-		    M_adpdp:1/integer,
-		    M_dpdra:1/integer,
-		    _/binary>>, 43) ->
-    #up_function_features{treu = M_treu,
-			  heeu = M_heeu,
-			  pfdm = M_pfdm,
-			  ftup = M_ftup,
-			  trst = M_trst,
-			  dlbd = M_dlbd,
-			  ddnd = M_ddnd,
-			  bucp = M_bucp,
-			  epfar = M_epfar,
-			  pfde = M_pfde,
-			  frrt = M_frrt,
-			  trace = M_trace,
-			  quoac = M_quoac,
-			  udbc = M_udbc,
-			  pdiu = M_pdiu,
-			  empu = M_empu,
-			  gcom = M_gcom,
-			  bundl = M_bundl,
-			  mte = M_mte,
-			  mnop = M_mnop,
-			  sset = M_sset,
-			  ueip = M_ueip,
-			  adpdp = M_adpdp,
-			  dpdra = M_dpdra};
-
-%% decode up_function_features
-decode_v1_element(<<M_treu:1/integer,
-		    M_heeu:1/integer,
-		    M_pfdm:1/integer,
-		    M_ftup:1/integer,
-		    M_trst:1/integer,
-		    M_dlbd:1/integer,
-		    M_ddnd:1/integer,
-		    M_bucp:1/integer,
-		    M_epfar:1/integer,
-		    M_pfde:1/integer,
-		    M_frrt:1/integer,
-		    M_trace:1/integer,
-		    M_quoac:1/integer,
-		    M_udbc:1/integer,
-		    M_pdiu:1/integer,
-		    M_empu:1/integer,
-		    _/binary>>, 43) ->
-    #up_function_features{treu = M_treu,
-			  heeu = M_heeu,
-			  pfdm = M_pfdm,
-			  ftup = M_ftup,
-			  trst = M_trst,
-			  dlbd = M_dlbd,
-			  ddnd = M_ddnd,
-			  bucp = M_bucp,
-			  epfar = M_epfar,
-			  pfde = M_pfde,
-			  frrt = M_frrt,
-			  trace = M_trace,
-			  quoac = M_quoac,
-			  udbc = M_udbc,
-			  pdiu = M_pdiu,
-			  empu = M_empu};
-
-%% decode up_function_features
-decode_v1_element(<<M_treu:1/integer,
-		    M_heeu:1/integer,
-		    M_pfdm:1/integer,
-		    M_ftup:1/integer,
-		    M_trst:1/integer,
-		    M_dlbd:1/integer,
-		    M_ddnd:1/integer,
-		    M_bucp:1/integer,
-		    _/binary>>, 43) ->
-    #up_function_features{treu = M_treu,
-			  heeu = M_heeu,
-			  pfdm = M_pfdm,
-			  ftup = M_ftup,
-			  trst = M_trst,
-			  dlbd = M_dlbd,
-			  ddnd = M_ddnd,
-			  bucp = M_bucp};
+decode_v1_element(<<M_flags/binary>>, 43) ->
+    #up_function_features{flags = decode_flags(M_flags, ['TREU','HEEU','PFDM','FTUP','TRST','DLBD',
+                               'DDND','BUCP','EPFAR','PFDE','FRRT','TRACE',
+                               'QUOAC','UDBC','PDIU','EMPU','GCOM','BUNDL',
+                               'MTE','MNOP','SSET','UEIP','ADPDP','DPDRA',
+                               'MPTCP','TSCU','IP6PL','IPTV','NORP','VTIME',
+                               'RTTL','MPAS','RDS','DDDS','ETHAR','CIOT',
+                               'MT-EDT','GPQM','QFQM','ATSSS-LL','_','_','_',
+                               '_','_','_','_','RTTWP'])};
 
 %% decode apply_action
-decode_v1_element(<<M_dfrt:1/integer,
-		    M_ipmd:1/integer,
-		    M_ipma:1/integer,
-		    M_dupl:1/integer,
-		    M_nocp:1/integer,
-		    M_buff:1/integer,
-		    M_forw:1/integer,
-		    M_drop:1/integer,
-		    _:1,
-		    _:1,
-		    _:1,
-		    _:1,
-		    _:1,
-		    M_ddpn:1/integer,
-		    M_bdpn:1/integer,
-		    M_edrt:1/integer,
-		    _/binary>>, 44) ->
-    #apply_action{dfrt = M_dfrt,
-		  ipmd = M_ipmd,
-		  ipma = M_ipma,
-		  dupl = M_dupl,
-		  nocp = M_nocp,
-		  buff = M_buff,
-		  forw = M_forw,
-		  drop = M_drop,
-		  ddpn = M_ddpn,
-		  bdpn = M_bdpn,
-		  edrt = M_edrt};
-
-%% decode apply_action
-decode_v1_element(<<M_dfrt:1/integer,
-		    M_ipmd:1/integer,
-		    M_ipma:1/integer,
-		    M_dupl:1/integer,
-		    M_nocp:1/integer,
-		    M_buff:1/integer,
-		    M_forw:1/integer,
-		    M_drop:1/integer,
-		    _/binary>>, 44) ->
-    #apply_action{dfrt = M_dfrt,
-		  ipmd = M_ipmd,
-		  ipma = M_ipma,
-		  dupl = M_dupl,
-		  nocp = M_nocp,
-		  buff = M_buff,
-		  forw = M_forw,
-		  drop = M_drop};
+decode_v1_element(<<M_flags/binary>>, 44) ->
+    #apply_action{flags = decode_flags(M_flags, ['DFRT','IPMD','IPMA','DUPL','NOCP','BUFF',
+                               'FORW','DROP','_','_','_','_','_','DDPN',
+                               'BDPN','EDRT'])};
 
 %% decode downlink_data_service_information
 decode_v1_element(<<Data/binary>>, 45) ->
@@ -2320,20 +1889,12 @@ decode_v1_element(<<Data/binary>>, 48) ->
     decode_dl_buffering_suggested_packet_count(Data, dl_buffering_suggested_packet_count);
 
 %% decode sxsmreq_flags
-decode_v1_element(<<_:5,
-		    M_qaurr:1/integer,
-		    M_sndem:1/integer,
-		    M_drobu:1/integer,
-		    _/binary>>, 49) ->
-    #sxsmreq_flags{qaurr = M_qaurr,
-		   sndem = M_sndem,
-		   drobu = M_drobu};
+decode_v1_element(<<M_flags/binary>>, 49) ->
+    #sxsmreq_flags{flags = decode_flags(M_flags, ['_','_','_','_','_','QAURR','SNDEM','DROBU'])};
 
 %% decode sxsrrsp_flags
-decode_v1_element(<<_:7,
-		    M_drobu:1/integer,
-		    _/binary>>, 50) ->
-    #sxsrrsp_flags{drobu = M_drobu};
+decode_v1_element(<<M_flags/binary>>, 50) ->
+    #sxsrrsp_flags{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','DROBU'])};
 
 %% decode load_control_information
 decode_v1_element(<<M_group/binary>>, 51) ->
@@ -2384,97 +1945,16 @@ decode_v1_element(<<Data/binary>>, 61) ->
     decode_pfd_contents(Data, pfd_contents);
 
 %% decode measurement_method
-decode_v1_element(<<_:5,
-		    M_event:1/integer,
-		    M_volum:1/integer,
-		    M_durat:1/integer,
-		    _/binary>>, 62) ->
-    #measurement_method{event = M_event,
-			volum = M_volum,
-			durat = M_durat};
+decode_v1_element(<<M_flags/binary>>, 62) ->
+    #measurement_method{flags = decode_flags(M_flags, ['_','_','_','_','_','EVENT','VOLUM','DURAT'])};
 
 %% decode usage_report_trigger
-decode_v1_element(<<M_immer:1/integer,
-		    M_droth:1/integer,
-		    M_stopt:1/integer,
-		    M_start:1/integer,
-		    M_quhti:1/integer,
-		    M_timth:1/integer,
-		    M_volth:1/integer,
-		    M_perio:1/integer,
-		    M_eveth:1/integer,
-		    M_macar:1/integer,
-		    M_envcl:1/integer,
-		    M_monit:1/integer,
-		    M_termr:1/integer,
-		    M_liusa:1/integer,
-		    M_timqu:1/integer,
-		    M_volqu:1/integer,
-		    _:1,
-		    _:1,
-		    _:1,
-		    M_emrre:1/integer,
-		    M_quvti:1/integer,
-		    M_ipmjl:1/integer,
-		    M_tebur:1/integer,
-		    M_evequ:1/integer,
-		    _/binary>>, 63) ->
-    #usage_report_trigger{immer = M_immer,
-			  droth = M_droth,
-			  stopt = M_stopt,
-			  start = M_start,
-			  quhti = M_quhti,
-			  timth = M_timth,
-			  volth = M_volth,
-			  perio = M_perio,
-			  eveth = M_eveth,
-			  macar = M_macar,
-			  envcl = M_envcl,
-			  monit = M_monit,
-			  termr = M_termr,
-			  liusa = M_liusa,
-			  timqu = M_timqu,
-			  volqu = M_volqu,
-			  emrre = M_emrre,
-			  quvti = M_quvti,
-			  ipmjl = M_ipmjl,
-			  tebur = M_tebur,
-			  evequ = M_evequ};
-
-%% decode usage_report_trigger
-decode_v1_element(<<M_immer:1/integer,
-		    M_droth:1/integer,
-		    M_stopt:1/integer,
-		    M_start:1/integer,
-		    M_quhti:1/integer,
-		    M_timth:1/integer,
-		    M_volth:1/integer,
-		    M_perio:1/integer,
-		    M_eveth:1/integer,
-		    M_macar:1/integer,
-		    M_envcl:1/integer,
-		    M_monit:1/integer,
-		    M_termr:1/integer,
-		    M_liusa:1/integer,
-		    M_timqu:1/integer,
-		    M_volqu:1/integer,
-		    _/binary>>, 63) ->
-    #usage_report_trigger{immer = M_immer,
-			  droth = M_droth,
-			  stopt = M_stopt,
-			  start = M_start,
-			  quhti = M_quhti,
-			  timth = M_timth,
-			  volth = M_volth,
-			  perio = M_perio,
-			  eveth = M_eveth,
-			  macar = M_macar,
-			  envcl = M_envcl,
-			  monit = M_monit,
-			  termr = M_termr,
-			  liusa = M_liusa,
-			  timqu = M_timqu,
-			  volqu = M_volqu};
+decode_v1_element(<<M_flags/binary>>, 63) ->
+    #usage_report_trigger{flags = decode_flags(M_flags, ['IMMER','DROTH','STOPT','START','QUHTI',
+                               'TIMTH','VOLTH','PERIO','EVETH','MACAR',
+                               'ENVCL','MONIT','TERMR','LIUSA','TIMQU',
+                               'VOLQU','_','_','_','EMRRE','QUVTI','IPMJL',
+                               'TEBUR','EVEQU'])};
 
 %% decode measurement_period
 decode_v1_element(<<M_period:32/integer,
@@ -2588,35 +2068,13 @@ decode_v1_element(<<M_id:8/integer,
     #bar_id{id = M_id};
 
 %% decode cp_function_features
-decode_v1_element(<<M_uiaur:1/integer,
-		    M_ardr:1/integer,
-		    M_mpas:1/integer,
-		    M_bundl:1/integer,
-		    M_sset:1/integer,
-		    M_epfar:1/integer,
-		    M_ovrl:1/integer,
-		    M_load:1/integer,
-		    _/binary>>, 89) ->
-    #cp_function_features{uiaur = M_uiaur,
-			  ardr = M_ardr,
-			  mpas = M_mpas,
-			  bundl = M_bundl,
-			  sset = M_sset,
-			  epfar = M_epfar,
-			  ovrl = M_ovrl,
-			  load = M_load};
+decode_v1_element(<<M_flags/binary>>, 89) ->
+    #cp_function_features{flags = decode_flags(M_flags, ['UIAUR','ARDR','MPAS','BUNDL','SSET','EPFAR',
+                               'OVRL','LOAD'])};
 
 %% decode usage_information
-decode_v1_element(<<_:4,
-		    M_ube:1/integer,
-		    M_uae:1/integer,
-		    M_aft:1/integer,
-		    M_bef:1/integer,
-		    _/binary>>, 90) ->
-    #usage_information{ube = M_ube,
-		       uae = M_uae,
-		       aft = M_aft,
-		       bef = M_bef};
+decode_v1_element(<<M_flags/binary>>, 90) ->
+    #usage_information{flags = decode_flags(M_flags, ['_','_','_','_','UBE','UAE','AFT','BEF'])};
 
 %% decode application_instance_id
 decode_v1_element(<<M_id/binary>>, 91) ->
@@ -2667,30 +2125,12 @@ decode_v1_element(<<M_group/binary>>, 99) ->
     #error_indication_report{group = decode_v1_grouped(M_group)};
 
 %% decode measurement_information
-decode_v1_element(<<_:3,
-		    M_mnop:1/integer,
-		    M_istm:1/integer,
-		    M_radi:1/integer,
-		    M_inam:1/integer,
-		    M_mbqe:1/integer,
-		    _/binary>>, 100) ->
-    #measurement_information{mnop = M_mnop,
-			     istm = M_istm,
-			     radi = M_radi,
-			     inam = M_inam,
-			     mbqe = M_mbqe};
+decode_v1_element(<<M_flags/binary>>, 100) ->
+    #measurement_information{flags = decode_flags(M_flags, ['_','_','_','MNOP','ISTM','RADI','INAM','MBQE'])};
 
 %% decode node_report_type
-decode_v1_element(<<_:4,
-		    M_gpqr:1/integer,
-		    M_ckdr:1/integer,
-		    M_uprr:1/integer,
-		    M_upfr:1/integer,
-		    _/binary>>, 101) ->
-    #node_report_type{gpqr = M_gpqr,
-		      ckdr = M_ckdr,
-		      uprr = M_uprr,
-		      upfr = M_upfr};
+decode_v1_element(<<M_flags/binary>>, 101) ->
+    #node_report_type{flags = decode_flags(M_flags, ['_','_','_','_','GPQR','CKDR','UPRR','UPFR'])};
 
 %% decode user_plane_path_failure_report
 decode_v1_element(<<M_group/binary>>, 102) ->
@@ -2727,18 +2167,12 @@ decode_v1_element(<<M_id:32/integer,
     #qer_id{id = M_id};
 
 %% decode oci_flags
-decode_v1_element(<<_:7,
-		    M_aoci:1/integer,
-		    _/binary>>, 110) ->
-    #oci_flags{aoci = M_aoci};
+decode_v1_element(<<M_flags/binary>>, 110) ->
+    #oci_flags{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','AOCI'])};
 
 %% decode sx_association_release_request
-decode_v1_element(<<_:6,
-		    M_urss:1/integer,
-		    M_sarr:1/integer,
-		    _/binary>>, 111) ->
-    #sx_association_release_request{urss = M_urss,
-				    sarr = M_sarr};
+decode_v1_element(<<M_flags/binary>>, 111) ->
+    #sx_association_release_request{flags = decode_flags(M_flags, ['_','_','_','_','_','_','URSS','SARR'])};
 
 %% decode graceful_release_period
 decode_v1_element(<<M_release_timer_unit:3/integer,
@@ -2798,10 +2232,8 @@ decode_v1_element(<<M_quota:32/integer,
     #subsequent_time_quota{quota = M_quota};
 
 %% decode rqi
-decode_v1_element(<<_:7,
-		    M_rqi:1/integer,
-		    _/binary>>, 123) ->
-    #rqi{rqi = M_rqi};
+decode_v1_element(<<M_flags/binary>>, 123) ->
+    #rqi{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','RQI'])};
 
 %% decode qfi
 decode_v1_element(<<_:2,
@@ -2864,12 +2296,8 @@ decode_v1_element(<<M_type:16/integer,
     #ethertype{type = M_type};
 
 %% decode proxying
-decode_v1_element(<<_:6,
-		    M_ins:1/integer,
-		    M_arp:1/integer,
-		    _/binary>>, 137) ->
-    #proxying{ins = M_ins,
-	      arp = M_arp};
+decode_v1_element(<<M_flags/binary>>, 137) ->
+    #proxying{flags = decode_flags(M_flags, ['_','_','_','_','_','_','INS','ARP'])};
 
 %% decode ethernet_filter_id
 decode_v1_element(<<M_id:32/integer,
@@ -2877,10 +2305,8 @@ decode_v1_element(<<M_id:32/integer,
     #ethernet_filter_id{id = M_id};
 
 %% decode ethernet_filter_properties
-decode_v1_element(<<_:7,
-		    M_bide:1/integer,
-		    _/binary>>, 139) ->
-    #ethernet_filter_properties{bide = M_bide};
+decode_v1_element(<<M_flags/binary>>, 139) ->
+    #ethernet_filter_properties{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','BIDE'])};
 
 %% decode suggested_buffering_packets_count
 decode_v1_element(<<M_count:8/integer,
@@ -2892,10 +2318,8 @@ decode_v1_element(<<Data/binary>>, 141) ->
     decode_user_id(Data, user_id);
 
 %% decode ethernet_pdu_session_information
-decode_v1_element(<<_:7,
-		    M_ethi:1/integer,
-		    _/binary>>, 142) ->
-    #ethernet_pdu_session_information{ethi = M_ethi};
+decode_v1_element(<<M_flags/binary>>, 142) ->
+    #ethernet_pdu_session_information{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','ETHI'])};
 
 %% decode ethernet_traffic_information
 decode_v1_element(<<M_group/binary>>, 143) ->
@@ -2993,16 +2417,12 @@ decode_v1_element(<<_:2,
     #tgpp_interface_type{type = enum_v1_tgpp_interface_type_type(M_type)};
 
 %% decode pfcpsrreq_flags
-decode_v1_element(<<_:7,
-		    M_psdbu:1/integer,
-		    _/binary>>, 161) ->
-    #pfcpsrreq_flags{psdbu = M_psdbu};
+decode_v1_element(<<M_flags/binary>>, 161) ->
+    #pfcpsrreq_flags{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','PSDBU'])};
 
 %% decode pfcpaureq_flags
-decode_v1_element(<<_:7,
-		    M_parps:1/integer,
-		    _/binary>>, 162) ->
-    #pfcpaureq_flags{parps = M_parps};
+decode_v1_element(<<M_flags/binary>>, 162) ->
+    #pfcpaureq_flags{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','PARPS'])};
 
 %% decode activation_time
 decode_v1_element(<<M_time:32/integer,
@@ -3079,16 +2499,9 @@ decode_v1_element(<<Data/binary>>, 178) ->
     decode_alternative_smf_ip_address(Data, alternative_smf_ip_address);
 
 %% decode packet_replication_and_detection_carry_on_information
-decode_v1_element(<<_:4,
-		    M_dcaroni:1/integer,
-		    M_prin6i:1/integer,
-		    M_prin19i:1/integer,
-		    M_priueai:1/integer,
-		    _/binary>>, 179) ->
-    #packet_replication_and_detection_carry_on_information{dcaroni = M_dcaroni,
-							   prin6i = M_prin6i,
-							   prin19i = M_prin19i,
-							   priueai = M_priueai};
+decode_v1_element(<<M_flags/binary>>, 179) ->
+    #packet_replication_and_detection_carry_on_information{flags = decode_flags(M_flags, ['_','_','_','_','DCARONI','PRIN6I','PRIN19I',
+                               'PRIUEAI'])};
 
 %% decode smf_set_id
 decode_v1_element(<<_:8,
@@ -3110,20 +2523,16 @@ decode_v1_element(<<M_group/binary>>, 183) ->
     #pfcp_session_retention_information{group = decode_v1_grouped(M_group)};
 
 %% decode pfcpasrsp_flags
-decode_v1_element(<<_:7,
-		    M_psrei:1/integer,
-		    _/binary>>, 184) ->
-    #pfcpasrsp_flags{psrei = M_psrei};
+decode_v1_element(<<M_flags/binary>>, 184) ->
+    #pfcpasrsp_flags{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','PSREI'])};
 
 %% decode cp_pfcp_entity_ip_address
 decode_v1_element(<<Data/binary>>, 185) ->
     decode_cp_pfcp_entity_ip_address(Data, cp_pfcp_entity_ip_address);
 
 %% decode pfcpsereq_flags
-decode_v1_element(<<_:7,
-		    M_resti:1/integer,
-		    _/binary>>, 186) ->
-    #pfcpsereq_flags{resti = M_resti};
+decode_v1_element(<<M_flags/binary>>, 186) ->
+    #pfcpsereq_flags{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','RESTI'])};
 
 %% decode user_plane_path_recovery_report
 decode_v1_element(<<M_group/binary>>, 187) ->
@@ -3154,10 +2563,8 @@ decode_v1_element(<<Data/binary>>, 193) ->
     decode_packet_rate_status(Data, packet_rate_status);
 
 %% decode create_bridge_info_for_tsc
-decode_v1_element(<<_:7,
-		    M_bii:1/integer,
-		    _/binary>>, 194) ->
-    #create_bridge_info_for_tsc{bii = M_bii};
+decode_v1_element(<<M_flags/binary>>, 194) ->
+    #create_bridge_info_for_tsc{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','BII'])};
 
 %% decode created_bridge_info_for_tsc
 decode_v1_element(<<M_group/binary>>, 195) ->
@@ -3196,12 +2603,8 @@ decode_v1_element(<<M_group/binary>>, 203) ->
     #clock_drift_control_information{group = decode_v1_grouped(M_group)};
 
 %% decode requested_clock_drift_information
-decode_v1_element(<<_:6,
-		    M_rrcr:1/integer,
-		    M_rrto:1/integer,
-		    _/binary>>, 204) ->
-    #requested_clock_drift_information{rrcr = M_rrcr,
-				       rrto = M_rrto};
+decode_v1_element(<<M_flags/binary>>, 204) ->
+    #requested_clock_drift_information{flags = decode_flags(M_flags, ['_','_','_','_','_','_','RRCR','RRTO'])};
 
 %% decode clock_drift_report
 decode_v1_element(<<M_group/binary>>, 205) ->
@@ -3258,10 +2661,8 @@ decode_v1_element(<<M_group/binary>>, 216) ->
     #access_availability_control_information{group = decode_v1_grouped(M_group)};
 
 %% decode requested_access_availability_information
-decode_v1_element(<<_:7,
-		    M_rrca:1/integer,
-		    _/binary>>, 217) ->
-    #requested_access_availability_information{rrca = M_rrca};
+decode_v1_element(<<M_flags/binary>>, 217) ->
+    #requested_access_availability_information{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','RRCA'])};
 
 %% decode access_availability_report
 decode_v1_element(<<M_group/binary>>, 218) ->
@@ -3284,22 +2685,16 @@ decode_v1_element(<<M_group/binary>>, 221) ->
     #atsss_control_parameters{group = decode_v1_grouped(M_group)};
 
 %% decode mptcp_control_information
-decode_v1_element(<<_:7,
-		    M_tci:1/integer,
-		    _/binary>>, 222) ->
-    #mptcp_control_information{tci = M_tci};
+decode_v1_element(<<M_flags/binary>>, 222) ->
+    #mptcp_control_information{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','TCI'])};
 
 %% decode atsss_ll_control_information
-decode_v1_element(<<_:7,
-		    M_lli:1/integer,
-		    _/binary>>, 223) ->
-    #atsss_ll_control_information{lli = M_lli};
+decode_v1_element(<<M_flags/binary>>, 223) ->
+    #atsss_ll_control_information{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','LLI'])};
 
 %% decode pmf_control_information
-decode_v1_element(<<_:7,
-		    M_pmfi:1/integer,
-		    _/binary>>, 224) ->
-    #pmf_control_information{pmfi = M_pmfi};
+decode_v1_element(<<M_flags/binary>>, 224) ->
+    #pmf_control_information{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','PMFI'])};
 
 %% decode mptcp_parameters
 decode_v1_element(<<M_group/binary>>, 225) ->
@@ -3326,10 +2721,8 @@ decode_v1_element(<<Data/binary>>, 230) ->
     decode_pmf_address_information(Data, pmf_address_information);
 
 %% decode atsss_ll_information
-decode_v1_element(<<_:7,
-		    M_lli:1/integer,
-		    _/binary>>, 231) ->
-    #atsss_ll_information{lli = M_lli};
+decode_v1_element(<<M_flags/binary>>, 231) ->
+    #atsss_ll_information{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','LLI'])};
 
 %% decode data_network_access_identifier
 decode_v1_element(<<M_value/binary>>, 232) ->
@@ -3355,14 +2748,8 @@ decode_v1_element(<<M_delay:32/integer,
     #maximum_packet_delay{delay = M_delay};
 
 %% decode qos_report_trigger
-decode_v1_element(<<_:5,
-		    M_ire:1/integer,
-		    M_thr:1/integer,
-		    M_per:1/integer,
-		    _/binary>>, 237) ->
-    #qos_report_trigger{ire = M_ire,
-			thr = M_thr,
-			per = M_per};
+decode_v1_element(<<M_flags/binary>>, 237) ->
+    #qos_report_trigger{flags = decode_flags(M_flags, ['_','_','_','_','_','IRE','THR','PER'])};
 
 %% decode gtp_u_path_qos_control_information
 decode_v1_element(<<M_group/binary>>, 238) ->
@@ -3377,36 +2764,20 @@ decode_v1_element(<<M_group/binary>>, 240) ->
     #path_report_qos_information{group = decode_v1_grouped(M_group)};
 
 %% decode gtp_u_path_interface_type
-decode_v1_element(<<_:6,
-		    M_n3:1/integer,
-		    M_n9:1/integer,
-		    _/binary>>, 241) ->
-    #gtp_u_path_interface_type{n3 = M_n3,
-			       n9 = M_n9};
+decode_v1_element(<<M_flags/binary>>, 241) ->
+    #gtp_u_path_interface_type{flags = decode_flags(M_flags, ['_','_','_','_','_','_','N3','N9'])};
 
 %% decode qos_monitoring_per_qos_flow_control_information
 decode_v1_element(<<M_group/binary>>, 242) ->
     #qos_monitoring_per_qos_flow_control_information{group = decode_v1_grouped(M_group)};
 
 %% decode requested_qos_monitoring
-decode_v1_element(<<_:5,
-		    M_rp:1/integer,
-		    M_ul:1/integer,
-		    M_dl:1/integer,
-		    _/binary>>, 243) ->
-    #requested_qos_monitoring{rp = M_rp,
-			      ul = M_ul,
-			      dl = M_dl};
+decode_v1_element(<<M_flags/binary>>, 243) ->
+    #requested_qos_monitoring{flags = decode_flags(M_flags, ['_','_','_','_','_','RP','UL','DL'])};
 
 %% decode reporting_frequency
-decode_v1_element(<<_:5,
-		    M_sesrl:1/integer,
-		    M_perio:1/integer,
-		    M_evett:1/integer,
-		    _/binary>>, 244) ->
-    #reporting_frequency{sesrl = M_sesrl,
-			 perio = M_perio,
-			 evett = M_evett};
+decode_v1_element(<<M_flags/binary>>, 244) ->
+    #reporting_frequency{flags = decode_flags(M_flags, ['_','_','_','_','_','SESRL','PERIO','EVETT'])};
 
 %% decode packet_delay_thresholds
 decode_v1_element(<<Data/binary>>, 245) ->
@@ -3426,10 +2797,8 @@ decode_v1_element(<<Data/binary>>, 248) ->
     decode_qos_monitoring_measurement(Data, qos_monitoring_measurement);
 
 %% decode mt_edt_control_information
-decode_v1_element(<<_:7,
-		    M_rdsi:1/integer,
-		    _/binary>>, 249) ->
-    #mt_edt_control_information{rdsi = M_rdsi};
+decode_v1_element(<<M_flags/binary>>, 249) ->
+    #mt_edt_control_information{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','RDSI'])};
 
 %% decode dl_data_packets_size
 decode_v1_element(<<M_size:16/integer,
@@ -3437,14 +2806,8 @@ decode_v1_element(<<M_size:16/integer,
     #dl_data_packets_size{size = M_size};
 
 %% decode qer_control_indications
-decode_v1_element(<<_:5,
-		    M_nord:1/integer,
-		    M_moed:1/integer,
-		    M_rcsrt:1/integer,
-		    _/binary>>, 251) ->
-    #qer_control_indications{nord = M_nord,
-			     moed = M_moed,
-			     rcsrt = M_rcsrt};
+decode_v1_element(<<M_flags/binary>>, 251) ->
+    #qer_control_indications{flags = decode_flags(M_flags, ['_','_','_','_','_','NORD','MOED','RCSRT'])};
 
 %% decode packet_rate_status_report
 decode_v1_element(<<M_group/binary>>, 252) ->
@@ -3473,36 +2836,24 @@ decode_v1_element(<<M_sst:8/integer,
 	     sd = M_sd};
 
 %% decode ip_version
-decode_v1_element(<<_:6,
-		    M_v6:1/integer,
-		    M_v4:1/integer,
-		    _/binary>>, 258) ->
-    #ip_version{v6 = M_v6,
-		v4 = M_v4};
+decode_v1_element(<<M_flags/binary>>, 258) ->
+    #ip_version{flags = decode_flags(M_flags, ['_','_','_','_','_','_','V6','V4'])};
 
 %% decode pfcpasreq_flags
-decode_v1_element(<<_:7,
-		    M_uupsi:1/integer,
-		    _/binary>>, 259) ->
-    #pfcpasreq_flags{uupsi = M_uupsi};
+decode_v1_element(<<M_flags/binary>>, 259) ->
+    #pfcpasreq_flags{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','UUPSI'])};
 
 %% decode data_status
-decode_v1_element(<<_:6,
-		    M_buff:1/integer,
-		    M_drop:1/integer,
-		    _/binary>>, 260) ->
-    #data_status{buff = M_buff,
-		 drop = M_drop};
+decode_v1_element(<<M_flags/binary>>, 260) ->
+    #data_status{flags = decode_flags(M_flags, ['_','_','_','_','_','_','BUFF','DROP'])};
 
 %% decode provide_rds_configuration_information
 decode_v1_element(<<M_group/binary>>, 261) ->
     #provide_rds_configuration_information{group = decode_v1_grouped(M_group)};
 
 %% decode rds_configuration_information
-decode_v1_element(<<_:7,
-		    M_rds:1/integer,
-		    _/binary>>, 262) ->
-    #rds_configuration_information{rds = M_rds};
+decode_v1_element(<<M_flags/binary>>, 262) ->
+    #rds_configuration_information{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','RDS'])};
 
 %% decode query_packet_rate_status_ie_smreq
 decode_v1_element(<<M_group/binary>>, 263) ->
@@ -3513,10 +2864,8 @@ decode_v1_element(<<M_group/binary>>, 264) ->
     #packet_rate_status_report_ie_smresp{group = decode_v1_grouped(M_group)};
 
 %% decode mptcp_applicable_indication
-decode_v1_element(<<_:7,
-		    M_mai:1/integer,
-		    _/binary>>, 265) ->
-    #mptcp_applicable_indication{mai = M_mai};
+decode_v1_element(<<M_flags/binary>>, 265) ->
+    #mptcp_applicable_indication{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','MAI'])};
 
 %% decode bridge_management_information_container
 decode_v1_element(<<M_value/binary>>, 266) ->
@@ -3544,43 +2893,21 @@ decode_v1_element(<<M_group/binary>>, 271) ->
     #transport_delay_reporting{group = decode_v1_grouped(M_group)};
 
 %% decode bbf_up_function_features
-decode_v1_element(<<_:1,
-		    M_nat_up:1/integer,
-		    M_nat_cp:1/integer,
-		    M_lcp_keepalive_offload:1/integer,
-		    M_lns:1/integer,
-		    M_lac:1/integer,
-		    M_ipoe:1/integer,
-		    M_pppoe:1/integer,
-		    _:8,
-		    _:16,
-		    _/binary>>, {3561,0}) ->
-    #bbf_up_function_features{nat_up = M_nat_up,
-			      nat_cp = M_nat_cp,
-			      lcp_keepalive_offload = M_lcp_keepalive_offload,
-			      lns = M_lns,
-			      lac = M_lac,
-			      ipoe = M_ipoe,
-			      pppoe = M_pppoe};
+decode_v1_element(<<M_flags/binary>>, {3561,0}) ->
+    #bbf_up_function_features{flags = decode_flags(M_flags, ['_','NAT-UP','NAT-CP','LCP keepalive offload',
+                               'LNS','LAC','IPoE','PPPoE'])};
 
 %% decode logical_port
 decode_v1_element(<<M_port/binary>>, {3561,1}) ->
     #logical_port{port = M_port};
 
 %% decode bbf_outer_header_creation
-decode_v1_element(<<_:4,
-		    M_cpr_nsh:1/integer,
-		    M_traffic_endpoint:1/integer,
-		    M_l2tp:1/integer,
-		    M_ppp:1/integer,
-		    _:8,
+decode_v1_element(<<M_flags:16/bits,
 		    M_tunnel_id:16/integer,
 		    M_session_id:16/integer,
 		    _/binary>>, {3561,2}) ->
-    #bbf_outer_header_creation{cpr_nsh = M_cpr_nsh,
-			       traffic_endpoint = M_traffic_endpoint,
-			       l2tp = M_l2tp,
-			       ppp = M_ppp,
+    #bbf_outer_header_creation{flags = decode_flags(M_flags, ['_','_','_','_','CPR-NSH','Traffic-Endpoint',
+                               'L2TP','PPP']),
 			       tunnel_id = M_tunnel_id,
 			       session_id = M_session_id};
 
@@ -3627,10 +2954,8 @@ decode_v1_element(<<M_id:16/integer,
     #l2tp_session_id{id = M_id};
 
 %% decode l2tp_type
-decode_v1_element(<<_:7,
-		    M_type:1/integer,
-		    _/binary>>, {3561,11}) ->
-    #l2tp_type{type = M_type};
+decode_v1_element(<<M_flags/binary>>, {3561,11}) ->
+    #l2tp_type{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_',type])};
 
 %% decode ppp_lcp_connectivity
 decode_v1_element(<<M_group/binary>>, {3561,12}) ->
@@ -3645,10 +2970,8 @@ decode_v1_element(<<M_ipv4:4/bytes>>, {3561,14}) ->
     #bbf_nat_outside_address{ipv4 = M_ipv4};
 
 %% decode bbf_apply_action
-decode_v1_element(<<_:7,
-		    M_nat:1/integer,
-		    _/binary>>, {3561,15}) ->
-    #bbf_apply_action{nat = M_nat};
+decode_v1_element(<<M_flags/binary>>, {3561,15}) ->
+    #bbf_apply_action{flags = decode_flags(M_flags, ['_','_','_','_','_','_','_','NAT'])};
 
 %% decode bbf_nat_external_port_range
 decode_v1_element(<<Data/binary>>, {3561,16}) ->
@@ -3885,82 +3208,13 @@ encode_v1_element(#inactivity_detection_time{
     encode_tlv(36, <<M_time:32/integer>>, Acc);
 
 encode_v1_element(#reporting_triggers{
-		       linked_usage_reporting = M_linked_usage_reporting,
-		       dropped_dl_traffic_threshold = M_dropped_dl_traffic_threshold,
-		       stop_of_traffic = M_stop_of_traffic,
-		       start_of_traffic = M_start_of_traffic,
-		       quota_holding_time = M_quota_holding_time,
-		       time_threshold = M_time_threshold,
-		       volume_threshold = M_volume_threshold,
-		       periodic_reporting = M_periodic_reporting,
-		       quota_validity_time = M_quota_validity_time,
-		       ip_multicast_join_leave = M_ip_multicast_join_leave,
-		       event_quota = M_event_quota,
-		       event_threshold = M_event_threshold,
-		       mac_addresses_reporting = M_mac_addresses_reporting,
-		       envelope_closure = M_envelope_closure,
-		       time_quota = M_time_quota,
-		       volume_quota = M_volume_quota,
-		       report_the_end_marker_reception = undefined}, Acc) ->
-    encode_tlv(37, <<M_linked_usage_reporting:1/integer,
-		     M_dropped_dl_traffic_threshold:1/integer,
-		     M_stop_of_traffic:1/integer,
-		     M_start_of_traffic:1/integer,
-		     M_quota_holding_time:1/integer,
-		     M_time_threshold:1/integer,
-		     M_volume_threshold:1/integer,
-		     M_periodic_reporting:1/integer,
-		     M_quota_validity_time:1/integer,
-		     M_ip_multicast_join_leave:1/integer,
-		     M_event_quota:1/integer,
-		     M_event_threshold:1/integer,
-		     M_mac_addresses_reporting:1/integer,
-		     M_envelope_closure:1/integer,
-		     M_time_quota:1/integer,
-		     M_volume_quota:1/integer>>, Acc);
-
-encode_v1_element(#reporting_triggers{
-		       linked_usage_reporting = M_linked_usage_reporting,
-		       dropped_dl_traffic_threshold = M_dropped_dl_traffic_threshold,
-		       stop_of_traffic = M_stop_of_traffic,
-		       start_of_traffic = M_start_of_traffic,
-		       quota_holding_time = M_quota_holding_time,
-		       time_threshold = M_time_threshold,
-		       volume_threshold = M_volume_threshold,
-		       periodic_reporting = M_periodic_reporting,
-		       quota_validity_time = M_quota_validity_time,
-		       ip_multicast_join_leave = M_ip_multicast_join_leave,
-		       event_quota = M_event_quota,
-		       event_threshold = M_event_threshold,
-		       mac_addresses_reporting = M_mac_addresses_reporting,
-		       envelope_closure = M_envelope_closure,
-		       time_quota = M_time_quota,
-		       volume_quota = M_volume_quota,
-		       report_the_end_marker_reception = M_report_the_end_marker_reception}, Acc) ->
-    encode_tlv(37, <<M_linked_usage_reporting:1/integer,
-		     M_dropped_dl_traffic_threshold:1/integer,
-		     M_stop_of_traffic:1/integer,
-		     M_start_of_traffic:1/integer,
-		     M_quota_holding_time:1/integer,
-		     M_time_threshold:1/integer,
-		     M_volume_threshold:1/integer,
-		     M_periodic_reporting:1/integer,
-		     M_quota_validity_time:1/integer,
-		     M_ip_multicast_join_leave:1/integer,
-		     M_event_quota:1/integer,
-		     M_event_threshold:1/integer,
-		     M_mac_addresses_reporting:1/integer,
-		     M_envelope_closure:1/integer,
-		     M_time_quota:1/integer,
-		     M_volume_quota:1/integer,
-		     0:1,
-		     0:1,
-		     0:1,
-		     0:1,
-		     0:1,
-		     0:1,
-		     0:1,
-		     M_report_the_end_marker_reception:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(37, <<(encode_min_int(16, encode_flags(M_flags, ['PERIO','VOLTH','TIMTH','QUHTI',
+                                           'START','STOPT','DROTH','LIUSA',
+                                           'VOLQU','TIMQU','ENVCL','MACAR',
+                                           'EVETH','EVEQU','IPMJL','QUVTI',
+                                           'REEMR','UPINT','_','_','_','_',
+                                           '_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#redirect_information{
 		       type = M_type,
@@ -3972,21 +3226,9 @@ encode_v1_element(#redirect_information{
 		     (byte_size(M_other_address)):16/integer, M_other_address/binary>>, Acc);
 
 encode_v1_element(#report_type{
-		       uisr = M_uisr,
-		       sesr = M_sesr,
-		       pmir = M_pmir,
-		       upir = M_upir,
-		       erir = M_erir,
-		       usar = M_usar,
-		       dldr = M_dldr}, Acc) ->
-    encode_tlv(39, <<0:1,
-		     M_uisr:1/integer,
-		     M_sesr:1/integer,
-		     M_pmir:1/integer,
-		     M_upir:1/integer,
-		     M_erir:1/integer,
-		     M_usar:1/integer,
-		     M_dldr:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(39, <<(encode_min_int(16, encode_flags(M_flags, ['DLDR','USAR','ERIR','UPIR','PMIR',
+                                           'SESR','UISR','_']), little))/binary>>, Acc);
 
 encode_v1_element(#offending_ie{
 		       type = M_type}, Acc) ->
@@ -4002,398 +3244,23 @@ encode_v1_element(#destination_interface{
 		     (enum_v1_destination_interface_interface(M_interface)):4/integer>>, Acc);
 
 encode_v1_element(#up_function_features{
-		       treu = M_treu,
-		       heeu = M_heeu,
-		       pfdm = M_pfdm,
-		       ftup = M_ftup,
-		       trst = M_trst,
-		       dlbd = M_dlbd,
-		       ddnd = M_ddnd,
-		       bucp = M_bucp,
-		       epfar = undefined}, Acc) ->
-    encode_tlv(43, <<M_treu:1/integer,
-		     M_heeu:1/integer,
-		     M_pfdm:1/integer,
-		     M_ftup:1/integer,
-		     M_trst:1/integer,
-		     M_dlbd:1/integer,
-		     M_ddnd:1/integer,
-		     M_bucp:1/integer>>, Acc);
-
-encode_v1_element(#up_function_features{
-		       treu = M_treu,
-		       heeu = M_heeu,
-		       pfdm = M_pfdm,
-		       ftup = M_ftup,
-		       trst = M_trst,
-		       dlbd = M_dlbd,
-		       ddnd = M_ddnd,
-		       bucp = M_bucp,
-		       epfar = M_epfar,
-		       pfde = M_pfde,
-		       frrt = M_frrt,
-		       trace = M_trace,
-		       quoac = M_quoac,
-		       udbc = M_udbc,
-		       pdiu = M_pdiu,
-		       empu = M_empu,
-		       gcom = undefined}, Acc) ->
-    encode_tlv(43, <<M_treu:1/integer,
-		     M_heeu:1/integer,
-		     M_pfdm:1/integer,
-		     M_ftup:1/integer,
-		     M_trst:1/integer,
-		     M_dlbd:1/integer,
-		     M_ddnd:1/integer,
-		     M_bucp:1/integer,
-		     M_epfar:1/integer,
-		     M_pfde:1/integer,
-		     M_frrt:1/integer,
-		     M_trace:1/integer,
-		     M_quoac:1/integer,
-		     M_udbc:1/integer,
-		     M_pdiu:1/integer,
-		     M_empu:1/integer>>, Acc);
-
-encode_v1_element(#up_function_features{
-		       treu = M_treu,
-		       heeu = M_heeu,
-		       pfdm = M_pfdm,
-		       ftup = M_ftup,
-		       trst = M_trst,
-		       dlbd = M_dlbd,
-		       ddnd = M_ddnd,
-		       bucp = M_bucp,
-		       epfar = M_epfar,
-		       pfde = M_pfde,
-		       frrt = M_frrt,
-		       trace = M_trace,
-		       quoac = M_quoac,
-		       udbc = M_udbc,
-		       pdiu = M_pdiu,
-		       empu = M_empu,
-		       gcom = M_gcom,
-		       bundl = M_bundl,
-		       mte = M_mte,
-		       mnop = M_mnop,
-		       sset = M_sset,
-		       ueip = M_ueip,
-		       adpdp = M_adpdp,
-		       dpdra = M_dpdra,
-		       mptcp = undefined}, Acc) ->
-    encode_tlv(43, <<M_treu:1/integer,
-		     M_heeu:1/integer,
-		     M_pfdm:1/integer,
-		     M_ftup:1/integer,
-		     M_trst:1/integer,
-		     M_dlbd:1/integer,
-		     M_ddnd:1/integer,
-		     M_bucp:1/integer,
-		     M_epfar:1/integer,
-		     M_pfde:1/integer,
-		     M_frrt:1/integer,
-		     M_trace:1/integer,
-		     M_quoac:1/integer,
-		     M_udbc:1/integer,
-		     M_pdiu:1/integer,
-		     M_empu:1/integer,
-		     M_gcom:1/integer,
-		     M_bundl:1/integer,
-		     M_mte:1/integer,
-		     M_mnop:1/integer,
-		     M_sset:1/integer,
-		     M_ueip:1/integer,
-		     M_adpdp:1/integer,
-		     M_dpdra:1/integer>>, Acc);
-
-encode_v1_element(#up_function_features{
-		       treu = M_treu,
-		       heeu = M_heeu,
-		       pfdm = M_pfdm,
-		       ftup = M_ftup,
-		       trst = M_trst,
-		       dlbd = M_dlbd,
-		       ddnd = M_ddnd,
-		       bucp = M_bucp,
-		       epfar = M_epfar,
-		       pfde = M_pfde,
-		       frrt = M_frrt,
-		       trace = M_trace,
-		       quoac = M_quoac,
-		       udbc = M_udbc,
-		       pdiu = M_pdiu,
-		       empu = M_empu,
-		       gcom = M_gcom,
-		       bundl = M_bundl,
-		       mte = M_mte,
-		       mnop = M_mnop,
-		       sset = M_sset,
-		       ueip = M_ueip,
-		       adpdp = M_adpdp,
-		       dpdra = M_dpdra,
-		       mptcp = M_mptcp,
-		       tscu = M_tscu,
-		       ip6pl = M_ip6pl,
-		       iptv = M_iptv,
-		       norp = M_norp,
-		       vtime = M_vtime,
-		       rttl = M_rttl,
-		       mpas = M_mpas,
-		       rds = undefined}, Acc) ->
-    encode_tlv(43, <<M_treu:1/integer,
-		     M_heeu:1/integer,
-		     M_pfdm:1/integer,
-		     M_ftup:1/integer,
-		     M_trst:1/integer,
-		     M_dlbd:1/integer,
-		     M_ddnd:1/integer,
-		     M_bucp:1/integer,
-		     M_epfar:1/integer,
-		     M_pfde:1/integer,
-		     M_frrt:1/integer,
-		     M_trace:1/integer,
-		     M_quoac:1/integer,
-		     M_udbc:1/integer,
-		     M_pdiu:1/integer,
-		     M_empu:1/integer,
-		     M_gcom:1/integer,
-		     M_bundl:1/integer,
-		     M_mte:1/integer,
-		     M_mnop:1/integer,
-		     M_sset:1/integer,
-		     M_ueip:1/integer,
-		     M_adpdp:1/integer,
-		     M_dpdra:1/integer,
-		     M_mptcp:1/integer,
-		     M_tscu:1/integer,
-		     M_ip6pl:1/integer,
-		     M_iptv:1/integer,
-		     M_norp:1/integer,
-		     M_vtime:1/integer,
-		     M_rttl:1/integer,
-		     M_mpas:1/integer>>, Acc);
-
-encode_v1_element(#up_function_features{
-		       treu = M_treu,
-		       heeu = M_heeu,
-		       pfdm = M_pfdm,
-		       ftup = M_ftup,
-		       trst = M_trst,
-		       dlbd = M_dlbd,
-		       ddnd = M_ddnd,
-		       bucp = M_bucp,
-		       epfar = M_epfar,
-		       pfde = M_pfde,
-		       frrt = M_frrt,
-		       trace = M_trace,
-		       quoac = M_quoac,
-		       udbc = M_udbc,
-		       pdiu = M_pdiu,
-		       empu = M_empu,
-		       gcom = M_gcom,
-		       bundl = M_bundl,
-		       mte = M_mte,
-		       mnop = M_mnop,
-		       sset = M_sset,
-		       ueip = M_ueip,
-		       adpdp = M_adpdp,
-		       dpdra = M_dpdra,
-		       mptcp = M_mptcp,
-		       tscu = M_tscu,
-		       ip6pl = M_ip6pl,
-		       iptv = M_iptv,
-		       norp = M_norp,
-		       vtime = M_vtime,
-		       rttl = M_rttl,
-		       mpas = M_mpas,
-		       rds = M_rds,
-		       ddds = M_ddds,
-		       ethar = M_ethar,
-		       ciot = M_ciot,
-		       mt_edt = M_mt_edt,
-		       gpqm = M_gpqm,
-		       qfqm = M_qfqm,
-		       atsss_ll = M_atsss_ll,
-		       rttwp = undefined}, Acc) ->
-    encode_tlv(43, <<M_treu:1/integer,
-		     M_heeu:1/integer,
-		     M_pfdm:1/integer,
-		     M_ftup:1/integer,
-		     M_trst:1/integer,
-		     M_dlbd:1/integer,
-		     M_ddnd:1/integer,
-		     M_bucp:1/integer,
-		     M_epfar:1/integer,
-		     M_pfde:1/integer,
-		     M_frrt:1/integer,
-		     M_trace:1/integer,
-		     M_quoac:1/integer,
-		     M_udbc:1/integer,
-		     M_pdiu:1/integer,
-		     M_empu:1/integer,
-		     M_gcom:1/integer,
-		     M_bundl:1/integer,
-		     M_mte:1/integer,
-		     M_mnop:1/integer,
-		     M_sset:1/integer,
-		     M_ueip:1/integer,
-		     M_adpdp:1/integer,
-		     M_dpdra:1/integer,
-		     M_mptcp:1/integer,
-		     M_tscu:1/integer,
-		     M_ip6pl:1/integer,
-		     M_iptv:1/integer,
-		     M_norp:1/integer,
-		     M_vtime:1/integer,
-		     M_rttl:1/integer,
-		     M_mpas:1/integer,
-		     M_rds:1/integer,
-		     M_ddds:1/integer,
-		     M_ethar:1/integer,
-		     M_ciot:1/integer,
-		     M_mt_edt:1/integer,
-		     M_gpqm:1/integer,
-		     M_qfqm:1/integer,
-		     M_atsss_ll:1/integer>>, Acc);
-
-encode_v1_element(#up_function_features{
-		       treu = M_treu,
-		       heeu = M_heeu,
-		       pfdm = M_pfdm,
-		       ftup = M_ftup,
-		       trst = M_trst,
-		       dlbd = M_dlbd,
-		       ddnd = M_ddnd,
-		       bucp = M_bucp,
-		       epfar = M_epfar,
-		       pfde = M_pfde,
-		       frrt = M_frrt,
-		       trace = M_trace,
-		       quoac = M_quoac,
-		       udbc = M_udbc,
-		       pdiu = M_pdiu,
-		       empu = M_empu,
-		       gcom = M_gcom,
-		       bundl = M_bundl,
-		       mte = M_mte,
-		       mnop = M_mnop,
-		       sset = M_sset,
-		       ueip = M_ueip,
-		       adpdp = M_adpdp,
-		       dpdra = M_dpdra,
-		       mptcp = M_mptcp,
-		       tscu = M_tscu,
-		       ip6pl = M_ip6pl,
-		       iptv = M_iptv,
-		       norp = M_norp,
-		       vtime = M_vtime,
-		       rttl = M_rttl,
-		       mpas = M_mpas,
-		       rds = M_rds,
-		       ddds = M_ddds,
-		       ethar = M_ethar,
-		       ciot = M_ciot,
-		       mt_edt = M_mt_edt,
-		       gpqm = M_gpqm,
-		       qfqm = M_qfqm,
-		       atsss_ll = M_atsss_ll,
-		       rttwp = M_rttwp}, Acc) ->
-    encode_tlv(43, <<M_treu:1/integer,
-		     M_heeu:1/integer,
-		     M_pfdm:1/integer,
-		     M_ftup:1/integer,
-		     M_trst:1/integer,
-		     M_dlbd:1/integer,
-		     M_ddnd:1/integer,
-		     M_bucp:1/integer,
-		     M_epfar:1/integer,
-		     M_pfde:1/integer,
-		     M_frrt:1/integer,
-		     M_trace:1/integer,
-		     M_quoac:1/integer,
-		     M_udbc:1/integer,
-		     M_pdiu:1/integer,
-		     M_empu:1/integer,
-		     M_gcom:1/integer,
-		     M_bundl:1/integer,
-		     M_mte:1/integer,
-		     M_mnop:1/integer,
-		     M_sset:1/integer,
-		     M_ueip:1/integer,
-		     M_adpdp:1/integer,
-		     M_dpdra:1/integer,
-		     M_mptcp:1/integer,
-		     M_tscu:1/integer,
-		     M_ip6pl:1/integer,
-		     M_iptv:1/integer,
-		     M_norp:1/integer,
-		     M_vtime:1/integer,
-		     M_rttl:1/integer,
-		     M_mpas:1/integer,
-		     M_rds:1/integer,
-		     M_ddds:1/integer,
-		     M_ethar:1/integer,
-		     M_ciot:1/integer,
-		     M_mt_edt:1/integer,
-		     M_gpqm:1/integer,
-		     M_qfqm:1/integer,
-		     M_atsss_ll:1/integer,
-		     0:1,
-		     0:1,
-		     0:1,
-		     0:1,
-		     0:1,
-		     0:1,
-		     0:1,
-		     M_rttwp:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(43, <<(encode_min_int(8, encode_flags(M_flags, ['BUCP','DDND','DLBD','TRST','FTUP',
+                                          'PFDM','HEEU','TREU','EMPU','PDIU',
+                                          'UDBC','QUOAC','TRACE','FRRT',
+                                          'PFDE','EPFAR','DPDRA','ADPDP',
+                                          'UEIP','SSET','MNOP','MTE','BUNDL',
+                                          'GCOM','MPAS','RTTL','VTIME','NORP',
+                                          'IPTV','IP6PL','TSCU','MPTCP',
+                                          'ATSSS-LL','QFQM','GPQM','MT-EDT',
+                                          'CIOT','ETHAR','DDDS','RDS','RTTWP',
+                                          '_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#apply_action{
-		       dfrt = M_dfrt,
-		       ipmd = M_ipmd,
-		       ipma = M_ipma,
-		       dupl = M_dupl,
-		       nocp = M_nocp,
-		       buff = M_buff,
-		       forw = M_forw,
-		       drop = M_drop,
-		       ddpn = undefined}, Acc) ->
-    encode_tlv(44, <<M_dfrt:1/integer,
-		     M_ipmd:1/integer,
-		     M_ipma:1/integer,
-		     M_dupl:1/integer,
-		     M_nocp:1/integer,
-		     M_buff:1/integer,
-		     M_forw:1/integer,
-		     M_drop:1/integer>>, Acc);
-
-encode_v1_element(#apply_action{
-		       dfrt = M_dfrt,
-		       ipmd = M_ipmd,
-		       ipma = M_ipma,
-		       dupl = M_dupl,
-		       nocp = M_nocp,
-		       buff = M_buff,
-		       forw = M_forw,
-		       drop = M_drop,
-		       ddpn = M_ddpn,
-		       bdpn = M_bdpn,
-		       edrt = M_edrt}, Acc) ->
-    encode_tlv(44, <<M_dfrt:1/integer,
-		     M_ipmd:1/integer,
-		     M_ipma:1/integer,
-		     M_dupl:1/integer,
-		     M_nocp:1/integer,
-		     M_buff:1/integer,
-		     M_forw:1/integer,
-		     M_drop:1/integer,
-		     0:1,
-		     0:1,
-		     0:1,
-		     0:1,
-		     0:1,
-		     M_ddpn:1/integer,
-		     M_bdpn:1/integer,
-		     M_edrt:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(44, <<(encode_min_int(8, encode_flags(M_flags, ['DROP','FORW','BUFF','NOCP','DUPL',
+                                          'IPMA','IPMD','DFRT','EDRT','BDPN',
+                                          'DDPN','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#downlink_data_service_information{} = IE, Acc) ->
     encode_tlv(45, encode_downlink_data_service_information(IE), Acc);
@@ -4412,18 +3279,13 @@ encode_v1_element(#dl_buffering_suggested_packet_count{} = IE, Acc) ->
     encode_tlv(48, encode_dl_buffering_suggested_packet_count(IE), Acc);
 
 encode_v1_element(#sxsmreq_flags{
-		       qaurr = M_qaurr,
-		       sndem = M_sndem,
-		       drobu = M_drobu}, Acc) ->
-    encode_tlv(49, <<0:5,
-		     M_qaurr:1/integer,
-		     M_sndem:1/integer,
-		     M_drobu:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(49, <<(encode_min_int(8, encode_flags(M_flags, ['DROBU','SNDEM','QAURR','_','_','_',
+                                          '_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#sxsrrsp_flags{
-		       drobu = M_drobu}, Acc) ->
-    encode_tlv(50, <<0:7,
-		     M_drobu:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(50, <<(encode_min_int(8, encode_flags(M_flags, ['DROBU','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#load_control_information{
 		       group = M_group}, Acc) ->
@@ -4469,95 +3331,18 @@ encode_v1_element(#pfd_contents{} = IE, Acc) ->
     encode_tlv(61, encode_pfd_contents(IE), Acc);
 
 encode_v1_element(#measurement_method{
-		       event = M_event,
-		       volum = M_volum,
-		       durat = M_durat}, Acc) ->
-    encode_tlv(62, <<0:5,
-		     M_event:1/integer,
-		     M_volum:1/integer,
-		     M_durat:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(62, <<(encode_min_int(8, encode_flags(M_flags, ['DURAT','VOLUM','EVENT','_','_','_',
+                                          '_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#usage_report_trigger{
-		       immer = M_immer,
-		       droth = M_droth,
-		       stopt = M_stopt,
-		       start = M_start,
-		       quhti = M_quhti,
-		       timth = M_timth,
-		       volth = M_volth,
-		       perio = M_perio,
-		       eveth = M_eveth,
-		       macar = M_macar,
-		       envcl = M_envcl,
-		       monit = M_monit,
-		       termr = M_termr,
-		       liusa = M_liusa,
-		       timqu = M_timqu,
-		       volqu = M_volqu,
-		       emrre = undefined}, Acc) ->
-    encode_tlv(63, <<M_immer:1/integer,
-		     M_droth:1/integer,
-		     M_stopt:1/integer,
-		     M_start:1/integer,
-		     M_quhti:1/integer,
-		     M_timth:1/integer,
-		     M_volth:1/integer,
-		     M_perio:1/integer,
-		     M_eveth:1/integer,
-		     M_macar:1/integer,
-		     M_envcl:1/integer,
-		     M_monit:1/integer,
-		     M_termr:1/integer,
-		     M_liusa:1/integer,
-		     M_timqu:1/integer,
-		     M_volqu:1/integer>>, Acc);
-
-encode_v1_element(#usage_report_trigger{
-		       immer = M_immer,
-		       droth = M_droth,
-		       stopt = M_stopt,
-		       start = M_start,
-		       quhti = M_quhti,
-		       timth = M_timth,
-		       volth = M_volth,
-		       perio = M_perio,
-		       eveth = M_eveth,
-		       macar = M_macar,
-		       envcl = M_envcl,
-		       monit = M_monit,
-		       termr = M_termr,
-		       liusa = M_liusa,
-		       timqu = M_timqu,
-		       volqu = M_volqu,
-		       emrre = M_emrre,
-		       quvti = M_quvti,
-		       ipmjl = M_ipmjl,
-		       tebur = M_tebur,
-		       evequ = M_evequ}, Acc) ->
-    encode_tlv(63, <<M_immer:1/integer,
-		     M_droth:1/integer,
-		     M_stopt:1/integer,
-		     M_start:1/integer,
-		     M_quhti:1/integer,
-		     M_timth:1/integer,
-		     M_volth:1/integer,
-		     M_perio:1/integer,
-		     M_eveth:1/integer,
-		     M_macar:1/integer,
-		     M_envcl:1/integer,
-		     M_monit:1/integer,
-		     M_termr:1/integer,
-		     M_liusa:1/integer,
-		     M_timqu:1/integer,
-		     M_volqu:1/integer,
-		     0:1,
-		     0:1,
-		     0:1,
-		     M_emrre:1/integer,
-		     M_quvti:1/integer,
-		     M_ipmjl:1/integer,
-		     M_tebur:1/integer,
-		     M_evequ:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(63, <<(encode_min_int(16, encode_flags(M_flags, ['PERIO','VOLTH','TIMTH','QUHTI',
+                                           'START','STOPT','DROTH','IMMER',
+                                           'VOLQU','TIMQU','LIUSA','TERMR',
+                                           'MONIT','ENVCL','MACAR','EVETH',
+                                           'EVEQU','TEBUR','IPMJL','QUVTI',
+                                           'EMRRE','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#measurement_period{
 		       period = M_period}, Acc) ->
@@ -4655,33 +3440,14 @@ encode_v1_element(#bar_id{
     encode_tlv(88, <<M_id:8/integer>>, Acc);
 
 encode_v1_element(#cp_function_features{
-		       uiaur = M_uiaur,
-		       ardr = M_ardr,
-		       mpas = M_mpas,
-		       bundl = M_bundl,
-		       sset = M_sset,
-		       epfar = M_epfar,
-		       ovrl = M_ovrl,
-		       load = M_load}, Acc) ->
-    encode_tlv(89, <<M_uiaur:1/integer,
-		     M_ardr:1/integer,
-		     M_mpas:1/integer,
-		     M_bundl:1/integer,
-		     M_sset:1/integer,
-		     M_epfar:1/integer,
-		     M_ovrl:1/integer,
-		     M_load:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(89, <<(encode_min_int(8, encode_flags(M_flags, ['LOAD','OVRL','EPFAR','SSET',
+                                          'BUNDL','MPAS','ARDR','UIAUR']), little))/binary>>, Acc);
 
 encode_v1_element(#usage_information{
-		       ube = M_ube,
-		       uae = M_uae,
-		       aft = M_aft,
-		       bef = M_bef}, Acc) ->
-    encode_tlv(90, <<0:4,
-		     M_ube:1/integer,
-		     M_uae:1/integer,
-		     M_aft:1/integer,
-		     M_bef:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(90, <<(encode_min_int(8, encode_flags(M_flags, ['BEF','AFT','UAE','UBE','_','_','_',
+                                          '_']), little))/binary>>, Acc);
 
 encode_v1_element(#application_instance_id{
 		       id = M_id}, Acc) ->
@@ -4725,28 +3491,14 @@ encode_v1_element(#error_indication_report{
     encode_tlv(99, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
 encode_v1_element(#measurement_information{
-		       mnop = M_mnop,
-		       istm = M_istm,
-		       radi = M_radi,
-		       inam = M_inam,
-		       mbqe = M_mbqe}, Acc) ->
-    encode_tlv(100, <<0:3,
-		      M_mnop:1/integer,
-		      M_istm:1/integer,
-		      M_radi:1/integer,
-		      M_inam:1/integer,
-		      M_mbqe:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(100, <<(encode_min_int(8, encode_flags(M_flags, ['MBQE','INAM','RADI','ISTM','MNOP',
+                                          '_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#node_report_type{
-		       gpqr = M_gpqr,
-		       ckdr = M_ckdr,
-		       uprr = M_uprr,
-		       upfr = M_upfr}, Acc) ->
-    encode_tlv(101, <<0:4,
-		      M_gpqr:1/integer,
-		      M_ckdr:1/integer,
-		      M_uprr:1/integer,
-		      M_upfr:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(101, <<(encode_min_int(8, encode_flags(M_flags, ['UPFR','UPRR','CKDR','GPQR','_','_',
+                                          '_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#user_plane_path_failure_report{
 		       group = M_group}, Acc) ->
@@ -4780,16 +3532,13 @@ encode_v1_element(#qer_id{
     encode_tlv(109, <<M_id:32/integer>>, Acc);
 
 encode_v1_element(#oci_flags{
-		       aoci = M_aoci}, Acc) ->
-    encode_tlv(110, <<0:7,
-		      M_aoci:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(110, <<(encode_min_int(8, encode_flags(M_flags, ['AOCI','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#sx_association_release_request{
-		       urss = M_urss,
-		       sarr = M_sarr}, Acc) ->
-    encode_tlv(111, <<0:6,
-		      M_urss:1/integer,
-		      M_sarr:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(111, <<(encode_min_int(8, encode_flags(M_flags, ['SARR','URSS','_','_','_','_','_',
+                                          '_']), little))/binary>>, Acc);
 
 encode_v1_element(#graceful_release_period{
 		       release_timer_unit = M_release_timer_unit,
@@ -4841,9 +3590,8 @@ encode_v1_element(#subsequent_time_quota{
     encode_tlv(122, <<M_quota:32/integer>>, Acc);
 
 encode_v1_element(#rqi{
-		       rqi = M_rqi}, Acc) ->
-    encode_tlv(123, <<0:7,
-		      M_rqi:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(123, <<(encode_min_int(8, encode_flags(M_flags, ['RQI','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#qfi{
 		       qfi = M_qfi}, Acc) ->
@@ -4898,20 +3646,16 @@ encode_v1_element(#ethertype{
     encode_tlv(136, <<M_type:16/integer>>, Acc);
 
 encode_v1_element(#proxying{
-		       ins = M_ins,
-		       arp = M_arp}, Acc) ->
-    encode_tlv(137, <<0:6,
-		      M_ins:1/integer,
-		      M_arp:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(137, <<(encode_min_int(8, encode_flags(M_flags, ['ARP','INS','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#ethernet_filter_id{
 		       id = M_id}, Acc) ->
     encode_tlv(138, <<M_id:32/integer>>, Acc);
 
 encode_v1_element(#ethernet_filter_properties{
-		       bide = M_bide}, Acc) ->
-    encode_tlv(139, <<0:7,
-		      M_bide:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(139, <<(encode_min_int(8, encode_flags(M_flags, ['BIDE','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#suggested_buffering_packets_count{
 		       count = M_count}, Acc) ->
@@ -4921,9 +3665,8 @@ encode_v1_element(#user_id{} = IE, Acc) ->
     encode_tlv(141, encode_user_id(IE), Acc);
 
 encode_v1_element(#ethernet_pdu_session_information{
-		       ethi = M_ethi}, Acc) ->
-    encode_tlv(142, <<0:7,
-		      M_ethi:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(142, <<(encode_min_int(8, encode_flags(M_flags, ['ETHI','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#ethernet_traffic_information{
 		       group = M_group}, Acc) ->
@@ -5009,14 +3752,12 @@ encode_v1_element(#tgpp_interface_type{
 		      (enum_v1_tgpp_interface_type_type(M_type)):6/integer>>, Acc);
 
 encode_v1_element(#pfcpsrreq_flags{
-		       psdbu = M_psdbu}, Acc) ->
-    encode_tlv(161, <<0:7,
-		      M_psdbu:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(161, <<(encode_min_int(8, encode_flags(M_flags, ['PSDBU','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#pfcpaureq_flags{
-		       parps = M_parps}, Acc) ->
-    encode_tlv(162, <<0:7,
-		      M_parps:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(162, <<(encode_min_int(8, encode_flags(M_flags, ['PARPS','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#activation_time{
 		       time = M_time}, Acc) ->
@@ -5085,15 +3826,9 @@ encode_v1_element(#alternative_smf_ip_address{} = IE, Acc) ->
     encode_tlv(178, encode_alternative_smf_ip_address(IE), Acc);
 
 encode_v1_element(#packet_replication_and_detection_carry_on_information{
-		       dcaroni = M_dcaroni,
-		       prin6i = M_prin6i,
-		       prin19i = M_prin19i,
-		       priueai = M_priueai}, Acc) ->
-    encode_tlv(179, <<0:4,
-		      M_dcaroni:1/integer,
-		      M_prin6i:1/integer,
-		      M_prin19i:1/integer,
-		      M_priueai:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(179, <<(encode_min_int(8, encode_flags(M_flags, ['PRIUEAI','PRIN19I','PRIN6I',
+                                          'DCARONI','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#smf_set_id{
 		       fqdn = M_fqdn}, Acc) ->
@@ -5113,17 +3848,15 @@ encode_v1_element(#pfcp_session_retention_information{
     encode_tlv(183, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
 encode_v1_element(#pfcpasrsp_flags{
-		       psrei = M_psrei}, Acc) ->
-    encode_tlv(184, <<0:7,
-		      M_psrei:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(184, <<(encode_min_int(8, encode_flags(M_flags, ['PSREI','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#cp_pfcp_entity_ip_address{} = IE, Acc) ->
     encode_tlv(185, encode_cp_pfcp_entity_ip_address(IE), Acc);
 
 encode_v1_element(#pfcpsereq_flags{
-		       resti = M_resti}, Acc) ->
-    encode_tlv(186, <<0:7,
-		      M_resti:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(186, <<(encode_min_int(8, encode_flags(M_flags, ['RESTI','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#user_plane_path_recovery_report{
 		       group = M_group}, Acc) ->
@@ -5151,9 +3884,8 @@ encode_v1_element(#packet_rate_status{} = IE, Acc) ->
     encode_tlv(193, encode_packet_rate_status(IE), Acc);
 
 encode_v1_element(#create_bridge_info_for_tsc{
-		       bii = M_bii}, Acc) ->
-    encode_tlv(194, <<0:7,
-		      M_bii:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(194, <<(encode_min_int(8, encode_flags(M_flags, ['BII','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#created_bridge_info_for_tsc{
 		       group = M_group}, Acc) ->
@@ -5191,11 +3923,9 @@ encode_v1_element(#clock_drift_control_information{
     encode_tlv(203, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
 encode_v1_element(#requested_clock_drift_information{
-		       rrcr = M_rrcr,
-		       rrto = M_rrto}, Acc) ->
-    encode_tlv(204, <<0:6,
-		      M_rrcr:1/integer,
-		      M_rrto:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(204, <<(encode_min_int(8, encode_flags(M_flags, ['RRTO','RRCR','_','_','_','_','_',
+                                          '_']), little))/binary>>, Acc);
 
 encode_v1_element(#clock_drift_report{
 		       group = M_group}, Acc) ->
@@ -5246,9 +3976,8 @@ encode_v1_element(#access_availability_control_information{
     encode_tlv(216, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
 encode_v1_element(#requested_access_availability_information{
-		       rrca = M_rrca}, Acc) ->
-    encode_tlv(217, <<0:7,
-		      M_rrca:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(217, <<(encode_min_int(8, encode_flags(M_flags, ['RRCA','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#access_availability_report{
 		       group = M_group}, Acc) ->
@@ -5270,19 +3999,16 @@ encode_v1_element(#atsss_control_parameters{
     encode_tlv(221, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
 encode_v1_element(#mptcp_control_information{
-		       tci = M_tci}, Acc) ->
-    encode_tlv(222, <<0:7,
-		      M_tci:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(222, <<(encode_min_int(8, encode_flags(M_flags, ['TCI','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#atsss_ll_control_information{
-		       lli = M_lli}, Acc) ->
-    encode_tlv(223, <<0:7,
-		      M_lli:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(223, <<(encode_min_int(8, encode_flags(M_flags, ['LLI','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#pmf_control_information{
-		       pmfi = M_pmfi}, Acc) ->
-    encode_tlv(224, <<0:7,
-		      M_pmfi:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(224, <<(encode_min_int(8, encode_flags(M_flags, ['PMFI','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#mptcp_parameters{
 		       group = M_group}, Acc) ->
@@ -5306,9 +4032,8 @@ encode_v1_element(#pmf_address_information{} = IE, Acc) ->
     encode_tlv(230, encode_pmf_address_information(IE), Acc);
 
 encode_v1_element(#atsss_ll_information{
-		       lli = M_lli}, Acc) ->
-    encode_tlv(231, <<0:7,
-		      M_lli:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(231, <<(encode_min_int(8, encode_flags(M_flags, ['LLI','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#data_network_access_identifier{
 		       value = M_value}, Acc) ->
@@ -5331,13 +4056,9 @@ encode_v1_element(#maximum_packet_delay{
     encode_tlv(236, <<M_delay:32/integer>>, Acc);
 
 encode_v1_element(#qos_report_trigger{
-		       ire = M_ire,
-		       thr = M_thr,
-		       per = M_per}, Acc) ->
-    encode_tlv(237, <<0:5,
-		      M_ire:1/integer,
-		      M_thr:1/integer,
-		      M_per:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(237, <<(encode_min_int(8, encode_flags(M_flags, ['PER','THR','IRE','_','_','_','_',
+                                          '_']), little))/binary>>, Acc);
 
 encode_v1_element(#gtp_u_path_qos_control_information{
 		       group = M_group}, Acc) ->
@@ -5352,33 +4073,21 @@ encode_v1_element(#path_report_qos_information{
     encode_tlv(240, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
 encode_v1_element(#gtp_u_path_interface_type{
-		       n3 = M_n3,
-		       n9 = M_n9}, Acc) ->
-    encode_tlv(241, <<0:6,
-		      M_n3:1/integer,
-		      M_n9:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(241, <<(encode_min_int(8, encode_flags(M_flags, ['N9','N3','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#qos_monitoring_per_qos_flow_control_information{
 		       group = M_group}, Acc) ->
     encode_tlv(242, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
 encode_v1_element(#requested_qos_monitoring{
-		       rp = M_rp,
-		       ul = M_ul,
-		       dl = M_dl}, Acc) ->
-    encode_tlv(243, <<0:5,
-		      M_rp:1/integer,
-		      M_ul:1/integer,
-		      M_dl:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(243, <<(encode_min_int(8, encode_flags(M_flags, ['DL','UL','RP','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#reporting_frequency{
-		       sesrl = M_sesrl,
-		       perio = M_perio,
-		       evett = M_evett}, Acc) ->
-    encode_tlv(244, <<0:5,
-		      M_sesrl:1/integer,
-		      M_perio:1/integer,
-		      M_evett:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(244, <<(encode_min_int(8, encode_flags(M_flags, ['EVETT','PERIO','SESRL','_','_','_',
+                                          '_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#packet_delay_thresholds{} = IE, Acc) ->
     encode_tlv(245, encode_packet_delay_thresholds(IE), Acc);
@@ -5395,22 +4104,17 @@ encode_v1_element(#qos_monitoring_measurement{} = IE, Acc) ->
     encode_tlv(248, encode_qos_monitoring_measurement(IE), Acc);
 
 encode_v1_element(#mt_edt_control_information{
-		       rdsi = M_rdsi}, Acc) ->
-    encode_tlv(249, <<0:7,
-		      M_rdsi:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(249, <<(encode_min_int(8, encode_flags(M_flags, ['RDSI','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#dl_data_packets_size{
 		       size = M_size}, Acc) ->
     encode_tlv(250, <<M_size:16/integer>>, Acc);
 
 encode_v1_element(#qer_control_indications{
-		       nord = M_nord,
-		       moed = M_moed,
-		       rcsrt = M_rcsrt}, Acc) ->
-    encode_tlv(251, <<0:5,
-		      M_nord:1/integer,
-		      M_moed:1/integer,
-		      M_rcsrt:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(251, <<(encode_min_int(8, encode_flags(M_flags, ['RCSRT','MOED','NORD','_','_','_',
+                                          '_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#packet_rate_status_report{
 		       group = M_group}, Acc) ->
@@ -5439,32 +4143,25 @@ encode_v1_element(#s_nssai{
 		      M_sd:24/integer>>, Acc);
 
 encode_v1_element(#ip_version{
-		       v6 = M_v6,
-		       v4 = M_v4}, Acc) ->
-    encode_tlv(258, <<0:6,
-		      M_v6:1/integer,
-		      M_v4:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(258, <<(encode_min_int(8, encode_flags(M_flags, ['V4','V6','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#pfcpasreq_flags{
-		       uupsi = M_uupsi}, Acc) ->
-    encode_tlv(259, <<0:7,
-		      M_uupsi:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(259, <<(encode_min_int(8, encode_flags(M_flags, ['UUPSI','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#data_status{
-		       buff = M_buff,
-		       drop = M_drop}, Acc) ->
-    encode_tlv(260, <<0:6,
-		      M_buff:1/integer,
-		      M_drop:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(260, <<(encode_min_int(8, encode_flags(M_flags, ['DROP','BUFF','_','_','_','_','_',
+                                          '_']), little))/binary>>, Acc);
 
 encode_v1_element(#provide_rds_configuration_information{
 		       group = M_group}, Acc) ->
     encode_tlv(261, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
 encode_v1_element(#rds_configuration_information{
-		       rds = M_rds}, Acc) ->
-    encode_tlv(262, <<0:7,
-		      M_rds:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(262, <<(encode_min_int(8, encode_flags(M_flags, ['RDS','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#query_packet_rate_status_ie_smreq{
 		       group = M_group}, Acc) ->
@@ -5475,9 +4172,8 @@ encode_v1_element(#packet_rate_status_report_ie_smresp{
     encode_tlv(264, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
 encode_v1_element(#mptcp_applicable_indication{
-		       mai = M_mai}, Acc) ->
-    encode_tlv(265, <<0:7,
-		      M_mai:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv(265, <<(encode_min_int(8, encode_flags(M_flags, ['MAI','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#bridge_management_information_container{
 		       value = M_value}, Acc) ->
@@ -5503,41 +4199,21 @@ encode_v1_element(#transport_delay_reporting{
     encode_tlv(271, <<(encode_v1_grouped(M_group))/binary>>, Acc);
 
 encode_v1_element(#bbf_up_function_features{
-		       nat_up = M_nat_up,
-		       nat_cp = M_nat_cp,
-		       lcp_keepalive_offload = M_lcp_keepalive_offload,
-		       lns = M_lns,
-		       lac = M_lac,
-		       ipoe = M_ipoe,
-		       pppoe = M_pppoe}, Acc) ->
-    encode_tlv({3561,0}, <<0:1,
-			   M_nat_up:1/integer,
-			   M_nat_cp:1/integer,
-			   M_lcp_keepalive_offload:1/integer,
-			   M_lns:1/integer,
-			   M_lac:1/integer,
-			   M_ipoe:1/integer,
-			   M_pppoe:1/integer,
-			   0:8,
-			   0:16>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv({3561,0}, <<(encode_min_int(32, encode_flags(M_flags, ['PPPoE','IPoE','LAC','LNS',
+                                           'LCP keepalive offload','NAT-CP',
+                                           'NAT-UP','_']), little))/binary>>, Acc);
 
 encode_v1_element(#logical_port{
 		       port = M_port}, Acc) ->
     encode_tlv({3561,1}, <<M_port/binary>>, Acc);
 
 encode_v1_element(#bbf_outer_header_creation{
-		       cpr_nsh = M_cpr_nsh,
-		       traffic_endpoint = M_traffic_endpoint,
-		       l2tp = M_l2tp,
-		       ppp = M_ppp,
+		       flags = M_flags,
 		       tunnel_id = M_tunnel_id,
 		       session_id = M_session_id}, Acc) ->
-    encode_tlv({3561,2}, <<0:4,
-			   M_cpr_nsh:1/integer,
-			   M_traffic_endpoint:1/integer,
-			   M_l2tp:1/integer,
-			   M_ppp:1/integer,
-			   0:8,
+    encode_tlv({3561,2}, <<(encode_min_int(16, encode_flags(M_flags, ['PPP','L2TP','Traffic-Endpoint',
+                                           'CPR-NSH','_','_','_','_']), little))/binary,
 			   M_tunnel_id:16/integer,
 			   M_session_id:16/integer>>, Acc);
 
@@ -5576,9 +4252,8 @@ encode_v1_element(#l2tp_session_id{
     encode_tlv({3561,10}, <<M_id:16/integer>>, Acc);
 
 encode_v1_element(#l2tp_type{
-		       type = M_type}, Acc) ->
-    encode_tlv({3561,11}, <<0:7,
-			    M_type:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv({3561,11}, <<(encode_min_int(8, encode_flags(M_flags, [type,'_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#ppp_lcp_connectivity{
 		       group = M_group}, Acc) ->
@@ -5593,9 +4268,8 @@ encode_v1_element(#bbf_nat_outside_address{
     encode_tlv({3561,14}, <<M_ipv4:4/bytes>>, Acc);
 
 encode_v1_element(#bbf_apply_action{
-		       nat = M_nat}, Acc) ->
-    encode_tlv({3561,15}, <<0:7,
-			    M_nat:1/integer>>, Acc);
+		       flags = M_flags}, Acc) ->
+    encode_tlv({3561,15}, <<(encode_min_int(8, encode_flags(M_flags, ['NAT','_','_','_','_','_','_','_']), little))/binary>>, Acc);
 
 encode_v1_element(#bbf_nat_external_port_range{} = IE, Acc) ->
     encode_tlv({3561,16}, encode_bbf_nat_external_port_range(IE), Acc);
@@ -6584,40 +5258,40 @@ v1_msg_defs() ->
 			    tp_file_name => {'O',tp_file_name},
 			    tp_line_number => {'O',tp_line_number}}}},
 	    session_modification_request =>
-		#{trace_information => {'O',trace_information},
-		  create_far =>
+		#{create_traffic_endpoint =>
 		      {'C',
-			  #{apply_action => {'M',apply_action},
-			    bar_id => {'O',bar_id},
-			    duplicating_parameters =>
-				{'C',
-				    #{destination_interface => {'M',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      outer_header_creation => {'C',outer_header_creation},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}},
-			    far_id => {'M',far_id},
-			    forwarding_parameters =>
-				{'C',
-				    #{bbf_apply_action => {'O',bbf_apply_action},
-				      bbf_nat_port_block => {'O',bbf_nat_port_block},
-				      destination_interface => {'M',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      header_enrichment => {'O',header_enrichment},
-				      network_instance => {'O',network_instance},
-				      outer_header_creation => {'C',outer_header_creation},
-				      proxying => {'C',proxying},
-				      redirect_information => {'C',redirect_information},
-				      tgpp_interface_type => {'O',tgpp_interface_type},
-				      traffic_endpoint_id => {'C',traffic_endpoint_id},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}},
+			  #{ethernet_pdu_session_information =>
+				{'O',ethernet_pdu_session_information},
+			    f_teid => {'O',f_teid},
+			    framed_ipv6_route => {'O',framed_ipv6_route},
+			    framed_route => {'O',framed_route},
+			    framed_routing => {'O',framed_routing},
+			    network_instance => {'O',network_instance},
+			    qfi => {'C',qfi},
 			    redundant_transmission_parameters =>
-				{'C',
+				{'O',
 				    #{f_teid => {'M',f_teid},
-				      network_instance => {'C',network_instance}}}}},
-		  remove_traffic_endpoint =>
-		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
+				      network_instance => {'C',network_instance}}},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'O',ue_ip_address}}},
+		  create_qer =>
+		      {'C',
+			  #{averaging_window => {'O',averaging_window},
+			    gate_status => {'M',gate_status},
+			    gbr => {'C',gbr},
+			    mbr => {'C',mbr},
+			    packet_rate_status => {'C',packet_rate_status},
+			    paging_policy_indicator => {'C',paging_policy_indicator},
+			    qer_control_indications => {'C',qer_control_indications},
+			    qer_correlation_id => {'C',qer_correlation_id},
+			    qer_id => {'M',qer_id},
+			    qfi => {'C',qfi},
+			    rqi => {'C',rqi}}},
+		  create_bar =>
+		      {'C',
+			  #{bar_id => {'M',bar_id},
+			    suggested_buffering_packets_count =>
+				{'C',suggested_buffering_packets_count}}},
 		  update_mar =>
 		      {'C',
 			  #{mar_id => {'M',mar_id},
@@ -6647,8 +5321,7 @@ v1_msg_defs() ->
 				      priority => {'C',priority},
 				      urr_id => {'C',urr_id},
 				      weight => {'C',weight}}}}},
-		  remove_qer => {'C',#{qer_id => {'M',qer_id}}},
-		  update_srr =>
+		  create_srr =>
 		      {'C',
 			  #{access_availability_control_information =>
 				{'C',
@@ -6665,71 +5338,94 @@ v1_msg_defs() ->
 				      requested_qos_monitoring =>
 					  {'M',requested_qos_monitoring}}},
 			    srr_id => {'M',srr_id}}},
-		  create_traffic_endpoint =>
+		  remove_bar => {'C',#{bar_id => {'M',bar_id}}},
+		  tp_trace_information =>
+		      {'O',
+			  #{tp_trace_parent => {'O',tp_trace_parent},
+			    tp_trace_state => {'O',tp_trace_state}}},
+		  update_urr =>
 		      {'C',
-			  #{ethernet_pdu_session_information =>
-				{'O',ethernet_pdu_session_information},
-			    f_teid => {'O',f_teid},
-			    framed_ipv6_route => {'O',framed_ipv6_route},
-			    framed_route => {'O',framed_route},
-			    framed_routing => {'O',framed_routing},
-			    network_instance => {'O',network_instance},
-			    qfi => {'C',qfi},
-			    redundant_transmission_parameters =>
+			  #{additional_monitoring_time =>
 				{'O',
-				    #{f_teid => {'M',f_teid},
-				      network_instance => {'C',network_instance}}},
-			    traffic_endpoint_id => {'M',traffic_endpoint_id},
-			    ue_ip_address => {'O',ue_ip_address}}},
-		  update_traffic_endpoint =>
+				    #{event_quota => {'O',event_quota},
+				      event_threshold => {'O',event_threshold},
+				      monitoring_time => {'M',monitoring_time},
+				      subsequent_time_quota => {'O',subsequent_time_quota},
+				      subsequent_time_threshold =>
+					  {'O',subsequent_time_threshold},
+				      subsequent_volume_quota =>
+					  {'O',subsequent_volume_quota},
+				      subsequent_volume_threshold =>
+					  {'O',subsequent_volume_threshold}}},
+			    dropped_dl_traffic_threshold =>
+				{'C',dropped_dl_traffic_threshold},
+			    ethernet_inactivity_timer => {'C',ethernet_inactivity_timer},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id => {'C',linked_urr_id},
+			    measurement_information => {'C',measurement_information},
+			    measurement_method => {'C',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'C',monitoring_time},
+			    number_of_reports => {'O',number_of_reports},
+			    quota_holding_time => {'C',quota_holding_time},
+			    quota_validity_time => {'C',quota_validity_time},
+			    reporting_triggers => {'C',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'C',subsequent_time_quota},
+			    subsequent_time_threshold => {'C',subsequent_time_threshold},
+			    subsequent_volume_quota => {'C',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'C',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
+		  user_plane_inactivity_timer => {'C',user_plane_inactivity_timer},
+		  create_urr =>
 		      {'C',
-			  #{f_teid => {'C',f_teid},
-			    framed_ipv6_route => {'C',framed_ipv6_route},
-			    framed_route => {'C',framed_route},
-			    framed_routing => {'C',framed_routing},
-			    network_instance => {'O',network_instance},
-			    qfi => {'C',qfi},
-			    redundant_transmission_parameters =>
+			  #{additional_monitoring_time =>
 				{'O',
-				    #{f_teid => {'M',f_teid},
-				      network_instance => {'C',network_instance}}},
-			    tgpp_interface_type => {'C',tgpp_interface_type},
-			    traffic_endpoint_id => {'M',traffic_endpoint_id},
-			    ue_ip_address => {'C',ue_ip_address}}},
-		  create_mar =>
-		      {'C',
-			  #{mar_id => {'M',mar_id},
-			    non_tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'M',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}},
-			    steering_functionality => {'M',steering_functionality},
-			    steering_mode => {'M',steering_mode},
-			    tgpp_access_forwarding_action_information =>
-				{'C',
-				    #{far_id => {'M',far_id},
-				      priority => {'C',priority},
-				      urr_id => {'C',urr_id},
-				      weight => {'C',weight}}}}},
-		  create_qer =>
-		      {'C',
-			  #{averaging_window => {'O',averaging_window},
-			    gate_status => {'M',gate_status},
-			    gbr => {'C',gbr},
-			    mbr => {'C',mbr},
-			    packet_rate_status => {'C',packet_rate_status},
-			    paging_policy_indicator => {'C',paging_policy_indicator},
-			    qer_control_indications => {'C',qer_control_indications},
-			    qer_correlation_id => {'C',qer_correlation_id},
-			    qer_id => {'M',qer_id},
-			    qfi => {'C',qfi},
-			    rqi => {'C',rqi}}},
-		  port_management_information_for_tsc =>
-		      {'C',
-			  #{port_management_information_containerd =>
-				{'M',port_management_information_containerd}}},
+				    #{event_quota => {'O',event_quota},
+				      event_threshold => {'O',event_threshold},
+				      monitoring_time => {'M',monitoring_time},
+				      subsequent_time_quota => {'O',subsequent_time_quota},
+				      subsequent_time_threshold =>
+					  {'O',subsequent_time_threshold},
+				      subsequent_volume_quota =>
+					  {'O',subsequent_volume_quota},
+				      subsequent_volume_threshold =>
+					  {'O',subsequent_volume_threshold}}},
+			    dropped_dl_traffic_threshold =>
+				{'C',dropped_dl_traffic_threshold},
+			    ethernet_inactivity_timer => {'C',ethernet_inactivity_timer},
+			    event_quota => {'C',event_quota},
+			    event_threshold => {'C',event_threshold},
+			    far_id => {'C',far_id},
+			    inactivity_detection_time => {'C',inactivity_detection_time},
+			    linked_urr_id => {'C',linked_urr_id},
+			    measurement_information => {'C',measurement_information},
+			    measurement_method => {'M',measurement_method},
+			    measurement_period => {'C',measurement_period},
+			    monitoring_time => {'O',monitoring_time},
+			    number_of_reports => {'O',number_of_reports},
+			    quota_holding_time => {'C',quota_holding_time},
+			    quota_validity_time => {'C',quota_validity_time},
+			    reporting_triggers => {'M',reporting_triggers},
+			    subsequent_event_quota => {'O',subsequent_event_quota},
+			    subsequent_event_threshold => {'O',subsequent_event_threshold},
+			    subsequent_time_quota => {'O',subsequent_time_quota},
+			    subsequent_time_threshold => {'O',subsequent_time_threshold},
+			    subsequent_volume_quota => {'O',subsequent_volume_quota},
+			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
+			    time_quota => {'C',time_quota},
+			    time_threshold => {'C',time_threshold},
+			    urr_id => {'M',urr_id},
+			    volume_quota => {'C',volume_quota},
+			    volume_threshold => {'C',volume_threshold}}},
 		  update_bar =>
 		      {'C',
 			  #{bar_id => {'M',bar_id},
@@ -6737,39 +5433,10 @@ v1_msg_defs() ->
 				{'C',downlink_data_notification_delay},
 			    suggested_buffering_packets_count =>
 				{'C',suggested_buffering_packets_count}}},
+		  remove_srr => {'C',#{srr_id => {'M',srr_id}}},
+		  remove_far => {'C',#{far_id => {'M',far_id}}},
+		  query_urr_reference => {'O',query_urr_reference},
 		  access_availability_information => {'O',access_availability_information},
-		  update_far =>
-		      {'C',
-			  #{apply_action => {'C',apply_action},
-			    bar_id => {'C',bar_id},
-			    far_id => {'M',far_id},
-			    redundant_transmission_parameters =>
-				{'C',
-				    #{f_teid => {'M',f_teid},
-				      network_instance => {'O',network_instance}}},
-			    tp_ipfix_policy => {'O',tp_ipfix_policy},
-			    update_duplicating_parameters =>
-				{'C',
-				    #{destination_interface => {'C',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      outer_header_creation => {'C',outer_header_creation},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}},
-			    update_forwarding_parameters =>
-				{'C',
-				    #{bbf_apply_action => {'O',bbf_apply_action},
-				      bbf_nat_port_block => {'O',bbf_nat_port_block},
-				      destination_interface => {'C',destination_interface},
-				      forwarding_policy => {'C',forwarding_policy},
-				      header_enrichment => {'C',header_enrichment},
-				      network_instance => {'C',network_instance},
-				      outer_header_creation => {'C',outer_header_creation},
-				      redirect_information => {'C',redirect_information},
-				      sxsmreq_flags => {'C',sxsmreq_flags},
-				      tgpp_interface_type => {'C',tgpp_interface_type},
-				      traffic_endpoint_id => {'C',traffic_endpoint_id},
-				      transport_level_marking =>
-					  {'C',transport_level_marking}}}}},
 		  create_pdr =>
 		      {'C',
 			  #{activate_predefined_rules => {'C',activate_predefined_rules},
@@ -6826,15 +5493,7 @@ v1_msg_defs() ->
 			    qer_id => {'C',qer_id},
 			    ue_ip_address_pool_identity => {'O',ue_ip_address_pool_identity},
 			    urr_id => {'C',urr_id}}},
-		  create_bar =>
-		      {'C',
-			  #{bar_id => {'M',bar_id},
-			    suggested_buffering_packets_count =>
-				{'C',suggested_buffering_packets_count}}},
-		  node_id => {'C',node_id},
-		  user_plane_inactivity_timer => {'C',user_plane_inactivity_timer},
-		  sxsmreq_flags => {'C',sxsmreq_flags},
-		  create_srr =>
+		  update_srr =>
 		      {'C',
 			  #{access_availability_control_information =>
 				{'C',
@@ -6851,52 +5510,58 @@ v1_msg_defs() ->
 				      requested_qos_monitoring =>
 					  {'M',requested_qos_monitoring}}},
 			    srr_id => {'M',srr_id}}},
-		  remove_pdr => {'C',#{pdr_id => {'M',pdr_id}}},
-		  remove_srr => {'C',#{srr_id => {'M',srr_id}}},
-		  ethernet_context_information =>
-		      {'C',#{mac_addressed_detected => {'M',mac_addressed_detected}}},
-		  remove_urr => {'C',#{urr_id => {'M',urr_id}}},
-		  update_urr =>
+		  trace_information => {'O',trace_information},
+		  update_far =>
 		      {'C',
-			  #{additional_monitoring_time =>
-				{'O',
-				    #{event_quota => {'O',event_quota},
-				      event_threshold => {'O',event_threshold},
-				      monitoring_time => {'M',monitoring_time},
-				      subsequent_time_quota => {'O',subsequent_time_quota},
-				      subsequent_time_threshold =>
-					  {'O',subsequent_time_threshold},
-				      subsequent_volume_quota =>
-					  {'O',subsequent_volume_quota},
-				      subsequent_volume_threshold =>
-					  {'O',subsequent_volume_threshold}}},
-			    dropped_dl_traffic_threshold =>
-				{'C',dropped_dl_traffic_threshold},
-			    ethernet_inactivity_timer => {'C',ethernet_inactivity_timer},
-			    event_quota => {'C',event_quota},
-			    event_threshold => {'C',event_threshold},
-			    far_id => {'C',far_id},
-			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id => {'C',linked_urr_id},
-			    measurement_information => {'C',measurement_information},
-			    measurement_method => {'C',measurement_method},
-			    measurement_period => {'C',measurement_period},
-			    monitoring_time => {'C',monitoring_time},
-			    number_of_reports => {'O',number_of_reports},
-			    quota_holding_time => {'C',quota_holding_time},
-			    quota_validity_time => {'C',quota_validity_time},
-			    reporting_triggers => {'C',reporting_triggers},
-			    subsequent_event_quota => {'O',subsequent_event_quota},
-			    subsequent_event_threshold => {'O',subsequent_event_threshold},
-			    subsequent_time_quota => {'C',subsequent_time_quota},
-			    subsequent_time_threshold => {'C',subsequent_time_threshold},
-			    subsequent_volume_quota => {'C',subsequent_volume_quota},
-			    subsequent_volume_threshold => {'C',subsequent_volume_threshold},
-			    time_quota => {'C',time_quota},
-			    time_threshold => {'C',time_threshold},
-			    urr_id => {'M',urr_id},
-			    volume_quota => {'C',volume_quota},
-			    volume_threshold => {'C',volume_threshold}}},
+			  #{apply_action => {'C',apply_action},
+			    bar_id => {'C',bar_id},
+			    far_id => {'M',far_id},
+			    redundant_transmission_parameters =>
+				{'C',
+				    #{f_teid => {'M',f_teid},
+				      network_instance => {'O',network_instance}}},
+			    tp_ipfix_policy => {'O',tp_ipfix_policy},
+			    update_duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'C',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    update_forwarding_parameters =>
+				{'C',
+				    #{bbf_apply_action => {'O',bbf_apply_action},
+				      bbf_nat_port_block => {'O',bbf_nat_port_block},
+				      destination_interface => {'C',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'C',header_enrichment},
+				      network_instance => {'C',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      redirect_information => {'C',redirect_information},
+				      sxsmreq_flags => {'C',sxsmreq_flags},
+				      tgpp_interface_type => {'C',tgpp_interface_type},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}}}},
+		  create_mar =>
+		      {'C',
+			  #{mar_id => {'M',mar_id},
+			    non_tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'M',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}},
+			    steering_functionality => {'M',steering_functionality},
+			    steering_mode => {'M',steering_mode},
+			    tgpp_access_forwarding_action_information =>
+				{'C',
+				    #{far_id => {'M',far_id},
+				      priority => {'C',priority},
+				      urr_id => {'C',urr_id},
+				      weight => {'C',weight}}}}},
+		  remove_urr => {'C',#{urr_id => {'M',urr_id}}},
+		  f_seid => {'C',f_seid},
 		  update_pdr =>
 		      {'C',
 			  #{activate_predefined_rules => {'C',activate_predefined_rules},
@@ -6939,61 +5604,72 @@ v1_msg_defs() ->
 			    precedence => {'C',precedence},
 			    qer_id => {'C',qer_id},
 			    urr_id => {'C',urr_id}}},
-		  remove_mar => {'C',#{mar_id => {'M',mar_id}}},
-		  query_packet_rate_status_ie_smreq => {'C',#{qer_id => {'M',qer_id}}},
-		  query_urr => {'C',#{urr_id => {'M',urr_id}}},
-		  f_seid => {'C',f_seid},
-		  tp_trace_information =>
-		      {'O',
-			  #{tp_trace_parent => {'O',tp_trace_parent},
-			    tp_trace_state => {'O',tp_trace_state}}},
-		  create_urr =>
-		      {'C',
-			  #{additional_monitoring_time =>
-				{'O',
-				    #{event_quota => {'O',event_quota},
-				      event_threshold => {'O',event_threshold},
-				      monitoring_time => {'M',monitoring_time},
-				      subsequent_time_quota => {'O',subsequent_time_quota},
-				      subsequent_time_threshold =>
-					  {'O',subsequent_time_threshold},
-				      subsequent_volume_quota =>
-					  {'O',subsequent_volume_quota},
-				      subsequent_volume_threshold =>
-					  {'O',subsequent_volume_threshold}}},
-			    dropped_dl_traffic_threshold =>
-				{'C',dropped_dl_traffic_threshold},
-			    ethernet_inactivity_timer => {'C',ethernet_inactivity_timer},
-			    event_quota => {'C',event_quota},
-			    event_threshold => {'C',event_threshold},
-			    far_id => {'C',far_id},
-			    inactivity_detection_time => {'C',inactivity_detection_time},
-			    linked_urr_id => {'C',linked_urr_id},
-			    measurement_information => {'C',measurement_information},
-			    measurement_method => {'M',measurement_method},
-			    measurement_period => {'C',measurement_period},
-			    monitoring_time => {'O',monitoring_time},
-			    number_of_reports => {'O',number_of_reports},
-			    quota_holding_time => {'C',quota_holding_time},
-			    quota_validity_time => {'C',quota_validity_time},
-			    reporting_triggers => {'M',reporting_triggers},
-			    subsequent_event_quota => {'O',subsequent_event_quota},
-			    subsequent_event_threshold => {'O',subsequent_event_threshold},
-			    subsequent_time_quota => {'O',subsequent_time_quota},
-			    subsequent_time_threshold => {'O',subsequent_time_threshold},
-			    subsequent_volume_quota => {'O',subsequent_volume_quota},
-			    subsequent_volume_threshold => {'O',subsequent_volume_threshold},
-			    time_quota => {'C',time_quota},
-			    time_threshold => {'C',time_threshold},
-			    urr_id => {'M',urr_id},
-			    volume_quota => {'C',volume_quota},
-			    volume_threshold => {'C',volume_threshold}}},
+		  remove_pdr => {'C',#{pdr_id => {'M',pdr_id}}},
+		  remove_traffic_endpoint =>
+		      {'C',#{traffic_endpoint_id => {'M',traffic_endpoint_id}}},
 		  provide_atsss_control_information =>
 		      {'C',
 			  #{atsss_ll_control_information =>
 				{'C',atsss_ll_control_information},
 			    mptcp_control_information => {'C',mptcp_control_information},
 			    pmf_control_information => {'C',pmf_control_information}}},
+		  remove_mar => {'C',#{mar_id => {'M',mar_id}}},
+		  sxsmreq_flags => {'C',sxsmreq_flags},
+		  port_management_information_for_tsc =>
+		      {'C',
+			  #{port_management_information_containerd =>
+				{'M',port_management_information_containerd}}},
+		  query_packet_rate_status_ie_smreq => {'C',#{qer_id => {'M',qer_id}}},
+		  create_far =>
+		      {'C',
+			  #{apply_action => {'M',apply_action},
+			    bar_id => {'O',bar_id},
+			    duplicating_parameters =>
+				{'C',
+				    #{destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      outer_header_creation => {'C',outer_header_creation},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    far_id => {'M',far_id},
+			    forwarding_parameters =>
+				{'C',
+				    #{bbf_apply_action => {'O',bbf_apply_action},
+				      bbf_nat_port_block => {'O',bbf_nat_port_block},
+				      destination_interface => {'M',destination_interface},
+				      forwarding_policy => {'C',forwarding_policy},
+				      header_enrichment => {'O',header_enrichment},
+				      network_instance => {'O',network_instance},
+				      outer_header_creation => {'C',outer_header_creation},
+				      proxying => {'C',proxying},
+				      redirect_information => {'C',redirect_information},
+				      tgpp_interface_type => {'O',tgpp_interface_type},
+				      traffic_endpoint_id => {'C',traffic_endpoint_id},
+				      transport_level_marking =>
+					  {'C',transport_level_marking}}},
+			    redundant_transmission_parameters =>
+				{'C',
+				    #{f_teid => {'M',f_teid},
+				      network_instance => {'C',network_instance}}}}},
+		  node_id => {'C',node_id},
+		  ethernet_context_information =>
+		      {'C',#{mac_addressed_detected => {'M',mac_addressed_detected}}},
+		  update_traffic_endpoint =>
+		      {'C',
+			  #{f_teid => {'C',f_teid},
+			    framed_ipv6_route => {'C',framed_ipv6_route},
+			    framed_route => {'C',framed_route},
+			    framed_routing => {'C',framed_routing},
+			    network_instance => {'O',network_instance},
+			    qfi => {'C',qfi},
+			    redundant_transmission_parameters =>
+				{'O',
+				    #{f_teid => {'M',f_teid},
+				      network_instance => {'C',network_instance}}},
+			    tgpp_interface_type => {'C',tgpp_interface_type},
+			    traffic_endpoint_id => {'M',traffic_endpoint_id},
+			    ue_ip_address => {'C',ue_ip_address}}},
+		  remove_qer => {'C',#{qer_id => {'M',qer_id}}},
 		  update_qer =>
 		      {'C',
 			  #{averaging_window => {'O',averaging_window},
@@ -7006,9 +5682,7 @@ v1_msg_defs() ->
 			    qer_id => {'M',qer_id},
 			    qfi => {'C',qfi},
 			    rqi => {'C',rqi}}},
-		  query_urr_reference => {'O',query_urr_reference},
-		  remove_far => {'C',#{far_id => {'M',far_id}}},
-		  remove_bar => {'C',#{bar_id => {'M',bar_id}}}},
+		  query_urr => {'C',#{urr_id => {'M',urr_id}}}},
 	    session_modification_response =>
 		#{additional_usage_reports_information =>
 		      {'C',additional_usage_reports_information},

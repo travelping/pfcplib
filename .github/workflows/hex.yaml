@@ -10,7 +10,7 @@ jobs:
   publish:
     runs-on: ubuntu-20.04
     container:
-      image: erlang:23.2.5.0-alpine
+      image: erlang:24.3-alpine
     steps:
     - name: Prepare
       run: |
