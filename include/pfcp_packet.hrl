@@ -265,8 +265,7 @@
 	 }).
 
 -record(ppp_protocol, {
-	  control = 0,
-	  data = 0,
+	  flags = #{},
 	  protocol = undefined
 	 }).
 
@@ -425,23 +424,7 @@
 }).
 
 -record(reporting_triggers, {
-	  linked_usage_reporting = 0,
-	  dropped_dl_traffic_threshold = 0,
-	  stop_of_traffic = 0,
-	  start_of_traffic = 0,
-	  quota_holding_time = 0,
-	  time_threshold = 0,
-	  volume_threshold = 0,
-	  periodic_reporting = 0,
-	  quota_validity_time = 0,
-	  ip_multicast_join_leave = 0,
-	  event_quota = 0,
-	  event_threshold = 0,
-	  mac_addresses_reporting = 0,
-	  envelope_closure = 0,
-	  time_quota = 0,
-	  volume_quota = 0,
-	  report_the_end_marker_reception
+	  flags = #{}
 }).
 
 -record(redirect_information, {
@@ -451,13 +434,7 @@
 }).
 
 -record(report_type, {
-	  uisr = 0,
-	  sesr = 0,
-	  pmir = 0,
-	  upir = 0,
-	  erir = 0,
-	  usar = 0,
-	  dldr = 0
+	  flags = #{}
 }).
 
 -record(offending_ie, {
@@ -473,61 +450,11 @@
 }).
 
 -record(up_function_features, {
-	  treu = 0,
-	  heeu = 0,
-	  pfdm = 0,
-	  ftup = 0,
-	  trst = 0,
-	  dlbd = 0,
-	  ddnd = 0,
-	  bucp = 0,
-	  epfar,
-	  pfde,
-	  frrt,
-	  trace,
-	  quoac,
-	  udbc,
-	  pdiu,
-	  empu,
-	  gcom,
-	  bundl,
-	  mte,
-	  mnop,
-	  sset,
-	  ueip,
-	  adpdp,
-	  dpdra,
-	  mptcp,
-	  tscu,
-	  ip6pl,
-	  iptv,
-	  norp,
-	  vtime,
-	  rttl,
-	  mpas,
-	  rds,
-	  ddds,
-	  ethar,
-	  ciot,
-	  mt_edt,
-	  gpqm,
-	  qfqm,
-	  atsss_ll,
-	  rttwp
+	  flags = #{}
 }).
 
 -record(apply_action, {
-	  dfrt = 0,
-	  ipmd = 0,
-	  ipma = 0,
-	  dupl = 0,
-	  nocp = 0,
-	  buff = 0,
-	  forw = 0,
-	  drop = 0,
-	  ddpn,
-	  bdpn,
-	  edrt
+	  flags = #{}
 }).
 
 -record(downlink_data_notification_delay, {
@@ -540,13 +467,11 @@
 }).
 
 -record(sxsmreq_flags, {
-	  qaurr = 0,
-	  sndem = 0,
-	  drobu = 0
+	  flags = #{}
 }).
 
 -record(sxsrrsp_flags, {
-	  drobu = 0
+	  flags = #{}
 }).
 
 -record(load_control_information, {
@@ -583,33 +508,11 @@
 }).
 
 -record(measurement_method, {
-	  event = 0,
-	  volum = 0,
-	  durat = 0
+	  flags = #{}
 }).
 
 -record(usage_report_trigger, {
-	  immer = 0,
-	  droth = 0,
-	  stopt = 0,
-	  start = 0,
-	  quhti = 0,
-	  timth = 0,
-	  volth = 0,
-	  perio = 0,
-	  eveth = 0,
-	  macar = 0,
-	  envcl = 0,
-	  monit = 0,
-	  termr = 0,
-	  liusa = 0,
-	  timqu = 0,
-	  volqu = 0,
-	  emrre,
-	  quvti,
-	  ipmjl,
-	  tebur,
-	  evequ
+	  flags = #{}
 }).
 
 -record(measurement_period, {
@@ -693,21 +596,11 @@
 }).
 
 -record(cp_function_features, {
-	  uiaur = 0,
-	  ardr = 0,
-	  mpas = 0,
-	  bundl = 0,
-	  sset = 0,
-	  epfar = 0,
-	  ovrl = 0,
-	  load = 0
+	  flags = #{}
 }).
 
 -record(usage_information, {
-	  ube = 0,
-	  uae = 0,
-	  aft = 0,
-	  bef = 0
+	  flags = #{}
 }).
 
 -record(application_instance_id, {
@@ -738,18 +631,11 @@
 }).
 
 -record(measurement_information, {
-	  mnop = 0,
-	  istm = 0,
-	  radi = 0,
-	  inam = 0,
-	  mbqe = 0
+	  flags = #{}
 }).
 
 -record(node_report_type, {
-	  gpqr = 0,
-	  ckdr = 0,
-	  uprr = 0,
-	  upfr = 0
+	  flags = #{}
 }).
 
 -record(user_plane_path_failure_report, {
@@ -781,12 +667,11 @@
 }).
 
 -record(oci_flags, {
-	  aoci = 0
+	  flags = #{}
 }).
 
 -record(sx_association_release_request, {
-	  urss = 0,
-	  sarr = 0
+	  flags = #{}
 }).
 
 -record(graceful_release_period, {
@@ -825,7 +710,7 @@
 }).
 
 -record(rqi, {
-	  rqi = 0
+	  flags = #{}
 }).
 
 -record(qfi, {
@@ -870,8 +755,7 @@
 }).
 
 -record(proxying, {
-	  ins = 0,
-	  arp = 0
+	  flags = #{}
 }).
 
 -record(ethernet_filter_id, {
@@ -879,7 +763,7 @@
 }).
 
 -record(ethernet_filter_properties, {
-	  bide = 0
+	  flags = #{}
 }).
 
 -record(suggested_buffering_packets_count, {
@@ -887,7 +771,7 @@
 }).
 
 -record(ethernet_pdu_session_information, {
-	  ethi = 0
+	  flags = #{}
 }).
 
 -record(ethernet_traffic_information, {
@@ -961,11 +845,11 @@
 }).
 
 -record(pfcpsrreq_flags, {
-	  psdbu = 0
+	  flags = #{}
 }).
 
 -record(pfcpaureq_flags, {
-	  parps = 0
+	  flags = #{}
 }).
 
 -record(activation_time, {
@@ -1029,10 +913,7 @@
 }).
 
 -record(packet_replication_and_detection_carry_on_information, {
-	  dcaroni = 0,
-	  prin6i = 0,
-	  prin19i = 0,
-	  priueai = 0
+	  flags = #{}
 }).
 
 -record(smf_set_id, {
@@ -1052,11 +933,11 @@
 }).
 
 -record(pfcpasrsp_flags, {
-	  psrei = 0
+	  flags = #{}
 }).
 
 -record(pfcpsereq_flags, {
-	  resti = 0
+	  flags = #{}
 }).
 
 -record(user_plane_path_recovery_report, {
@@ -1076,7 +957,7 @@
 }).
 
 -record(create_bridge_info_for_tsc, {
-	  bii = 0
+	  flags = #{}
 }).
 
 -record(created_bridge_info_for_tsc, {
@@ -1112,8 +993,7 @@
 }).
 
 -record(requested_clock_drift_information, {
-	  rrcr = 0,
-	  rrto = 0
+	  flags = #{}
 }).
 
 -record(clock_drift_report, {
@@ -1165,7 +1045,7 @@
 }).
 
 -record(requested_access_availability_information, {
-	  rrca = 0
+	  flags = #{}
 }).
 
 -record(access_availability_report, {
@@ -1186,15 +1066,15 @@
 }).
 
 -record(mptcp_control_information, {
-	  tci = 0
+	  flags = #{}
 }).
 
 -record(atsss_ll_control_information, {
-	  lli = 0
+	  flags = #{}
 }).
 
 -record(pmf_control_information, {
-	  pmfi = 0
+	  flags = #{}
 }).
 
 -record(mptcp_parameters, {
@@ -1210,7 +1090,7 @@
 }).
 
 -record(atsss_ll_information, {
-	  lli = 0
+	  flags = #{}
 }).
 
 -record(data_network_access_identifier, {
@@ -1234,9 +1114,7 @@
 }).
 
 -record(qos_report_trigger, {
-	  ire = 0,
-	  thr = 0,
-	  per = 0
+	  flags = #{}
 }).
 
 -record(gtp_u_path_qos_control_information, {
@@ -1252,8 +1130,7 @@
 }).
 
 -record(gtp_u_path_interface_type, {
-	  n3 = 0,
-	  n9 = 0
+	  flags = #{}
 }).
 
 -record(qos_monitoring_per_qos_flow_control_information, {
@@ -1261,15 +1138,11 @@
 }).
 
 -record(requested_qos_monitoring, {
-	  rp = 0,
-	  ul = 0,
-	  dl = 0
+	  flags = #{}
 }).
 
 -record(reporting_frequency, {
-	  sesrl = 0,
-	  perio = 0,
-	  evett = 0
+	  flags = #{}
 }).
 
 -record(minimum_wait_time, {
@@ -1281,7 +1154,7 @@
 }).
 
 -record(mt_edt_control_information, {
-	  rdsi = 0
+	  flags = #{}
 }).
 
 -record(dl_data_packets_size, {
@@ -1289,9 +1162,7 @@
 }).
 
 -record(qer_control_indications, {
-	  nord = 0,
-	  moed = 0,
-	  rcsrt = 0
+	  flags = #{}
 }).
 
 -record(packet_rate_status_report, {
@@ -1320,17 +1191,15 @@
 }).
 
 -record(ip_version, {
-	  v6 = 0,
-	  v4 = 0
+	  flags = #{}
 }).
 
 -record(pfcpasreq_flags, {
-	  uupsi = 0
+	  flags = #{}
 }).
 
 -record(data_status, {
-	  buff = 0,
-	  drop = 0
+	  flags = #{}
 }).
 
 -record(provide_rds_configuration_information, {
@@ -1338,7 +1207,7 @@
 }).
 
 -record(rds_configuration_information, {
-	  rds = 0
+	  flags = #{}
 }).
 
 -record(query_packet_rate_status_ie_smreq, {
@@ -1350,7 +1219,7 @@
 }).
 
 -record(mptcp_applicable_indication, {
-	  mai = 0
+	  flags = #{}
 }).
 
 -record(bridge_management_information_container, {
@@ -1374,13 +1243,7 @@
 }).
 
 -record(bbf_up_function_features, {
-	  nat_up = 0,
-	  nat_cp = 0,
-	  lcp_keepalive_offload = 0,
-	  lns = 0,
-	  lac = 0,
-	  ipoe = 0,
-	  pppoe = 0
+	  flags = #{}
 }).
 
 -record(logical_port, {
@@ -1388,10 +1251,7 @@
 }).
 
 -record(bbf_outer_header_creation, {
-	  cpr_nsh = 0,
-	  traffic_endpoint = 0,
-	  l2tp = 0,
-	  ppp = 0,
+	  flags = #{},
 	  tunnel_id = 0,
 	  session_id = 0
 }).
@@ -1423,7 +1283,7 @@
 }).
 
 -record(l2tp_type, {
-	  type = 0
+	  flags = #{}
 }).
 
 -record(ppp_lcp_connectivity, {
@@ -1439,7 +1299,7 @@
 }).
 
 -record(bbf_apply_action, {
-	  nat = 0
+	  flags = #{}
 }).
 
 -record(bbf_nat_port_block, {
