@@ -292,92 +292,8 @@
 
 %% -include("pfcp_packet_v1_gen.hrl").
 
--record(create_pdr, {
-	  group
-}).
-
--record(pdi, {
-	  group
-}).
-
--record(create_far, {
-	  group
-}).
-
--record(forwarding_parameters, {
-	  group
-}).
-
--record(duplicating_parameters, {
-	  group
-}).
-
--record(create_urr, {
-	  group
-}).
-
--record(create_qer, {
-	  group
-}).
-
--record(created_pdr, {
-	  group
-}).
-
--record(update_pdr, {
-	  group
-}).
-
--record(update_far, {
-	  group
-}).
-
--record(update_forwarding_parameters, {
-	  group
-}).
-
--record(update_bar_response, {
-	  group
-}).
-
--record(update_urr, {
-	  group
-}).
-
--record(update_qer, {
-	  group
-}).
-
--record(remove_pdr, {
-	  group
-}).
-
--record(remove_far, {
-	  group
-}).
-
--record(remove_urr, {
-	  group
-}).
-
--record(remove_qer, {
-	  group
-}).
-
--record(pfcp_cause, {
-	  cause = 'Reserved'
-}).
-
 -record(source_interface, {
 	  interface = 'Access'
-}).
-
--record(network_instance, {
-	  instance
-}).
-
--record(application_id, {
-	  id = <<>>
 }).
 
 -record(gate_status, {
@@ -423,22 +339,10 @@
 	  time = 0
 }).
 
--record(reporting_triggers, {
-	  flags = #{}
-}).
-
 -record(redirect_information, {
 	  type = 'IPv4',
 	  address = <<>>,
 	  other_address = <<>>
-}).
-
--record(report_type, {
-	  flags = #{}
-}).
-
--record(offending_ie, {
-	  type = 0
 }).
 
 -record(forwarding_policy, {
@@ -447,14 +351,6 @@
 
 -record(destination_interface, {
 	  interface = 'Access'
-}).
-
--record(up_function_features, {
-	  flags = #{}
-}).
-
--record(apply_action, {
-	  flags = #{}
 }).
 
 -record(downlink_data_notification_delay, {
@@ -466,30 +362,6 @@
 	  dl_buffer_value = 0
 }).
 
--record(sxsmreq_flags, {
-	  flags = #{}
-}).
-
--record(sxsrrsp_flags, {
-	  flags = #{}
-}).
-
--record(load_control_information, {
-	  group
-}).
-
--record(sequence_number, {
-	  number = 0
-}).
-
--record(metric, {
-	  metric = 0
-}).
-
--record(overload_control_information, {
-	  group
-}).
-
 -record(timer, {
 	  timer_unit = '2 seconds',
 	  timer_value = 0
@@ -499,32 +371,12 @@
 	  id = 0
 }).
 
--record(application_id_pfds, {
-	  group
-}).
-
--record(pfd_context, {
-	  group
-}).
-
--record(measurement_method, {
-	  flags = #{}
-}).
-
--record(usage_report_trigger, {
-	  flags = #{}
-}).
-
 -record(measurement_period, {
 	  period = 0
 }).
 
 -record(duration_measurement, {
 	  duration = 0
-}).
-
--record(application_detection_information, {
-	  group
 }).
 
 -record(time_of_first_packet, {
@@ -551,22 +403,6 @@
 	  time = 0
 }).
 
--record(query_urr, {
-	  group
-}).
-
--record(usage_report_smr, {
-	  group
-}).
-
--record(usage_report_sdr, {
-	  group
-}).
-
--record(usage_report_srr, {
-	  group
-}).
-
 -record(urr_id, {
 	  id = 0
 }).
@@ -575,36 +411,8 @@
 	  id = 0
 }).
 
--record(downlink_data_report, {
-	  group
-}).
-
--record(create_bar, {
-	  group
-}).
-
--record(update_bar_request, {
-	  group
-}).
-
--record(remove_bar, {
-	  group
-}).
-
 -record(bar_id, {
 	  id = 0
-}).
-
--record(cp_function_features, {
-	  flags = #{}
-}).
-
--record(usage_information, {
-	  flags = #{}
-}).
-
--record(application_instance_id, {
-	  id = <<>>
 }).
 
 -record(flow_information, {
@@ -626,52 +434,12 @@
 	  value = <<>>
 }).
 
--record(error_indication_report, {
-	  group
-}).
-
--record(measurement_information, {
-	  flags = #{}
-}).
-
--record(node_report_type, {
-	  flags = #{}
-}).
-
--record(user_plane_path_failure_report, {
-	  group
-}).
-
--record(ur_seqn, {
-	  number = 0
-}).
-
--record(update_duplicating_parameters, {
-	  group
-}).
-
--record(activate_predefined_rules, {
-	  name = <<>>
-}).
-
--record(deactivate_predefined_rules, {
-	  name = <<>>
-}).
-
 -record(far_id, {
 	  id = 0
 }).
 
 -record(qer_id, {
 	  id = 0
-}).
-
--record(oci_flags, {
-	  flags = #{}
-}).
-
--record(sx_association_release_request, {
-	  flags = #{}
 }).
 
 -record(graceful_release_period, {
@@ -692,25 +460,13 @@
 	  timer = 0
 }).
 
--record(aggregated_urrs, {
-	  group
-}).
-
 -record(multiplier, {
 	  digits = 0,
 	  exponent = 0
 }).
 
--record(aggregated_urr_id, {
-	  id = 0
-}).
-
 -record(subsequent_time_quota, {
 	  quota = 0
-}).
-
--record(rqi, {
-	  flags = #{}
 }).
 
 -record(qfi, {
@@ -726,64 +482,24 @@
 	  reports = 0
 }).
 
--record(create_traffic_endpoint, {
-	  group
-}).
-
--record(created_traffic_endpoint, {
-	  group
-}).
-
--record(update_traffic_endpoint, {
-	  group
-}).
-
--record(remove_traffic_endpoint, {
-	  group
-}).
-
 -record(traffic_endpoint_id, {
 	  id = 0
-}).
-
--record(ethernet_packet_filter, {
-	  group
 }).
 
 -record(ethertype, {
 	  type = 0
 }).
 
--record(proxying, {
-	  flags = #{}
-}).
-
 -record(ethernet_filter_id, {
 	  id = 0
-}).
-
--record(ethernet_filter_properties, {
-	  flags = #{}
 }).
 
 -record(suggested_buffering_packets_count, {
 	  count = 0
 }).
 
--record(ethernet_pdu_session_information, {
-	  flags = #{}
-}).
-
--record(ethernet_traffic_information, {
-	  group
-}).
-
 -record(ethernet_inactivity_timer, {
 	  timer = 0
-}).
-
--record(additional_monitoring_time, {
-	  group
 }).
 
 -record(event_quota, {
@@ -812,18 +528,6 @@
 	  ip_address = <<>>
 }).
 
--record(framed_route, {
-	  value = <<>>
-}).
-
--record(framed_routing, {
-	  value = 0
-}).
-
--record(framed_ipv6_route, {
-	  value = <<>>
-}).
-
 -record(event_time_stamp, {
 	  time = 0
 }).
@@ -836,20 +540,8 @@
 	  ppi = 0
 }).
 
--record(apn_dnn, {
-	  apn
-}).
-
 -record(tgpp_interface_type, {
 	  type = 'S1-U'
-}).
-
--record(pfcpsrreq_flags, {
-	  flags = #{}
-}).
-
--record(pfcpaureq_flags, {
-	  flags = #{}
 }).
 
 -record(activation_time, {
@@ -858,26 +550,6 @@
 
 -record(deactivation_time, {
 	  time = 0
-}).
-
--record(create_mar, {
-	  group
-}).
-
--record(tgpp_access_forwarding_action_information, {
-	  group
-}).
-
--record(non_tgpp_access_forwarding_action_information, {
-	  group
-}).
-
--record(remove_mar, {
-	  group
-}).
-
--record(update_mar, {
-	  group
 }).
 
 -record(mar_id, {
@@ -892,28 +564,12 @@
 	  mode = 'Active-Standby'
 }).
 
--record(weight, {
-	  value = 0
-}).
-
 -record(priority, {
 	  priority = 0
 }).
 
--record(update_tgpp_access_forwarding_action_information, {
-	  group
-}).
-
--record(update_non_tgpp_access_forwarding_action_information, {
-	  group
-}).
-
 -record(ue_ip_address_pool_identity, {
 	  identity = <<>>
-}).
-
--record(packet_replication_and_detection_carry_on_information, {
-	  flags = #{}
 }).
 
 -record(smf_set_id, {
@@ -926,78 +582,6 @@
 
 -record(number_of_reports, {
 	  reports = 0
-}).
-
--record(pfcp_session_retention_information, {
-	  group
-}).
-
--record(pfcpasrsp_flags, {
-	  flags = #{}
-}).
-
--record(pfcpsereq_flags, {
-	  flags = #{}
-}).
-
--record(user_plane_path_recovery_report, {
-	  group
-}).
-
--record(ip_multicast_addressing_info, {
-	  group
-}).
-
--record(join_ip_multicast_information, {
-	  group
-}).
-
--record(leave_ip_multicast_information, {
-	  group
-}).
-
--record(create_bridge_info_for_tsc, {
-	  flags = #{}
-}).
-
--record(created_bridge_info_for_tsc, {
-	  group
-}).
-
--record(ds_tt_port_number, {
-	  value = 0
-}).
-
--record(nw_tt_port_number, {
-	  value = 0
-}).
-
--record(port_management_information_for_tsc, {
-	  group
-}).
-
--record(port_management_information_for_tsc_smr, {
-	  group
-}).
-
--record(port_management_information_for_tsc_sdr, {
-	  group
-}).
-
--record(port_management_information_container, {
-	  value = <<>>
-}).
-
--record(clock_drift_control_information, {
-	  group
-}).
-
--record(requested_clock_drift_information, {
-	  flags = #{}
-}).
-
--record(clock_drift_report, {
-	  group
 }).
 
 -record(tsn_time_domain_number, {
@@ -1020,85 +604,13 @@
 	  measurement = 0
 }).
 
--record(remove_srr, {
-	  group
-}).
-
--record(create_srr, {
-	  group
-}).
-
--record(update_srr, {
-	  group
-}).
-
--record(session_report, {
-	  group
-}).
-
 -record(srr_id, {
 	  id = 0
-}).
-
--record(access_availability_control_information, {
-	  group
-}).
-
--record(requested_access_availability_information, {
-	  flags = #{}
-}).
-
--record(access_availability_report, {
-	  group
 }).
 
 -record(access_availability_information, {
 	  status = unavailable,
 	  type = 'TGPP'
-}).
-
--record(provide_atsss_control_information, {
-	  group
-}).
-
--record(atsss_control_parameters, {
-	  group
-}).
-
--record(mptcp_control_information, {
-	  flags = #{}
-}).
-
--record(atsss_ll_control_information, {
-	  flags = #{}
-}).
-
--record(pmf_control_information, {
-	  flags = #{}
-}).
-
--record(mptcp_parameters, {
-	  group
-}).
-
--record(atsss_ll_parameters, {
-	  group
-}).
-
--record(pmf_parameters, {
-	  group
-}).
-
--record(atsss_ll_information, {
-	  flags = #{}
-}).
-
--record(data_network_access_identifier, {
-	  value = <<>>
-}).
-
--record(ue_ip_address_pool_information, {
-	  group
 }).
 
 -record(average_packet_delay, {
@@ -1113,76 +625,12 @@
 	  delay = 0
 }).
 
--record(qos_report_trigger, {
-	  flags = #{}
-}).
-
--record(gtp_u_path_qos_control_information, {
-	  group
-}).
-
--record(gtp_u_path_qos_report, {
-	  group
-}).
-
--record(path_report_qos_information, {
-	  group
-}).
-
--record(gtp_u_path_interface_type, {
-	  flags = #{}
-}).
-
--record(qos_monitoring_per_qos_flow_control_information, {
-	  group
-}).
-
--record(requested_qos_monitoring, {
-	  flags = #{}
-}).
-
--record(reporting_frequency, {
-	  flags = #{}
-}).
-
 -record(minimum_wait_time, {
 	  time = 0
 }).
 
--record(qos_monitoring_report, {
-	  group
-}).
-
--record(mt_edt_control_information, {
-	  flags = #{}
-}).
-
 -record(dl_data_packets_size, {
 	  size = 0
-}).
-
--record(qer_control_indications, {
-	  flags = #{}
-}).
-
--record(packet_rate_status_report, {
-	  group
-}).
-
--record(nf_instance_id, {
-	  value = <<>>
-}).
-
--record(ethernet_context_information, {
-	  group
-}).
-
--record(redundant_transmission_parameters, {
-	  group
-}).
-
--record(updated_pdr, {
-	  group
 }).
 
 -record(s_nssai, {
@@ -1190,64 +638,8 @@
 	  sd = 0
 }).
 
--record(ip_version, {
-	  flags = #{}
-}).
-
--record(pfcpasreq_flags, {
-	  flags = #{}
-}).
-
--record(data_status, {
-	  flags = #{}
-}).
-
--record(provide_rds_configuration_information, {
-	  group
-}).
-
--record(rds_configuration_information, {
-	  flags = #{}
-}).
-
--record(query_packet_rate_status_ie_smreq, {
-	  group
-}).
-
--record(packet_rate_status_report_ie_smresp, {
-	  group
-}).
-
--record(mptcp_applicable_indication, {
-	  flags = #{}
-}).
-
--record(bridge_management_information_container, {
-	  value = <<>>
-}).
-
--record(ue_ip_address_usage_information, {
-	  group
-}).
-
 -record(validity_timer, {
 	  validity_timer = 0
-}).
-
--record(redundant_transmission_forwarding, {
-	  group
-}).
-
--record(transport_delay_reporting, {
-	  group
-}).
-
--record(bbf_up_function_features, {
-	  flags = #{}
-}).
-
--record(logical_port, {
-	  port = <<>>
 }).
 
 -record(bbf_outer_header_creation, {
@@ -1282,36 +674,8 @@
 	  id = 0
 }).
 
--record(l2tp_type, {
-	  flags = #{}
-}).
-
--record(ppp_lcp_connectivity, {
-	  group
-}).
-
--record(l2tp_tunnel, {
-	  group
-}).
-
--record(bbf_nat_outside_address, {
-	  ipv4 = <<0,0,0,0>>
-}).
-
--record(bbf_apply_action, {
-	  flags = #{}
-}).
-
--record(bbf_nat_port_block, {
-	  block = <<>>
-}).
-
 -record(bbf_dynamic_port_block_starting_port, {
 	  start = 0
-}).
-
--record(tp_build_identifier, {
-	  id = <<>>
 }).
 
 -record(tp_now, {
@@ -1329,38 +693,6 @@
 	  fraction = 0
 }).
 
--record(tp_error_report, {
-	  group
-}).
-
--record(tp_error_message, {
-	  message = <<>>
-}).
-
--record(tp_file_name, {
-	  file_name = <<>>
-}).
-
 -record(tp_line_number, {
 	  line = 0
-}).
-
--record(tp_created_nat_binding, {
-	  group
-}).
-
--record(tp_ipfix_policy, {
-	  policy = <<>>
-}).
-
--record(tp_trace_information, {
-	  group
-}).
-
--record(tp_trace_parent, {
-	  parent = <<>>
-}).
-
--record(tp_trace_state, {
-	  state = <<>>
 }).
