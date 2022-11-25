@@ -181,7 +181,8 @@ mnc_label() ->
     ?LET(M, mnc(), list_to_binary(io_lib:format("mnc~3..0s", [M]))).
 
 apn() ->
-    ?LET(L, [dns_name(), mnc_label(), mcc_label(), <<"gprs">>], lists:flatten(L)).
+    ?LET(L, [dns_name(), mnc_label(), mcc_label(), <<"gprs">>],
+	 encode_dns_label(lists:flatten(L))).
 
 network_instance() ->
     oneof([encode_dns_label(dns_name()), encode_fqdn(dns_name())]).
@@ -594,8 +595,14 @@ ie() ->
     ie_map(
       ?LET(I, integer(1,10), vector(I, oneof(simple_ie() ++ grouped_ie())))).
 
-put_ie(IE, IEs) ->
+put_ie(IE, IEs) when is_tuple(IE) ->
     Key = element(1, IE),
+    UpdateFun = fun(V) when is_list(V) -> V ++ [IE];
+		   (undefined)         -> IE;
+		   (V)                 -> [V, IE]
+		end,
+    maps:update_with(Key, UpdateFun, IE, IEs);
+put_ie([Key, IE], IEs)  ->
     UpdateFun = fun(V) when is_list(V) -> V ++ [IE];
 		   (undefined)         -> IE;
 		   (V)                 -> [V, IE]
@@ -620,82 +627,81 @@ gen_volume(Type) ->
     }.
 
 gen_create_pdr() ->
-    #create_pdr{group = ie_group()}.
+    [create_pdr, ie_group()].
 
 gen_pdi() ->
-    #pdi{group = ie_group()}.
+    [pdi, ie_group()].
 
 gen_create_far() ->
-    #create_far{group = ie_group()}.
+    [create_far, ie_group()].
 
 gen_forwarding_parameters() ->
-    #forwarding_parameters{group = ie_group()}.
+    [forwarding_parameters, ie_group()].
 
 gen_duplicating_parameters() ->
-    #duplicating_parameters{group = ie_group()}.
+    [duplicating_parameters, ie_group()].
 
 gen_create_urr() ->
-    #create_urr{group = ie_group()}.
+    [create_urr, ie_group()].
 
 gen_create_qer() ->
-    #create_qer{group = ie_group()}.
+    [create_qer, ie_group()].
 
 gen_created_pdr() ->
-    #created_pdr{group = ie_group()}.
+    [created_pdr, ie_group()].
 
 gen_update_pdr() ->
-    #update_pdr{group = ie_group()}.
+    [update_pdr, ie_group()].
 
 gen_update_far() ->
-    #update_far{group = ie_group()}.
+    [update_far, ie_group()].
 
 gen_update_forwarding_parameters() ->
-    #update_forwarding_parameters{group = ie_group()}.
+    [update_forwarding_parameters, ie_group()].
 
 gen_update_bar_response() ->
-    #update_bar_response{group = ie_group()}.
+    [update_bar_response, ie_group()].
 
 gen_update_urr() ->
-    #update_urr{group = ie_group()}.
+    [update_urr, ie_group()].
 
 gen_update_qer() ->
-    #update_qer{group = ie_group()}.
+    [update_qer, ie_group()].
 
 gen_remove_pdr() ->
-    #remove_pdr{group = ie_group()}.
+    [remove_pdr, ie_group()].
 
 gen_remove_far() ->
-    #remove_far{group = ie_group()}.
+    [remove_far, ie_group()].
 
 gen_remove_urr() ->
-    #remove_urr{group = ie_group()}.
+    [remove_urr, ie_group()].
 
 gen_remove_qer() ->
-    #remove_qer{group = ie_group()}.
+    [remove_qer, ie_group()].
 
 gen_pfcp_cause() ->
-    #pfcp_cause{
-       cause = oneof(
-		 ['Reserved',
-		  'Request accepted',
-		  'More Usage Report to send',
-		  'Request rejected',
-		  'Session context not found',
-		  'Mandatory IE missing',
-		  'Conditional IE missing',
-		  'Invalid length',
-		  'Mandatory IE incorrect',
-		  'Invalid Forwarding Policy',
-		  'Invalid F-TEID allocation option',
-		  'No established Sx Association',
-		  'Rule creation/modification Failure',
-		  'PFCP entity in congestion',
-		  'No resources available',
-		  'Service not supported',
-		  'System failure',
-		  'Redirection Requested',
-		  'All dynamic addresses are occupied'])
-      }.
+    [pfcp_cause, oneof(
+		   ['Reserved',
+		    'Request accepted',
+		    'More Usage Report to send',
+		    'Request rejected',
+		    'Session context not found',
+		    'Mandatory IE missing',
+		    'Conditional IE missing',
+		    'Invalid length',
+		    'Mandatory IE incorrect',
+		    'Invalid Forwarding Policy',
+		    'Invalid F-TEID allocation option',
+		    'No established Sx Association',
+		    'Rule creation/modification Failure',
+		    'PFCP entity in congestion',
+		    'No resources available',
+		    'Service not supported',
+		    'System failure',
+		    'Redirection Requested',
+		    'All dynamic addresses are occupied'])
+    ].
 
 gen_source_interface() ->
     #source_interface{
@@ -726,9 +732,7 @@ gen_f_teid() ->
        gen_f_teid(choose,   undefined,     choose,        uint8())]).
 
 gen_network_instance() ->
-    #network_instance{
-       instance = network_instance()
-      }.
+    [network_instance, network_instance()].
 
 gen_sdf_filter() ->
     #sdf_filter{
@@ -740,9 +744,7 @@ gen_sdf_filter() ->
       }.
 
 gen_application_id() ->
-    #application_id{
-       id = binary()
-      }.
+    [application_id, binary()].
 
 gen_gate_status() ->
     #gate_status{
@@ -804,12 +806,9 @@ gen_inactivity_detection_time() ->
       }.
 
 gen_reporting_triggers() ->
-    #reporting_triggers{
-       flags =
-	   flags(['PERIO','VOLTH','TIMTH','QUHTI','START','STOPT','DROTH','LIUSA',
-		  'VOLQU','TIMQU','ENVCL','MACAR','EVETH','EVEQU','IPMJL','QUVTI',
-		  'REEMR','UPINT'])
-      }.
+    [reporting_triggers, flags(['PERIO','VOLTH','TIMTH','QUHTI','START','STOPT','DROTH','LIUSA',
+				'VOLQU','TIMQU','ENVCL','MACAR','EVETH','EVEQU','IPMJL','QUVTI',
+				'REEMR','UPINT'])].
 
 gen_redirect_information() ->
     oneof([#redirect_information{
@@ -826,14 +825,10 @@ gen_redirect_information() ->
 	     }]).
 
 gen_report_type() ->
-    #report_type{
-       flags = flags(['DLDR','USAR','ERIR','UPIR','PMIR','SESR','UISR'])
-      }.
+    [report_type, flags(['DLDR','USAR','ERIR','UPIR','PMIR','SESR','UISR'])].
 
 gen_offending_ie() ->
-    #offending_ie{
-      type = uint16()
-      }.
+    [offending_ie, uint16()].
 
 gen_forwarding_policy() ->
     #forwarding_policy{
@@ -851,60 +846,42 @@ gen_destination_interface() ->
       }.
 
 gen_up_function_features() ->
-    oneof(
-      [#up_function_features{
-	  flags =
-	      flags(['BUCP','DDND','DLBD','TRST','FTUP','PFDM','HEEU','TREU'])
-	 },
-       #up_function_features{
-	  flags =
-	      flags(['BUCP','DDND','DLBD','TRST','FTUP','PFDM','HEEU','TREU',
-		     'EMPU','PDIU','UDBC','QUOAC','TRACE','FRRT','PFDE','EPFAR'])
-	     },
-       #up_function_features{
-	  flags =
-	      flags(['BUCP','DDND','DLBD','TRST','FTUP','PFDM','HEEU','TREU',
-		     'EMPU','PDIU','UDBC','QUOAC','TRACE','FRRT','PFDE','EPFAR',
-		     'DPDRA','ADPDP','UEIP','SSET','MNOP','MTE','BUNDL','GCOM'])
-	 },
-       #up_function_features{
-	  flags =
-	      flags(['BUCP','DDND','DLBD','TRST','FTUP','PFDM','HEEU','TREU',
-		     'EMPU','PDIU','UDBC','QUOAC','TRACE','FRRT','PFDE','EPFAR',
-		     'DPDRA','ADPDP','UEIP','SSET','MNOP','MTE','BUNDL','GCOM',
-		     'MPAS','RTTL','VTIME','NORP','IPTV','IP6PL','TSCU','MPTCP'])
-	 },
-       #up_function_features{
-	  flags =
-	      flags(['BUCP','DDND','DLBD','TRST','FTUP','PFDM','HEEU','TREU',
-		     'EMPU','PDIU','UDBC','QUOAC','TRACE','FRRT','PFDE','EPFAR',
-		     'DPDRA','ADPDP','UEIP','SSET','MNOP','MTE','BUNDL','GCOM',
-		     'MPAS','RTTL','VTIME','NORP','IPTV','IP6PL','TSCU','MPTCP',
-		     'ATSSS-LL','QFQM','GPQM','MT-EDT','CIOT','ETHAR','DDDS','RDS'])
-	 },
-       #up_function_features{
-	  flags =
-	      flags(['BUCP','DDND','DLBD','TRST','FTUP','PFDM','HEEU','TREU',
-		     'EMPU','PDIU','UDBC','QUOAC','TRACE','FRRT','PFDE','EPFAR',
-		     'DPDRA','ADPDP','UEIP','SSET','MNOP','MTE','BUNDL','GCOM',
-		     'MPAS','RTTL','VTIME','NORP','IPTV','IP6PL','TSCU','MPTCP',
-		     'ATSSS-LL','QFQM','GPQM','MT-EDT','CIOT','ETHAR','DDDS',
-		     'RTTWP'])
-	 }
-      ]).
+    [up_function_features,
+     oneof(
+      [
+       flags(['BUCP','DDND','DLBD','TRST','FTUP','PFDM','HEEU','TREU']),
+       flags(['BUCP','DDND','DLBD','TRST','FTUP','PFDM','HEEU','TREU',
+	      'EMPU','PDIU','UDBC','QUOAC','TRACE','FRRT','PFDE','EPFAR']),
+       flags(['BUCP','DDND','DLBD','TRST','FTUP','PFDM','HEEU','TREU',
+	      'EMPU','PDIU','UDBC','QUOAC','TRACE','FRRT','PFDE','EPFAR',
+	      'DPDRA','ADPDP','UEIP','SSET','MNOP','MTE','BUNDL','GCOM']),
+       flags(['BUCP','DDND','DLBD','TRST','FTUP','PFDM','HEEU','TREU',
+	      'EMPU','PDIU','UDBC','QUOAC','TRACE','FRRT','PFDE','EPFAR',
+	      'DPDRA','ADPDP','UEIP','SSET','MNOP','MTE','BUNDL','GCOM',
+	      'MPAS','RTTL','VTIME','NORP','IPTV','IP6PL','TSCU','MPTCP']),
+       flags(['BUCP','DDND','DLBD','TRST','FTUP','PFDM','HEEU','TREU',
+	      'EMPU','PDIU','UDBC','QUOAC','TRACE','FRRT','PFDE','EPFAR',
+	      'DPDRA','ADPDP','UEIP','SSET','MNOP','MTE','BUNDL','GCOM',
+	      'MPAS','RTTL','VTIME','NORP','IPTV','IP6PL','TSCU','MPTCP',
+	      'ATSSS-LL','QFQM','GPQM','MT-EDT','CIOT','ETHAR','DDDS','RDS']),
+       flags(['BUCP','DDND','DLBD','TRST','FTUP','PFDM','HEEU','TREU',
+	      'EMPU','PDIU','UDBC','QUOAC','TRACE','FRRT','PFDE','EPFAR',
+	      'DPDRA','ADPDP','UEIP','SSET','MNOP','MTE','BUNDL','GCOM',
+	      'MPAS','RTTL','VTIME','NORP','IPTV','IP6PL','TSCU','MPTCP',
+	      'ATSSS-LL','QFQM','GPQM','MT-EDT','CIOT','ETHAR','DDDS',
+	      'RTTWP'])
+      ])
+    ].
 
 gen_apply_action() ->
-    oneof(
-      [#apply_action{
-	  flags =
-	      flags(['DROP','FORW','BUFF','NOCP','DUPL','IPMA','IPMD','DFRT'])
-	 },
-       #apply_action{
-	  flags =
-	      flags(['DROP','FORW','BUFF','NOCP','DUPL','IPMA','IPMD','DFRT',
-		     'EDRT','BDPN','DDPN'])
-	 }
-      ]).
+    [apply_action,
+     oneof(
+       [
+	flags(['DROP','FORW','BUFF','NOCP','DUPL','IPMA','IPMD','DFRT']),
+	flags(['DROP','FORW','BUFF','NOCP','DUPL','IPMA','IPMD','DFRT',
+	       'EDRT','BDPN','DDPN'])
+       ])
+    ].
 
 gen_downlink_data_service_information() ->
     #downlink_data_service_information{
@@ -934,32 +911,22 @@ gen_dl_buffering_suggested_packet_count() ->
       }.
 
 gen_sxsmreq_flags() ->
-    #sxsmreq_flags{
-       flags =
-	   flags(['DROBU','SNDEM','QAURR'])
-      }.
+    [sxsmreq_flags, flags(['DROBU','SNDEM','QAURR'])].
 
 gen_sxsrrsp_flags() ->
-    #sxsrrsp_flags{
-       flags =
-	   flags(['DROBU'])
-      }.
+    [sxsrrsp_flags, flags(['DROBU'])].
 
 gen_load_control_information() ->
-    #load_control_information{group = ie_group()}.
+    [load_control_information, ie_group()].
 
 gen_sequence_number() ->
-    #sequence_number{
-      number = uint32()
-      }.
+    [sequence_number, uint32()].
 
 gen_metric() ->
-    #metric{
-      metric = byte()
-      }.
+    [metric, byte()].
 
 gen_overload_control_information() ->
-    #overload_control_information{group = ie_group()}.
+    [overload_control_information, ie_group()].
 
 gen_timer() ->
     #timer{
@@ -995,10 +962,10 @@ gen_f_seid() ->
 
 
 gen_application_id_pfds() ->
-    #application_id_pfds{group = ie_group()}.
+    [application_id_pfds, ie_group()].
 
 gen_pfd_context() ->
-    #pfd_context{group = ie_group()}.
+    [pfd_context, ie_group()].
 
 gen_node_id() ->
     #node_id{id = oneof([ip4_address(), ip6_address(), dns_name()])}.
@@ -1016,22 +983,19 @@ gen_pfd_contents() ->
       }.
 
 gen_measurement_method() ->
-    #measurement_method{
-       flags =
-	   flags(['DURAT','VOLUM','EVENT'])
-      }.
+    [measurement_method, flags(['DURAT','VOLUM','EVENT'])].
 
 gen_usage_report_trigger() ->
-    oneof(
-      [#usage_report_trigger{
-	  flags =
+    [usage_report_trigger,
+     oneof(
+       [
 	      flags(['IMMER', 'DROTH', 'STOPT', 'START', 'QUHTI', 'TIMTH', 'VOLTH', 'PERIO',
-		     'EVETH', 'MACAR', 'ENVCL', 'MONIT', 'TERMR', 'LIUSA', 'TIMQU', 'VOLQU'])},
-       #usage_report_trigger{
-	  flags =
+		     'EVETH', 'MACAR', 'ENVCL', 'MONIT', 'TERMR', 'LIUSA', 'TIMQU', 'VOLQU']),
 	      flags(['IMMER', 'DROTH', 'STOPT', 'START', 'QUHTI', 'TIMTH', 'VOLTH', 'PERIO',
 		     'EVETH', 'MACAR', 'ENVCL', 'MONIT', 'TERMR', 'LIUSA', 'TIMQU', 'VOLQU',
-		     'EMRRE', 'QUVTI', 'IPMJL', 'TEBUR', 'EVEQU'])}]).
+		     'EMRRE', 'QUVTI', 'IPMJL', 'TEBUR', 'EVEQU'])
+       ])
+    ].
 
 gen_measurement_period() ->
     #measurement_period{
@@ -1065,7 +1029,7 @@ gen_duration_measurement() ->
       }.
 
 gen_application_detection_information() ->
-    #application_detection_information{group = ie_group()}.
+    [application_detection_information, ie_group()].
 
 gen_time_of_first_packet() ->
     #time_of_first_packet{
@@ -1107,16 +1071,16 @@ gen_end_time() ->
       }.
 
 gen_query_urr() ->
-    #query_urr{group = ie_group()}.
+    [query_urr, ie_group()].
 
 gen_usage_report_smr() ->
-    #usage_report_smr{group = ie_group()}.
+    [usage_report_smr, ie_group()].
 
 gen_usage_report_sdr() ->
-    #usage_report_sdr{group = ie_group()}.
+    [usage_report_sdr, ie_group()].
 
 gen_usage_report_srr() ->
-    #usage_report_srr{group = ie_group()}.
+    [usage_report_srr, ie_group()].
 
 gen_urr_id() ->
     #urr_id{id = id_range(urr)}.
@@ -1125,7 +1089,7 @@ gen_linked_urr_id() ->
     #linked_urr_id{id = id_range(urr)}.
 
 gen_downlink_data_report() ->
-    #downlink_data_report{group = ie_group()}.
+    [downlink_data_report, ie_group()].
 
 gen_outer_header_creation() ->
     oneof(
@@ -1163,33 +1127,25 @@ gen_outer_header_creation() ->
       ]).
 
 gen_create_bar() ->
-    #create_bar{group = ie_group()}.
+    [create_bar, ie_group()].
 
 gen_update_bar_request() ->
-    #update_bar_request{group = ie_group()}.
+    [update_bar_request, ie_group()].
 
 gen_remove_bar() ->
-    #remove_bar{group = ie_group()}.
+    [remove_bar, ie_group()].
 
 gen_bar_id() ->
     #bar_id{id = id_range(bar)}.
 
 gen_cp_function_features() ->
-    #cp_function_features{
-       flags =
-	   flags(['LOAD','OVRL','EPFAR','SSET','BUNDL','MPAS','ARDR','UIAUR'])
-      }.
+    [cp_function_features, flags(['LOAD','OVRL','EPFAR','SSET','BUNDL','MPAS','ARDR','UIAUR'])].
 
 gen_usage_information() ->
-    #usage_information{
-       flags =
-	   flags(['BEF','AFT','UAE','UBE'])
-      }.
+    [usage_information, flags(['BEF','AFT','UAE','UBE'])].
 
 gen_application_instance_id() ->
-    #application_instance_id{
-      id = binary()
-      }.
+    [application_instance_id, binary()].
 
 gen_flow_information() ->
     #flow_information{
@@ -1285,22 +1241,16 @@ gen_header_enrichment() ->
       }.
 
 gen_error_indication_report() ->
-    #error_indication_report{group = ie_group()}.
+    [error_indication_report, ie_group()].
 
 gen_measurement_information() ->
-    #measurement_information{
-       flags =
-	   flags(['MBQE','INAM','RADI','ISTM','MNOP'])
-      }.
+    [measurement_information, flags(['MBQE','INAM','RADI','ISTM','MNOP'])].
 
 gen_node_report_type() ->
-    #node_report_type{
-       flags =
-	   flags(['UPFR','UPRR','CKDR','GPQR'])
-      }.
+    [node_report_type, flags(['UPFR','UPRR','CKDR','GPQR'])].
 
 gen_user_plane_path_failure_report() ->
-    #user_plane_path_failure_report{group = ie_group()}.
+    [user_plane_path_failure_report, ie_group()].
 
 gen_remote_gtp_u_peer() ->
     #remote_gtp_u_peer{
@@ -1311,22 +1261,16 @@ gen_remote_gtp_u_peer() ->
       }.
 
 gen_ur_seqn() ->
-    #ur_seqn{
-       number = uint32()
-      }.
+    [ur_seqn, uint32()].
 
 gen_update_duplicating_parameters() ->
-    #update_duplicating_parameters{group = ie_group()}.
+    [update_duplicating_parameters, ie_group()].
 
 gen_activate_predefined_rules() ->
-    #activate_predefined_rules{
-      name = binary()
-      }.
+    [activate_predefined_rules, binary()].
 
 gen_deactivate_predefined_rules() ->
-    #deactivate_predefined_rules{
-      name = binary()
-      }.
+    [deactivate_predefined_rules, binary()].
 
 gen_far_id() ->
     #far_id{id = id_range(far)}.
@@ -1335,14 +1279,10 @@ gen_qer_id() ->
     #qer_id{id = id_range(qer)}.
 
 gen_oci_flags() ->
-    #oci_flags{
-       flags = flags(['AOCI'])
-      }.
+    [oci_flags, flags(['AOCI'])].
 
 gen_sx_association_release_request() ->
-    #sx_association_release_request{
-       flags = flags(['SARR','URSS'])
-      }.
+    [sx_association_release_request, flags(['SARR','URSS'])].
 
 gen_graceful_release_period() ->
     #graceful_release_period{
@@ -1392,7 +1332,7 @@ gen_user_plane_inactivity_timer() ->
       }.
 
 gen_aggregated_urrs() ->
-    #aggregated_urrs{group = ie_group()}.
+    [aggregated_urrs, ie_group()].
 
 gen_multiplier() ->
     #multiplier{
@@ -1401,9 +1341,7 @@ gen_multiplier() ->
       }.
 
 gen_aggregated_urr_id() ->
-    #aggregated_urr_id{
-       id = id_range(urr)
-      }.
+    [aggregated_urr_id, id_range(urr)].
 
 gen_subsequent_volume_quota() ->
     gen_volume(subsequent_volume_quota).
@@ -1414,9 +1352,7 @@ gen_subsequent_time_quota() ->
       }.
 
 gen_rqi() ->
-    #rqi{
-       flags = flags(['RQI'])
-      }.
+    [rqi, flags(['RQI'])].
 
 gen_qfi() ->
     #qfi{
@@ -1435,16 +1371,16 @@ gen_additional_usage_reports_information() ->
       }.
 
 gen_create_traffic_endpoint() ->
-    #create_traffic_endpoint{group = ie_group()}.
+    [create_traffic_endpoint, ie_group()].
 
 gen_created_traffic_endpoint() ->
-    #created_traffic_endpoint{group = ie_group()}.
+    [created_traffic_endpoint, ie_group()].
 
 gen_update_traffic_endpoint() ->
-    #update_traffic_endpoint{group = ie_group()}.
+    [update_traffic_endpoint, ie_group()].
 
 gen_remove_traffic_endpoint() ->
-    #remove_traffic_endpoint{group = ie_group()}.
+    [remove_traffic_endpoint, ie_group()].
 
 gen_traffic_endpoint_id() ->
     #traffic_endpoint_id{
@@ -1452,7 +1388,7 @@ gen_traffic_endpoint_id() ->
       }.
 
 gen_ethernet_packet_filter() ->
-    #ethernet_packet_filter{group = ie_group()}.
+    [ethernet_packet_filter, ie_group()].
 
 gen_mac_address() ->
     #mac_address{
@@ -1482,9 +1418,7 @@ gen_ethertype() ->
       }.
 
 gen_proxying() ->
-    #proxying{
-       flags = flags(['ARP','INS'])
-      }.
+    [proxying, flags(['ARP','INS'])].
 
 gen_ethernet_filter_id() ->
     #ethernet_filter_id{
@@ -1492,9 +1426,7 @@ gen_ethernet_filter_id() ->
       }.
 
 gen_ethernet_filter_properties() ->
-    #ethernet_filter_properties{
-       flags = flags(['BIDE'])
-      }.
+    [ethernet_filter_properties, flags(['BIDE'])].
 
 gen_suggested_buffering_packets_count() ->
     #suggested_buffering_packets_count{
@@ -1510,12 +1442,10 @@ gen_user_id() ->
       }.
 
 gen_ethernet_pdu_session_information() ->
-    #ethernet_pdu_session_information{
-       flags = flags(['ETHI'])
-      }.
+    [ethernet_pdu_session_information, flags(['ETHI'])].
 
 gen_ethernet_traffic_information() ->
-    #ethernet_traffic_information{group = ie_group()}.
+    [ethernet_traffic_information, ie_group()].
 
 gen_mac_addresses_detected() ->
     oneof([#mac_addresses_detected{
@@ -1553,9 +1483,7 @@ gen_tp_packet_measurement() ->
     gen_volume(tp_packet_measurement).
 
 gen_tp_build_identifier() ->
-    #tp_build_identifier{
-       id = binary()
-      }.
+    [tp_build_identifier, binary()].
 
 gen_tp_now() ->
     #tp_now{
@@ -1576,17 +1504,13 @@ gen_tp_stop_time() ->
       }.
 
 gen_tp_error_report() ->
-    #tp_error_report{group = ie_group()}.
+    [tp_error_report, ie_group()].
 
 gen_tp_error_message() ->
-    #tp_error_message{
-       message = binary()
-      }.
+    [tp_error_message,  binary()].
 
 gen_tp_file_name() ->
-    #tp_file_name{
-       file_name = binary()
-      }.
+    [tp_file_name, binary()].
 
 gen_tp_line_number() ->
     #tp_line_number{
@@ -1594,34 +1518,28 @@ gen_tp_line_number() ->
       }.
 
 gen_tp_ipfix_policy() ->
-    #tp_ipfix_policy{
-       policy = binary()
-      }.
+    [tp_ipfix_policy, binary()].
 
 gen_tp_created_nat_binding() ->
-    #tp_created_nat_binding{group = ie_group()}.
+    [tp_created_nat_binding, ie_group()].
 
 gen_tp_trace_information() ->
-    #tp_trace_information{group = ie_group()}.
+    [tp_trace_information, ie_group()].
 
 gen_tp_trace_parent() ->
-    #tp_trace_parent{
-       parent = binary()
-      }.
+    [tp_trace_parent, binary()].
 
 gen_tp_trace_state() ->
-    #tp_trace_state{
-       state = binary()
-      }.
+    [tp_trace_state, binary()].
 
 gen_enterprise_priv() ->
-    {{18681, 500}, binary()}.
+    [{18681, 500}, binary()].
 
 
 %% =============================================================================
 
 gen_additional_monitoring_time() ->
-    #additional_monitoring_time{group = ie_group()}.
+    [additional_monitoring_time, ie_group()].
 
 gen_event_quota() ->
     #event_quota{
@@ -1655,19 +1573,13 @@ gen_trace_information() ->
       }.
 
 gen_framed_route() ->
-    #framed_route{
-       value = binary()
-      }.
+    [framed_route, binary()].
 
 gen_framed_routing() ->
-    #framed_routing{
-       value = uint32()
-      }.
+    [framed_routing, uint32()].
 
 gen_framed_ipv6_route() ->
-    #framed_ipv6_route{
-       value = binary()
-      }.
+    [framed_ipv6_route, binary()].
 
 gen_event_time_stamp() ->
     #event_time_stamp{
@@ -1685,9 +1597,7 @@ gen_paging_policy_indicator() ->
       }.
 
 gen_apn_dnn() ->
-    #apn_dnn{
-       apn = apn()
-    }.
+    [apn_dnn, apn()].
 
 gen_tgpp_interface_type() ->
     #tgpp_interface_type{
@@ -1715,14 +1625,10 @@ gen_tgpp_interface_type() ->
       }.
 
 gen_pfcpsrreq_flags() ->
-    #pfcpsrreq_flags{
-       flags = flags(['PSDBU'])
-      }.
+    [pfcpsrreq_flags, flags(['PSDBU'])].
 
 gen_pfcpaureq_flags() ->
-    #pfcpaureq_flags{
-       flags = flags(['PARPS'])
-      }.
+    [pfcpaureq_flags, flags(['PARPS'])].
 
 gen_activation_time() ->
     #activation_time{
@@ -1735,19 +1641,19 @@ gen_deactivation_time() ->
       }.
 
 gen_create_mar() ->
-    #create_mar{group = ie_group()}.
+    [create_mar, ie_group()].
 
 gen_tgpp_access_forwarding_action_information() ->
-    #tgpp_access_forwarding_action_information{group = ie_group()}.
+    [tgpp_access_forwarding_action_information, ie_group()].
 
 gen_non_tgpp_access_forwarding_action_information() ->
-    #non_tgpp_access_forwarding_action_information{group = ie_group()}.
+    [non_tgpp_access_forwarding_action_information, ie_group()].
 
 gen_remove_mar() ->
-    #remove_mar{group = ie_group()}.
+    [remove_mar, ie_group()].
 
 gen_update_mar() ->
-    #update_mar{group = ie_group()}.
+    [update_mar, ie_group()].
 
 gen_mar_id() ->
     #mar_id{
@@ -1769,9 +1675,7 @@ gen_steering_mode() ->
       }.
 
 gen_weight() ->
-    #weight{
-       value = uint8()
-      }.
+    [weight, uint8()].
 
 gen_priority() ->
     #priority{
@@ -1779,10 +1683,10 @@ gen_priority() ->
       }.
 
 gen_update_tgpp_access_forwarding_action_information() ->
-    #update_tgpp_access_forwarding_action_information{group = ie_group()}.
+    [update_tgpp_access_forwarding_action_information, ie_group()].
 
 gen_update_non_tgpp_access_forwarding_action_information() ->
-    #update_non_tgpp_access_forwarding_action_information{group = ie_group()}.
+    [update_non_tgpp_access_forwarding_action_information, ie_group()].
 
 gen_ue_ip_address_pool_identity() ->
     #ue_ip_address_pool_identity{
@@ -1796,9 +1700,8 @@ gen_alternative_smf_ip_address() ->
     }.
 
 gen_packet_replication_and_detection_carry_on_information() ->
-    #packet_replication_and_detection_carry_on_information{
-       flags = flags(['PRIUEAI','PRIN19I','PRIN6I','DCARONI'])
-      }.
+    [packet_replication_and_detection_carry_on_information,
+     flags(['PRIUEAI','PRIN19I','PRIN6I','DCARONI'])].
 
 gen_smf_set_id() ->
     #smf_set_id{
@@ -1816,12 +1719,10 @@ gen_number_of_reports() ->
       }.
 
 gen_pfcp_session_retention_information() ->
-    #pfcp_session_retention_information{group = ie_group()}.
+    [pfcp_session_retention_information, ie_group()].
 
 gen_pfcpasrsp_flags() ->
-    #pfcpasrsp_flags{
-       flags = flags(['PSREI'])
-      }.
+    [pfcpasrsp_flags, flags(['PSREI'])].
 
 gen_cp_pfcp_entity_ip_address() ->
     #cp_pfcp_entity_ip_address{
@@ -1830,21 +1731,19 @@ gen_cp_pfcp_entity_ip_address() ->
       }.
 
 gen_pfcpsereq_flags() ->
-    #pfcpsereq_flags{
-       flags = flags(['RESTI'])
-      }.
+    [pfcpsereq_flags, flags(['RESTI'])].
 
 gen_user_plane_path_recovery_report() ->
-    #user_plane_path_recovery_report{group = ie_group()}.
+    [user_plane_path_recovery_report, ie_group()].
 
 gen_ip_multicast_addressing_info() ->
-    #ip_multicast_addressing_info{group = ie_group()}.
+    [ip_multicast_addressing_info, ie_group()].
 
 gen_join_ip_multicast_information() ->
-    #join_ip_multicast_information{group = ie_group()}.
+    [join_ip_multicast_information, ie_group()].
 
 gen_leave_ip_multicast_information() ->
-    #leave_ip_multicast_information{group = ie_group()}.
+    [leave_ip_multicast_information, ie_group()].
 
 gen_ip_multicast_address() ->
     #ip_multicast_address{
@@ -1888,22 +1787,16 @@ gen_packet_rate_status() ->
 	   #packet_rate_status{}]).
 
 gen_create_bridge_info_for_tsc() ->
-    #create_bridge_info_for_tsc{
-       flags = flags(['BII'])
-      }.
+    [create_bridge_info_for_tsc, flags(['BII'])].
 
 gen_created_bridge_info_for_tsc() ->
-    #created_bridge_info_for_tsc{group = ie_group()}.
+    [created_bridge_info_for_tsc, ie_group()].
 
 gen_ds_tt_port_number() ->
-    #ds_tt_port_number{
-       value = uint32()
-      }.
+    [ds_tt_port_number, uint32()].
 
 gen_nw_tt_port_number() ->
-    #nw_tt_port_number{
-       value = uint32()
-      }.
+    [nw_tt_port_number, uint32()].
 
 gen_tsn_bridge_id() ->
     #tsn_bridge_id{
@@ -1911,29 +1804,25 @@ gen_tsn_bridge_id() ->
       }.
 
 gen_port_management_information_for_tsc() ->
-    #port_management_information_for_tsc{group = ie_group()}.
+    [port_management_information_for_tsc, ie_group()].
 
 gen_port_management_information_for_tsc_smr() ->
-    #port_management_information_for_tsc_smr{group = ie_group()}.
+    [port_management_information_for_tsc_smr, ie_group()].
 
 gen_port_management_information_for_tsc_sdr() ->
-    #port_management_information_for_tsc_sdr{group = ie_group()}.
+    [port_management_information_for_tsc_sdr, ie_group()].
 
 gen_port_management_information_container() ->
-    #port_management_information_container{
-       value = binary()
-      }.
+    [port_management_information_container, binary()].
 
 gen_clock_drift_control_information() ->
-    #clock_drift_control_information{group = ie_group()}.
+    [clock_drift_control_information, ie_group()].
 
 gen_requested_clock_drift_information() ->
-    #requested_clock_drift_information{
-       flags = flags(['RRTO','RRCR'])
-      }.
+    [requested_clock_drift_information, flags(['RRTO','RRCR'])].
 
 gen_clock_drift_report() ->
-    #clock_drift_report{group = ie_group()}.
+    [clock_drift_report, ie_group()].
 
 gen_tsn_time_domain_number() ->
     #tsn_time_domain_number{
@@ -1961,16 +1850,16 @@ gen_cumulative_rateratio_measurement() ->
       }.
 
 gen_remove_srr() ->
-    #remove_srr{group = ie_group()}.
+    [remove_srr, ie_group()].
 
 gen_create_srr() ->
-    #create_srr{group = ie_group()}.
+    [create_srr, ie_group()].
 
 gen_update_srr() ->
-    #update_srr{group = ie_group()}.
+    [update_srr, ie_group()].
 
 gen_session_report() ->
-    #session_report{group = ie_group()}.
+    [session_report, ie_group()].
 
 gen_srr_id() ->
     #srr_id{
@@ -1978,15 +1867,13 @@ gen_srr_id() ->
       }.
 
 gen_access_availability_control_information() ->
-    #access_availability_control_information{group = ie_group()}.
+    [access_availability_control_information, ie_group()].
 
 gen_requested_access_availability_information() ->
-    #requested_access_availability_information{
-       flags = flags(['RRCA'])
-      }.
+    [requested_access_availability_information, flags(['RRCA'])].
 
 gen_access_availability_report() ->
-    #access_availability_report{group = ie_group()}.
+    [access_availability_report, ie_group()].
 
 gen_access_availability_information() ->
     #access_availability_information{
@@ -1995,34 +1882,28 @@ gen_access_availability_information() ->
       }.
 
 gen_provide_atsss_control_information() ->
-    #provide_atsss_control_information{group = ie_group()}.
+    [provide_atsss_control_information, ie_group()].
 
 gen_atsss_control_parameters() ->
-    #atsss_control_parameters{group = ie_group()}.
+    [atsss_control_parameters, ie_group()].
 
 gen_mptcp_control_information() ->
-    #mptcp_control_information{
-       flags = flags(['TCI'])
-      }.
+    [mptcp_control_information, flags(['TCI'])].
 
 gen_atsss_ll_control_information() ->
-    #atsss_ll_control_information{
-       flags = flags(['LLI'])
-      }.
+    [atsss_ll_control_information, flags(['LLI'])].
 
 gen_pmf_control_information() ->
-    #pmf_control_information{
-       flags = flags(['PMFI'])
-      }.
+    [pmf_control_information, flags(['PMFI'])].
 
 gen_mptcp_parameters() ->
-    #mptcp_parameters{group = ie_group()}.
+    [mptcp_parameters, ie_group()].
 
 gen_atsss_ll_parameters() ->
-    #atsss_ll_parameters{group = ie_group()}.
+    [atsss_ll_parameters, ie_group()].
 
 gen_pmf_parameters() ->
-    #pmf_parameters{group = ie_group()}.
+    [pmf_parameters, ie_group()].
 
 gen_mptcp_address_information() ->
     #mptcp_address_information{
@@ -2072,17 +1953,13 @@ gen_pmf_address_information() ->
 	   #pmf_address_information{}]).
 
 gen_atsss_ll_information() ->
-    #atsss_ll_information{
-       flags = flags(['LLI'])
-      }.
+    [atsss_ll_information, flags(['LLI'])].
 
 gen_data_network_access_identifier() ->
-    #data_network_access_identifier{
-       value = binary()
-      }.
+    [data_network_access_identifier, binary()].
 
 gen_ue_ip_address_pool_information() ->
-    #ue_ip_address_pool_information{group = ie_group()}.
+    [ue_ip_address_pool_information, ie_group()].
 
 gen_average_packet_delay() ->
     #average_packet_delay{
@@ -2100,36 +1977,28 @@ gen_maximum_packet_delay() ->
       }.
 
 gen_qos_report_trigger() ->
-    #qos_report_trigger{
-       flags = flags(['PER','THR','IRE'])
-    }.
+    [qos_report_trigger, flags(['PER','THR','IRE'])].
 
 gen_gtp_u_path_qos_control_information() ->
-    #gtp_u_path_qos_control_information{group = ie_group()}.
+    [gtp_u_path_qos_control_information, ie_group()].
 
 gen_gtp_u_path_qos_report() ->
-    #gtp_u_path_qos_report{group = ie_group()}.
+    [gtp_u_path_qos_report, ie_group()].
 
 gen_path_report_qos_information() ->
-    #path_report_qos_information{group = ie_group()}.
+    [path_report_qos_information, ie_group()].
 
 gen_gtp_u_path_interface_type() ->
-    #gtp_u_path_interface_type{
-       flags = flags(['N9','N3'])
-      }.
+    [gtp_u_path_interface_type, flags(['N9','N3'])].
 
 gen_qos_monitoring_per_qos_flow_control_information() ->
-    #qos_monitoring_per_qos_flow_control_information{group = ie_group()}.
+    [qos_monitoring_per_qos_flow_control_information, ie_group()].
 
 gen_requested_qos_monitoring() ->
-    #requested_qos_monitoring{
-       flags = flags(['DL','UL','RP'])
-      }.
+    [requested_qos_monitoring, flags(['DL','UL','RP'])].
 
 gen_reporting_frequency() ->
-    #reporting_frequency{
-       flags = flags(['EVETT','PERIO','SESRL'])
-      }.
+    [reporting_frequency, flags(['EVETT','PERIO','SESRL'])].
 
 gen_packet_delay_thresholds() ->
     #packet_delay_thresholds{
@@ -2144,7 +2013,7 @@ gen_minimum_wait_time() ->
     }.
 
 gen_qos_monitoring_report() ->
-    #qos_monitoring_report{group = ie_group()}.
+    [qos_monitoring_report, ie_group()].
 
 gen_qos_monitoring_measurement() ->
     #qos_monitoring_measurement{
@@ -2155,9 +2024,7 @@ gen_qos_monitoring_measurement() ->
     }.
 
 gen_mt_edt_control_information() ->
-    #mt_edt_control_information{
-       flags = flags(['RDSI'])
-    }.
+    [mt_edt_control_information, flags(['RDSI'])].
 
 gen_dl_data_packets_size() ->
     #dl_data_packets_size{
@@ -2165,26 +2032,22 @@ gen_dl_data_packets_size() ->
     }.
 
 gen_qer_control_indications() ->
-    #qer_control_indications{
-       flags = flags(['RCSRT','MOED','NORD'])
-    }.
+    [qer_control_indications, flags(['RCSRT','MOED','NORD'])].
 
 gen_packet_rate_status_report() ->
-    #packet_rate_status_report{group = ie_group()}.
+    [packet_rate_status_report, ie_group()].
 
 gen_nf_instance_id() ->
-    #nf_instance_id{
-       value = binary(16)
-      }.
+    [nf_instance_id, binary(16)].
 
 gen_ethernet_context_information() ->
-    #ethernet_context_information{group = ie_group()}.
+    [ethernet_context_information, ie_group()].
 
 gen_redundant_transmission_parameters() ->
-    #redundant_transmission_parameters{group = ie_group()}.
+    [redundant_transmission_parameters, ie_group()].
 
 gen_updated_pdr() ->
-    #updated_pdr{group = ie_group()}.
+    [updated_pdr, ie_group()].
 
 gen_s_nssai() ->
     #s_nssai{
@@ -2193,46 +2056,34 @@ gen_s_nssai() ->
       }.
 
 gen_ip_version() ->
-    #ip_version{
-       flags = flags(['V4','V6'])
-      }.
+    [ip_version, flags(['V4','V6'])].
 
 gen_pfcpasreq_flags() ->
-    #pfcpasreq_flags{
-       flags = flags(['UUPSI'])
-      }.
+    [pfcpasreq_flags, flags(['UUPSI'])].
 
 gen_data_status() ->
-    #data_status{
-       flags = flags(['DROP','BUFF'])
-      }.
+    [data_status, flags(['DROP','BUFF'])].
 
 gen_provide_rds_configuration_information() ->
-    #provide_rds_configuration_information{group = ie_group()}.
+    [provide_rds_configuration_information, ie_group()].
 
 gen_rds_configuration_information() ->
-    #rds_configuration_information{
-       flags = flags(['RDS'])
-      }.
+    [rds_configuration_information, flags(['RDS'])].
 
 gen_query_packet_rate_status_ie_smreq() ->
-    #query_packet_rate_status_ie_smreq{group = ie_group()}.
+    [query_packet_rate_status_ie_smreq, ie_group()].
 
 gen_packet_rate_status_report_ie_smresp() ->
-    #packet_rate_status_report_ie_smresp{group = ie_group()}.
+    [packet_rate_status_report_ie_smresp, ie_group()].
 
 gen_mptcp_applicable_indication() ->
-    #mptcp_applicable_indication{
-       flags = flags(['MAI'])
-      }.
+    [mptcp_applicable_indication, flags(['MAI'])].
 
 gen_bridge_management_information_container() ->
-    #bridge_management_information_container{
-       value = binary()
-      }.
+    [bridge_management_information_container, binary()].
 
 gen_ue_ip_address_usage_information() ->
-    #ue_ip_address_usage_information{group = ie_group()}.
+    [ue_ip_address_usage_information, ie_group()].
 
 gen_number_of_ue_ip_addresses() ->
     oneof([#number_of_ue_ip_addresses{
@@ -2252,22 +2103,18 @@ gen_validity_timer() ->
       }.
 
 gen_redundant_transmission_forwarding() ->
-    #redundant_transmission_forwarding{group = ie_group()}.
+    [redundant_transmission_forwarding, ie_group()].
 
 gen_transport_delay_reporting() ->
-    #transport_delay_reporting{group = ie_group()}.
+    [transport_delay_reporting, ie_group()].
 
 gen_bbf_up_function_features() ->
-    #bbf_up_function_features{
-       flags = flags(['PPPoE','IPoE','LAC','LNS',
-		      'LCP keepalive offload','NAT-CP',
-		      'NAT-UP'])
-      }.
+    [bbf_up_function_features, flags(['PPPoE','IPoE','LAC','LNS',
+				      'LCP keepalive offload','NAT-CP',
+				      'NAT-UP'])].
 
 gen_logical_port() ->
-    #logical_port{
-       port = binary()
-      }.
+    [logical_port, binary()].
 
 gen_bbf_outer_header_creation() ->
     #bbf_outer_header_creation{
@@ -2325,26 +2172,20 @@ gen_l2tp_session_id() ->
       }.
 
 gen_l2tp_type() ->
-    #l2tp_type{
-       flags = flags([type])
-      }.
+    [l2tp_type, flags([type])].
 
 gen_ppp_lcp_connectivity() ->
-    #ppp_lcp_connectivity{group = ie_group()}.
+    [ppp_lcp_connectivity, ie_group()].
 
 gen_l2tp_tunnel() ->
-    #l2tp_tunnel{group = ie_group()}.
+    [l2tp_tunnel, ie_group()].
 
 
 gen_bbf_nat_outside_address() ->
-    #bbf_nat_outside_address{
-       ipv4 = ip4_address()
-      }.
+    [bbf_nat_outside_address, ip4_address()].
 
 gen_bbf_apply_action() ->
-    #bbf_apply_action{
-       flags = flags(['NAT'])
-      }.
+    [bbf_apply_action, flags(['NAT'])].
 
 gen_bbf_nat_external_port_range() ->
     #bbf_nat_external_port_range{
@@ -2357,9 +2198,7 @@ gen_bbf_nat_port_forward() ->
       }.
 
 gen_bbf_nat_port_block() ->
-    #bbf_nat_port_block{
-       block = binary()
-      }.
+    [bbf_nat_port_block, binary()].
 
 gen_bbf_dynamic_port_block_starting_port() ->
     #bbf_dynamic_port_block_starting_port{
