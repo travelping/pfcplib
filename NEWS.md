@@ -3,6 +3,16 @@ pfcplib
 
 Erlang library for encoding and decoding Packet Forwarding Control Protocol (PFCP) frames.
 
+Version 3.0.0 - 10 Jan 2023
+---------------------------
+
+Major version changed to 3.0 due to incompatible API change in decoding of flags in information elements.
+
+**Features** :rocket:
+* [#34](https://github.com/travelping/pfcplib/pull/34) change flag IEs from proplists to maps and simplify non extendable IEs
+
+**[Compare 2.3.0...3.0.0](https://github.com/travelping/pfcplib/compare/2.3.0...3.0.0)**
+
 Version 2.3.0 - 26 Sep 2022
 ---------------------------
 
