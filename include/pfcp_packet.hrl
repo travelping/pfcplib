@@ -28,15 +28,15 @@
 	 }).
 
 -record(volume_threshold, {
-	  total		:: 0..16#ffffffffffffffff,
-	  uplink	:: 0..16#ffffffffffffffff,
-	  downlink	:: 0..16#ffffffffffffffff
+	  total		:: undefined | 0..16#ffffffffffffffff,
+	  uplink	:: undefined | 0..16#ffffffffffffffff,
+	  downlink	:: undefined | 0..16#ffffffffffffffff
 	 }).
 
 -record(subsequent_volume_threshold, {
-	  total		:: 0..16#ffffffffffffffff,
-	  uplink	:: 0..16#ffffffffffffffff,
-	  downlink	:: 0..16#ffffffffffffffff
+	  total		:: undefined | 0..16#ffffffffffffffff,
+	  uplink	:: undefined | 0..16#ffffffffffffffff,
+	  downlink	:: undefined | 0..16#ffffffffffffffff
 	 }).
 
 -record(downlink_data_service_information, {
@@ -89,9 +89,9 @@
 	 }).
 
 -record(volume_quota, {
-	  total		:: 0..16#ffffffffffffffff,
-	  uplink	:: 0..16#ffffffffffffffff,
-	  downlink	:: 0..16#ffffffffffffffff
+	  total		:: undefined | 0..16#ffffffffffffffff,
+	  uplink	:: undefined | 0..16#ffffffffffffffff,
+	  downlink	:: undefined | 0..16#ffffffffffffffff
 	 }).
 
 -record(outer_header_creation, {
@@ -150,9 +150,9 @@
 	 }).
 
 -record(subsequent_volume_quota, {
-	  total		:: 0..16#ffffffffffffffff,
-	  uplink	:: 0..16#ffffffffffffffff,
-	  downlink	:: 0..16#ffffffffffffffff
+	  total		:: undefined | 0..16#ffffffffffffffff,
+	  uplink	:: undefined | 0..16#ffffffffffffffff,
+	  downlink	:: undefined | 0..16#ffffffffffffffff
 	 }).
 
 -record(mac_address, {
@@ -169,9 +169,9 @@
 	 }).
 
 -record(s_tag, {
-	  pcp		:: 0..16#fff,
-	  dei		:: 0..1,
-	  vid		:: 0..16#fff
+	  pcp		:: undefined | 0..7,
+	  dei		:: undefined | 0..1,
+	  vid		:: undefined | 0..16#fff
 	 }).
 
 -record(user_id, {
